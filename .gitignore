@@ -1,0 +1,8 @@
+# 빌드 산출물
+sample/bin/
+
+# MS 재배포 금지: VM에서 가져온 시스템 바이너리·심볼·메모리 덤프
+*.pdb
+*.dmp
+*.run
+symbols/
