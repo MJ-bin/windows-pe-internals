@@ -30,7 +30,11 @@ MS 바이너리를 **PDB와 함께** Ghidra로 분석해서, 요청서가 묻는
    python3 .claude/skills/ghidra-headless-export/scripts/fetch_pdb.py ntoskrnl.exe ntdll.dll
    ```
    - 커널은 출력된 `guid` 가 위 기준 GUID와 같은지 확인한다. 다르면 **멈추고** 빌드가 다르다고 보고한다.
-3. **분석** (모듈마다 처음 한 번. `ms/ghidra/<모듈>.gpr` 이 있으면 건너뜀):
+3. **분석** (모듈마다 처음 한 번). 아래 셋이 **다 있으면** 이미 분석된 것으로 보고 건너뛴다:
+   - `ms/ghidra/<모듈>.gpr` (프로젝트)
+   - `ms/decomp/<모듈>/_index.tsv` (ExportIndex가 끝까지 돌았다는 증거)
+   - `ms/ghidra/<모듈>.analyze.log` 의 `SetPdb:` 줄 (PDB가 붙었다는 증거)
+   - `.gpr` 은 있는데 나머지 중 하나라도 없으면 = **이전 analyze가 실패했거나 아직 도는 중**이다. 다시 analyze 하거나 지우지 말고, 로그(`ms/ghidra/<모듈>.analyze.log`, `.stdout`)·프로세스(`ps`)·잠금 파일(`<모듈>.lock`)을 보고 원인을 결과서에 쓴 뒤 멈춘다. 다시 할지는 사용자가 정한다 (오케스트레이터가 묻는다).
    ```bash
    bash .claude/skills/ghidra-headless-export/scripts/run_ghidra.sh analyze ntdll.dll
    ```
