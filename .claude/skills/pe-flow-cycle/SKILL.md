@@ -143,8 +143,15 @@ allowed-tools: Read Write Edit Glob Grep Bash Agent AskUserQuestion SendMessage
 
 ## 규칙 바꾸기
 
-- `CLAUDE.md`와 `.claude/`는 바퀴마다 고치지 않는다. 바퀴의 결과는 `runs/NN_sprint/` 문서에만 쌓인다.
-- 하위 에이전트가 "pitfalls에 추가 제안" 같은 규칙 변경을 보고하면, 바퀴 끝에 사용자에게 **제안으로** 모아서 전한다. 고치는 건 사용자.
+- 바퀴의 결과는 `runs/NN_sprint/` 문서에만 쌓인다. `CLAUDE.md`와 `.claude/`(하네스)는 바퀴 결과를 적는 곳이 아니다.
+- 하네스를 고치는 건 **오케스트레이터만, 사용자 검토 뒤에**:
+  1. 하위 에이전트의 제안("pitfalls에 추가 제안", 결과서의 "스크립트 문제" 등)이나 내가 본 문제를 모아, 바꿀 파일·이유·바뀌는 줄을 사용자에게 보여준다. 여러 개면 목적별 **묶음**으로 나눈다.
+  2. 사용자가 OK 한 묶음만 고친다.
+  3. 묶음마다 `committer` 를 불러 **하네스 파일만 담은 커밋 하나**를 만든다 (`fix|feat|docs(harness)`). 분석 산출물(`runs/`, `_workspace/`, `ms/logs/`)과 같은 커밋에 넣지 않는다.
+  4. 커밋 해시를 `_workspace/plan.md` 결정 기록에 남긴다.
+  5. 되돌리기는 그 커밋을 `git revert` (사용자 허락 뒤). 그래서 묶음 하나 = 커밋 하나로 둔다.
+- 스크립트(`scripts/`)는 그 스크립트를 쓰는 작업(예: ntoskrnl analyze)이 도는 중엔 고치지 않는다. 끝난 뒤 고치고, 작은 시험으로 확인한 뒤 커밋한다.
+- 하위 에이전트는 하네스를 고치지 않는다. `.claude/settings.json` 의 권한(permissions)은 사용자가 직접 고친다.
 
 ## 팀 에러 정책
 

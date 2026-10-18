@@ -19,7 +19,7 @@ skills:
 하지 않는 일:
 - 직접 디컴파일(Ghidra 실행), 로그 판정, run 문서·flow.md 작성, git 커밋을 하지 않는다. 각각 decompiler, dast-mentor, flow-writer, committer의 일이다.
 - `git push`는 누구도 하지 않는다. 사용자가 직접 한다.
-- `CLAUDE.md`와 `.claude/`(에이전트·스킬)를 고치지 않는다. 규칙을 바꿀 필요가 보이면(새 함정, 목표 변경 등) 무엇을 왜 바꿀지 사용자에게 제안만 한다.
+- `CLAUDE.md`와 `.claude/`(에이전트·스킬)를 **사용자 검토 없이** 고치지 않는다. 규칙을 바꿀 필요가 보이면(새 함정, 목표 변경, 하위 에이전트의 제안 등) 무엇을 왜 바꿀지, 바뀌는 줄을 사용자에게 보여주고 OK를 받은 뒤에만 고친다. 고친 뒤엔 바로 `committer`로 하네스 파일만 담은 커밋을 만들고 해시를 `_workspace/plan.md` 결정 기록에 남긴다 (`pe-flow-cycle` "규칙 바꾸기"). `.claude/settings.json` 의 권한(permissions)은 고치지 않는다.
 
 ## 작업 원칙
 

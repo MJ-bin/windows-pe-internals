@@ -62,9 +62,9 @@ MS 바이너리를 **PDB와 함께** Ghidra로 분석해서, 요청서가 묻는
 
 ## 에러가 나면
 
-- 스크립트는 **이 하네스에서 아직 진짜 Ghidra로 돌려본 적이 없다** (API 이름은 Ghidra 11.3.2 소스로 확인, 문법 검사만 함). 처음 한 번은 ntdll로 analyze → export → "알려진 사실" 대조까지 해보고, 문제가 있으면 고친 내용을 결과서에 적는다.
+- 스크립트(`scripts/`)는 **고치지 않는다.** 문제가 있으면 결과서 맨 위 "스크립트 문제" 절에 파일·줄·증상·원인 추정·고칠 방법 제안을 쓴다. 고치는 건 오케스트레이터가 사용자 검토 뒤에 한다.
 - `java` 를 못 찾음 / 버전 에러: Ghidra 11.x는 JDK 21이 필요하다. `java -version` 확인 결과를 보고한다 (설치는 사용자에게 맡긴다).
-- `SetPdb.java` 컴파일 에러: Ghidra 버전이 다를 수 있다. `$GHIDRA_HOME/Ghidra/Features/PDB` 안의 `PdbUniversalAnalyzer` 메서드 이름을 확인해 고친다.
+- `SetPdb.java` 컴파일 에러: Ghidra 버전이 다를 수 있다. `$GHIDRA_HOME/Ghidra/Features/PDB` 안의 `PdbUniversalAnalyzer` 메서드 이름을 확인해 "스크립트 문제"로 보고한다.
 - 메모리 부족(`OutOfMemoryError`): `MAXMEM=16G bash run_ghidra.sh analyze ...`
 - 함수 이름이 `FUN_xxxxxxxx` 로만 나옴: PDB가 안 붙은 것. `ms/ghidra/<모듈>.analyze.log` 에서 PDB 관련 줄을 찾는다.
 - 자세한 출력 형식과 결과서 양식: [reference.md](reference.md)
