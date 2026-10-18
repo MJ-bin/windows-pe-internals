@@ -17,12 +17,17 @@
 //      callee = alias:<이름>+N : 대상 주소에 PDB 이름이 N개 더 있다 (링커가 같은 코드를 합친 ICF 등).
 //                        <이름>은 Ghidra 가 고른 하나일 뿐이라 믿지 않는다. .asm 에 "; ALIASES" 로 5개까지.
 //                        Ordinal_<숫자>, $thunk$, Nt/Zw 짝은 세지 않는다 (harmlessAlias).
+//      call_off/ret_off = frag:<FUN_이름>+0x.. : 함수 밖으로 떨어져 나간 조각(컴파일러가 잘 안 쓰는 길을 멀리 둔 것)
+//                        안의 호출. 함수가 JMP/Jcc 로 넘어가는 이름 없는(FUN_) 함수를 조각으로 보고 따라간다.
+//                        오프셋은 조각 시작 기준 (WinDbg 가 이 주소를 어떻게 보여 줄지는 확인 전이라 caller+0x.. 로 적지 않는다).
+//                        .asm 맨 아래에 "; --- 조각 ..." 머리와 함께 붙는다.
 //@category PE-Internals
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -156,6 +161,55 @@ public class ExportFunctions extends GhidraScript {
 		return "indirect:cfg:?";
 	}
 
+	// body 의 명령을 차례로 .asm 에 쓰고, 호출은 _calls.tsv 에 caller=ownerName 으로 적는다.
+	// prefix 가 "" 이면 본체 (+0x..), 아니면 조각 ("frag:FUN_..+0x..").
+	// owner 밖·body 밖으로 가는 점프의 목적지가 이름 없는(FUN_) 함수면 frags 에 모은다.
+	private void walkBody(String ownerName, Function owner, Function body, String prefix, PrintWriter w,
+			PrintWriter calls, FunctionManager fm, Set<Function> frags) {
+		long start = body.getEntryPoint().getOffset();
+		InstructionIterator it = currentProgram.getListing().getInstructions(body.getBody(), true);
+		while (it.hasNext()) {
+			Instruction ins = it.next();
+			long o = ins.getAddress().getOffset() - start;
+			String at = prefix + off(o);
+			StringBuilder line = new StringBuilder(
+				String.format("%-9s %s  %s", at, ins.getAddress(), ins.toString()));
+			String mn = ins.getMnemonicString().toUpperCase();
+			if (mn.startsWith("J")) {
+				for (Address fl : ins.getFlows()) {
+					if (owner.getBody().contains(fl) || body.getBody().contains(fl)) {
+						continue;
+					}
+					Function g = fm.getFunctionContaining(fl);
+					if (g != null && g != owner && !g.isExternal() && g.getName().startsWith("FUN_")) {
+						frags.add(g);
+					}
+				}
+			}
+			if (ins.getFlowType().isCall()) {
+				if (mn.startsWith("INT")) {
+					line.append("    ; TRAP");
+				}
+				else if (mn.startsWith("J")) {
+					String tgt = calleeName(ins, fm);
+					line.append("    ; TAILJMP -> ").append(tgt).append(aliasNote());
+					calls.printf("%s\t%s\t%s\t%s%n", ownerName, at, "tail", tgt);
+				}
+				else {
+					String ret = prefix + off(ins.getAddress().getOffset() + ins.getLength() - start);
+					String tgt = calleeName(ins, fm);
+					if (isCfgDispatch(tgt)) {
+						tgt = cfgTarget(ins, body);
+						lastAliases = new ArrayList<>();
+					}
+					line.append("    ; CALL ret=").append(ret).append(" -> ").append(tgt).append(aliasNote());
+					calls.printf("%s\t%s\t%s\t%s%n", ownerName, at, ret, tgt);
+				}
+			}
+			w.println(line);
+		}
+	}
+
 	@Override
 	protected void run() throws Exception {
 		String[] args = getScriptArgs();
@@ -249,34 +303,23 @@ public class ExportFunctions extends GhidraScript {
 				// 디스어셈블 + 호출 지점
 				try (PrintWriter w = new PrintWriter(new File(disDir, safe + ".asm"), "UTF-8")) {
 					w.println("; " + head);
-					InstructionIterator it = currentProgram.getListing().getInstructions(f.getBody(), true);
-					while (it.hasNext()) {
-						Instruction ins = it.next();
-						long o = ins.getAddress().getOffset() - entry;
-						StringBuilder line = new StringBuilder(
-							String.format("%-9s %s  %s", off(o), ins.getAddress(), ins.toString()));
-						if (ins.getFlowType().isCall()) {
-							String mn = ins.getMnemonicString().toUpperCase();
-							if (mn.startsWith("INT")) {
-								line.append("    ; TRAP");
-							}
-							else if (mn.startsWith("J")) {
-								String tgt = calleeName(ins, fm);
-								line.append("    ; TAILJMP -> ").append(tgt).append(aliasNote());
-								calls.printf("%s\t%s\t%s\t%s%n", name, off(o), "tail", tgt);
-							}
-							else {
-								long ret = ins.getAddress().getOffset() + ins.getLength() - entry;
-								String tgt = calleeName(ins, fm);
-								if (isCfgDispatch(tgt)) {
-									tgt = cfgTarget(ins, f);
-									lastAliases = new ArrayList<>();
-								}
-								line.append("    ; CALL ret=").append(off(ret)).append(" -> ").append(tgt).append(aliasNote());
-								calls.printf("%s\t%s\t%s\t%s%n", name, off(o), off(ret), tgt);
+					Set<Function> frags = new LinkedHashSet<>();
+					walkBody(name, f, f, "", w, calls, fm, frags);
+					// 떨어진 조각들 (조각이 또 다른 조각으로 가면 그것도, 같은 조각은 한 번만, 최대 20개)
+					List<Function> todo = new ArrayList<>(frags);
+					Set<Function> seen = new HashSet<>(frags);
+					for (int i = 0; i < todo.size() && i < 20; i++) {
+						Function g = todo.get(i);
+						w.println();
+						w.println(String.format("; --- 조각 %s  entry=%s  rva=0x%x  (%s 에서 점프로 옴. 오프셋은 조각 시작 기준) ---",
+							g.getName(), g.getEntryPoint(), g.getEntryPoint().getOffset() - base, name));
+						Set<Function> more = new LinkedHashSet<>();
+						walkBody(name, f, g, "frag:" + g.getName(), w, calls, fm, more);
+						for (Function m : more) {
+							if (seen.add(m)) {
+								todo.add(m);
 							}
 						}
-						w.println(line);
 					}
 				}
 			}

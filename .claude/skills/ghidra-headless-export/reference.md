@@ -46,6 +46,11 @@ LdrpCallInitRoutine	+0x41	+0x47	indirect:__guard_dispatch_icall_fptr
   - `<이름>` 은 Ghidra 가 고른 하나일 뿐이다. **문서에 그대로 쓰지 않는다.** `.asm` 에 `; ALIASES(N): …` 로 5개까지 보인다.
   - `Ordinal_<숫자>`(내보내기 번호 라벨), `$thunk$` 가 든 이름, `Nt<X>`↔`Zw<X>` 짝은 이름이 틀릴 걱정이 없어서 **세지 않는다.**
   - 예: `NtCreateUserProcess +0x3cb` 의 대상은 `xor eax,eax; ret` 3바이트인데 `?GetStoragePropertyPost@SC_DEVICE...` 로 찍혔었다 (sast/03).
+- `call_off`·`ret_off` 가 `frag:<FUN_이름>+0x..` = **함수에서 떨어져 나간 조각 안의 호출.** caller 칸은 본래 함수 이름이다.
+  - 컴파일러는 잘 안 쓰는 길(에러 처리 등)을 함수 본체에서 떼어 멀리 둔다. Ghidra 는 그 조각을 이름 없는 `FUN_` 함수로 잡는다.
+  - 스크립트는 함수가 `JMP`/`Jcc` 로 넘어가는 `FUN_` 함수를 조각으로 보고 따라가서 (조각의 조각도, 최대 20개) `.asm` 맨 아래 `; --- 조각 …` 아래에 붙인다.
+  - 오프셋은 **조각 시작 기준**이다. WinDbg 가 이 주소를 콜스택에서 어떻게 보여 줄지는 확인 전이라 `caller+0x..` 로 바꿔 쓰지 않는다.
+  - 예: `PspInsertThread +0xa33 tail FUN_140b0d692` 의 조각 안 `KeForceResumeThread` 등 (sast/03).
 - `_calls.tsv` 는 export 할 때마다 **덧붙여 쌓인다** (`sort -u` 로 같은 줄만 합침). 스크립트를 바꾼 뒤엔 옛 줄이 남으니, 그 모듈의 `_calls.tsv` 를 지우고 필요한 함수를 다시 export 한다.
 
 ## 결과서 양식: `_workspace/sast/NN_키워드_result.md`
