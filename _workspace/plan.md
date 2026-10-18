@@ -1,7 +1,7 @@
 # 분석 진행표
 
-- 마지막 갱신: 2026-10-19 (run9 뒤)
-- 다음 항목: Q2
+- 마지막 갱신: 2026-10-19 (run10 뒤)
+- 다음 항목: Q3
 - 근거: `runs/01_sprint/flow.md` 그림 1·2, 2장, 4장·4.1 표
 
 ## 대기열 (위에서부터 처리, 새 항목은 맨 아래에)
@@ -9,7 +9,7 @@
 | # | 항목 | 단계 | 정적/동적 | 들어온 곳 | 상태 |
 |---|---|---|---|---|---|
 | Q1 | 2.1 `nt!NtCreateUserProcess` callee (depth 1) | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 끝 (run9) |
-| Q2 | 2.1 `nt!PspAllocateProcess`, `nt!MmCreatePeb` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 대기 |
+| Q2 | 2.1 `nt!PspAllocateProcess`, `nt!MmCreatePeb` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 끝 (run10) |
 | Q3 | 2.1 `nt!PspAllocateThread`, `nt!PspInsertProcess` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 대기 |
 | Q4 | 2.1 `nt!PspInsertThread`, `nt!PspCallProcessNotifyRoutines` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 대기 |
 | Q5 | 2.2 첫 스레드를 풀어 주는 함수 (nt 쪽 이름, `_index.tsv`로 확인) + 부모 쪽에서 그걸 부르는 곳 (`KERNELBASE!CreateProcessInternalW` 등, 이름 확인 필요) | 1 | 정적 (ntoskrnl, kernelbase) | 처음 (4장 2.2) | 대기 |
@@ -42,6 +42,8 @@
 | Q32 | 2.2 `nt!PspMapThreadCreationFlags` 본문 (ThreadFlags → 최종 플래그 bit0 가 그대로 가나) | 1 | 정적 (ntoskrnl) | sast/03 결과 (정적 후보) | 대기 |
 | Q33 | 2.1 `nt!MmCreateSpecialImageSection` callee (exe 이미지 섹션, `MiCreateImageFileMap` 과의 관계) | 1 | 정적 (ntoskrnl) | sast/03 결과 (정적 후보, points.md [확인 필요]) | 대기 |
 | Q34 | 2.1 `NtCreateUserProcess` 실행 길: 간접 호출 2곳(`+0x5b2`, `+0x11bb`) 대상, `PspCreateUserContext` 길 vs `PspGetContextThreadInternal` 길, 이미지 섹션 재시도, 반환값 | 3 | 동적 | sast/03 동적 3~6, run9 flow.md 4.1 | 대기 |
+| Q35 | 2.1 `PspAllocateProcess` 실행 길: `MmInitializeProcessAddressSpace` `+0x2095`(보통) vs `+0x2113`(복제) 중 탄 쪽, 간접 호출 2곳(`+0x121a` @0xf04d28, `+0x17c4` @0xf04d20) 대상, `PspWow64PickBestNtdll` `+0xffb` 타는지, `+0x2314`·`+0x239c` 에서 새 PEB `+0x10`·`+0x20` 값 | 3 | 동적 | sast/04 동적 확인 | 대기 |
+| Q36 | 2.1 `nt!PspCopyAndFixupParameters`(PEB `+0x20` 프로세스 매개변수를 누가 쓰나), `nt!PspPrepareSystemDllInitBlock`(ntdll 로 넘기는 시작 정보) | 1 | 정적 (ntoskrnl) | sast/04 결과 (다음 정적 후보) | 대기 |
 
 상태: `대기` / `진행 중` / `끝 (runN)` / `합침 → Qn` / `보류 (사용자 결정, 날짜)`
 
@@ -62,3 +64,5 @@
 - 2026-10-19: ntoskrnl analyze 끝 (01:02 ~ 01:54, 함수 34982개, `FUN_` 4625개, SetPdb 성공, SCRIPT ERROR 0)
 - 2026-10-19: 하네스 묶음 B (ExportFunctions 꼬리호출 `tail`·`INT` → `TRAP`) 커밋 `ef63cc2`, D-1 (run_ghidra.sh SCRIPT ERROR → exit 4) 커밋 `11f2a2d`. ntdll 재export 시험 통과. Q1 시작 (sast/03)
 - 2026-10-19: Q1 끝 (run9, sast/03). 새 할 일 — 사용자: "제안대로" → Q32·Q33·Q34 맨 아래 추가, `PspCreateUserContext` 는 Q7 에, ThreadFlags·KeSuspendThread 동적 확인은 Q19 에 출처만 추가
+- 2026-10-19: 사용자 "F 먼저" → 하네스 묶음 F (sast/03 스크립트 문제 1~3) 사용자 검토 후 커밋: F-1 CFG `indirect:cfg:` `a7a7c92`, F-2 ICF `alias:` (Ordinal_/$thunk$/Nt·Zw 제외) `41bdb35`, F-3 조각 `frag:` `41b7428`. ntoskrnl·ntdll 재export 시험 통과. 그다음 Q2 시작 (sast/04)
+- 2026-10-19: Q2 끝 (run10, sast/04). 새 할 일 Q35(동적)·Q36(정적) 맨 아래 추가 (기존 항목과 겹침 없음). 그림 1 정적 상자 8개 (요청 5~7 보다 1개 많음, MmMapViewOfSectionEx 두 번 = 상자 둘이라 그대로 둠)
