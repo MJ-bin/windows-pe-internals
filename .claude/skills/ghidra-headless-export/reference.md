@@ -32,6 +32,14 @@ LdrpCallInitRoutine	+0x41	+0x47	indirect:__guard_dispatch_icall_fptr
 ```
 열: `caller  call_off  ret_off  callee`. 간접 호출은 `indirect:<포인터 이름>` (실제 대상은 동적분석으로만 알 수 있음).
 
+- `ret_off` 가 `tail` = **꼬리호출(`JMP`)**. 예: `LdrpInitialize  +0x3c  tail  LdrpInitializeInternal`.
+  - Ghidra 분석기 "Shared Return Calls" 가 함수 시작으로 가는 `JMP` 를 호출로 바꿔 둔 것이다.
+  - 돌아올 자리가 없어서 **WinDbg 콜스택엔 caller(`LdrpInitialize`)가 안 보이고**, callee 바로 위에 caller의 caller가 보인다.
+  - `.asm` 에는 `; TAILJMP -> 대상`.
+- `INT3`, `INT 0x29`(`__fastfail`), `INT 0x2e` 같은 `INT` 명령은 표에 **넣지 않는다.** `.asm` 에 `; TRAP` 만 붙는다.
+  - Ghidra x86 사양(`ia.sinc`)이 이것들을 "인터럽트 처리기로의 간접 call" 로 적어서 호출로 잡히지만, 함수 호출이 아니다.
+- `_calls.tsv` 는 export 할 때마다 **덧붙여 쌓인다** (`sort -u` 로 같은 줄만 합침). 스크립트를 바꾼 뒤엔 옛 줄이 남으니, 그 모듈의 `_calls.tsv` 를 지우고 필요한 함수를 다시 export 한다.
+
 ## 결과서 양식: `_workspace/sast/NN_키워드_result.md`
 
 ```markdown

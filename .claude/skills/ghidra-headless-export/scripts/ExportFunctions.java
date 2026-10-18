@@ -8,6 +8,10 @@
 //   <ms>/disassemble/<모듈>/_calls.tsv   (누적. 래퍼 스크립트가 sort -u 로 중복 제거)
 //      열: caller  call_off  ret_off  callee
 //      ret_off = call 다음 명령의 오프셋 = WinDbg 콜스택의 "caller+0x..." 와 같은 값
+//      ret_off = tail  : JMP 꼬리호출. Ghidra 분석기 "Shared Return Calls" 가 함수로 가는 JMP 를
+//                        호출로 바꿔 둔 것. 돌아올 자리가 없어 콜스택에 caller 가 안 남는다.
+//      INT3 / INT n    : x86 사양(ia.sinc)이 swi(n) 로의 간접 call 로 적어서 Ghidra 는 호출로 보지만,
+//                        함수 호출이 아니라 함정/예외라 표에 넣지 않는다 (.asm 에 "; TRAP" 만).
 //@category PE-Internals
 import java.io.File;
 import java.io.FileWriter;
@@ -161,10 +165,21 @@ public class ExportFunctions extends GhidraScript {
 						StringBuilder line = new StringBuilder(
 							String.format("%-9s %s  %s", off(o), ins.getAddress(), ins.toString()));
 						if (ins.getFlowType().isCall()) {
-							long ret = ins.getAddress().getOffset() + ins.getLength() - entry;
-							String tgt = calleeName(ins, fm);
-							line.append("    ; CALL ret=").append(off(ret)).append(" -> ").append(tgt);
-							calls.printf("%s\t%s\t%s\t%s%n", name, off(o), off(ret), tgt);
+							String mn = ins.getMnemonicString().toUpperCase();
+							if (mn.startsWith("INT")) {
+								line.append("    ; TRAP");
+							}
+							else if (mn.startsWith("J")) {
+								String tgt = calleeName(ins, fm);
+								line.append("    ; TAILJMP -> ").append(tgt);
+								calls.printf("%s\t%s\t%s\t%s%n", name, off(o), "tail", tgt);
+							}
+							else {
+								long ret = ins.getAddress().getOffset() + ins.getLength() - entry;
+								String tgt = calleeName(ins, fm);
+								line.append("    ; CALL ret=").append(off(ret)).append(" -> ").append(tgt);
+								calls.printf("%s\t%s\t%s\t%s%n", name, off(o), off(ret), tgt);
+							}
 						}
 						w.println(line);
 					}
