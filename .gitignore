@@ -7,3 +7,15 @@ sample/bin/
 *.run
 symbols/
 ms/bin/
+ms/sym/
+ms/ghidra/
+
+# MS 코드에서 뽑은 디컴파일·디스어셈블 결과 (폴더만 남김)
+ms/decomp/*
+!ms/decomp/.gitkeep
+ms/disassemble/*
+!ms/disassemble/.gitkeep
+
+# 하네스 임시 파일
+_workspace/.commit_msg
+.claude/settings.local.json
