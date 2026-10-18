@@ -12,6 +12,8 @@
 //                        호출로 바꿔 둔 것. 돌아올 자리가 없어 콜스택에 caller 가 안 남는다.
 //      INT3 / INT n    : x86 사양(ia.sinc)이 swi(n) 로의 간접 call 로 적어서 Ghidra 는 호출로 보지만,
 //                        함수 호출이 아니라 함정/예외라 표에 넣지 않는다 (.asm 에 "; TRAP" 만).
+//      callee = indirect:cfg:<출처> : CFG 검사 함수(_guard_dispatch_icall 등)를 거친 간접 호출.
+//                        진짜 대상은 RAX 안이라 CALL 앞에서 RAX 를 채운 메모리 자리의 이름(없으면 @rva)을 적는다.
 //@category PE-Internals
 import java.io.File;
 import java.io.FileWriter;
@@ -26,12 +28,14 @@ import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionIterator;
 import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.InstructionIterator;
 import ghidra.program.model.symbol.Reference;
+import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.symbol.Symbol;
 
 public class ExportFunctions extends GhidraScript {
@@ -63,6 +67,45 @@ public class ExportFunctions extends GhidraScript {
 			}
 		}
 		return "indirect:?";
+	}
+
+	private static boolean isCfgDispatch(String n) {
+		return n != null && (n.contains("guard_dispatch_icall") || n.contains("guard_xfg_dispatch_icall"));
+	}
+
+	// CFG 간접 호출: CALL 앞을 최대 10개 거슬러 올라가 RAX 를 채운 명령을 찾고,
+	// 그 명령이 읽은 메모리 자리(함수 포인터 변수)의 이름을 돌려준다.
+	private String cfgTarget(Instruction call, Function owner) {
+		long base = currentProgram.getImageBase().getOffset();
+		Instruction p = call;
+		for (int i = 0; i < 10; i++) {
+			p = currentProgram.getListing().getInstructionBefore(p.getAddress());
+			if (p == null || !owner.getBody().contains(p.getAddress()) || p.getFlowType().isCall()) {
+				break;
+			}
+			boolean writesRax = false;
+			for (Object r : p.getResultObjects()) {
+				if (r instanceof Register && "RAX".equals(((Register) r).getBaseRegister().getName())) {
+					writesRax = true;
+					break;
+				}
+			}
+			if (!writesRax) {
+				continue;
+			}
+			for (Reference ref : p.getReferencesFrom()) {
+				if (ref.getReferenceType().isData()) {
+					Address to = ref.getToAddress();
+					Symbol s = currentProgram.getSymbolTable().getPrimarySymbol(to);
+					if (s != null && s.getSource() != SourceType.DEFAULT) {
+						return "indirect:cfg:" + s.getName();
+					}
+					return "indirect:cfg:@0x" + Long.toHexString(to.getOffset() - base);
+				}
+			}
+			return "indirect:cfg:?";
+		}
+		return "indirect:cfg:?";
 	}
 
 	@Override
@@ -177,6 +220,9 @@ public class ExportFunctions extends GhidraScript {
 							else {
 								long ret = ins.getAddress().getOffset() + ins.getLength() - entry;
 								String tgt = calleeName(ins, fm);
+								if (isCfgDispatch(tgt)) {
+									tgt = cfgTarget(ins, f);
+								}
 								line.append("    ; CALL ret=").append(off(ret)).append(" -> ").append(tgt);
 								calls.printf("%s\t%s\t%s\t%s%n", name, off(o), off(ret), tgt);
 							}

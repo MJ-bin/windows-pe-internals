@@ -38,6 +38,10 @@ LdrpCallInitRoutine	+0x41	+0x47	indirect:__guard_dispatch_icall_fptr
   - `.asm` 에는 `; TAILJMP -> 대상`.
 - `INT3`, `INT 0x29`(`__fastfail`), `INT 0x2e` 같은 `INT` 명령은 표에 **넣지 않는다.** `.asm` 에 `; TRAP` 만 붙는다.
   - Ghidra x86 사양(`ia.sinc`)이 이것들을 "인터럽트 처리기로의 간접 call" 로 적어서 호출로 잡히지만, 함수 호출이 아니다.
+- callee 가 `indirect:cfg:<출처>` = **CFG(제어 흐름 보호) 검사 함수를 거친 간접 호출**. 예: `NtCreateUserProcess  +0x5b2  +0x5b7  indirect:cfg:<변수 이름>`.
+  - ntoskrnl 은 `CALL _guard_dispatch_icall`, ntdll 은 `CALL [__guard_dispatch_icall_fptr]` 모양이다. 진짜 대상은 RAX 안에 있다.
+  - `<출처>` = CALL 앞(최대 10개 명령)에서 RAX 를 채운 메모리 자리(함수 포인터 변수)의 이름. 이름이 없으면 `@0x<rva>`, 못 찾으면 `?`.
+  - 실제 대상은 동적으로만 안다 (그 변수 값 또는 CALL 직전 `rax`).
 - `_calls.tsv` 는 export 할 때마다 **덧붙여 쌓인다** (`sort -u` 로 같은 줄만 합침). 스크립트를 바꾼 뒤엔 옛 줄이 남으니, 그 모듈의 `_calls.tsv` 를 지우고 필요한 함수를 다시 export 한다.
 
 ## 결과서 양식: `_workspace/sast/NN_키워드_result.md`
