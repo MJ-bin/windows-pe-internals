@@ -6,6 +6,9 @@
 #
 # 환경변수 ALLOW_DECOMP=1 : 사용자가 ms/decomp, ms/disassemble 내용 커밋을 직접 허락했을 때만.
 set -uo pipefail
+# 한글 첫 줄 길이를 바이트가 아니라 글자로 세기 위해 (C 로케일이면 wc -m 이 바이트를 센다).
+# 주의: GNU grep 3.7 은 UTF-8 로케일에서 '.' 이 일부 한글(예: '하' U+D558)에 안 맞는다 → 요약 검사엔 '.' 대신 [^[:space:]] 를 쓴다.
+export LC_ALL=C.UTF-8
 
 MAX_BYTES=$((5 * 1024 * 1024))
 
@@ -40,7 +43,7 @@ staged() {
 msg() {
 	local file="${1:?메시지 파일 경로가 필요함}" bad=0 head
 	head="$(head -n 1 "$file")"
-	if ! printf '%s' "$head" | grep -Eq '^(feat|fix|docs|chore|refactor|test|init)(\([a-z0-9_-]+\))?!?: .+'; then
+	if ! printf '%s' "$head" | grep -Eq '^(feat|fix|docs|chore|refactor|test|init)(\([a-z0-9_-]+\))?!?: [^[:space:]]'; then
 		echo "[X] 첫 줄이 'type(scope): 요약' 형식이 아님: $head"; bad=1
 	fi
 	if [ "$(printf '%s' "$head" | wc -m)" -gt 72 ]; then
