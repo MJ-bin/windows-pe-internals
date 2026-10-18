@@ -14,12 +14,17 @@
 //                        함수 호출이 아니라 함정/예외라 표에 넣지 않는다 (.asm 에 "; TRAP" 만).
 //      callee = indirect:cfg:<출처> : CFG 검사 함수(_guard_dispatch_icall 등)를 거친 간접 호출.
 //                        진짜 대상은 RAX 안이라 CALL 앞에서 RAX 를 채운 메모리 자리의 이름(없으면 @rva)을 적는다.
+//      callee = alias:<이름>+N : 대상 주소에 PDB 이름이 N개 더 있다 (링커가 같은 코드를 합친 ICF 등).
+//                        <이름>은 Ghidra 가 고른 하나일 뿐이라 믿지 않는다. .asm 에 "; ALIASES" 로 5개까지.
+//                        Ordinal_<숫자>, $thunk$, Nt/Zw 짝은 세지 않는다 (harmlessAlias).
 //@category PE-Internals
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -40,16 +45,59 @@ import ghidra.program.model.symbol.Symbol;
 
 public class ExportFunctions extends GhidraScript {
 
+	private String aliasNote() {
+		if (lastAliases.isEmpty()) {
+			return "";
+		}
+		List<String> head = lastAliases.subList(0, Math.min(5, lastAliases.size()));
+		return "    ; ALIASES(" + lastAliases.size() + "): " + String.join(", ", head)
+			+ (lastAliases.size() > 5 ? ", ..." : "");
+	}
+
 	private static String off(long v) {
 		return (v < 0 ? "-0x" : "+0x") + Long.toHexString(Math.abs(v));
 	}
 
+	// 마지막 calleeName() 이 찾은 별칭 목록 (.asm 주석용)
+	private List<String> lastAliases = new ArrayList<>();
+
+	// 별칭으로 세지 않는 이름: 이름이 틀릴 걱정이 없는 것들.
+	//   Ordinal_<숫자> : 내보내기 번호 라벨 (내보내는 함수마다 붙는다)
+	//   ...$thunk$...  : 같은 함수로 가는 썽크 표시
+	//   Nt<X> <-> Zw<X> : 같은 시스템 콜 함수의 두 이름
+	private static boolean harmlessAlias(String primary, String other) {
+		if (other.matches("Ordinal_[0-9]+") || other.contains("$thunk$")) {
+			return true;
+		}
+		if (primary.length() > 2 && other.length() > 2 && primary.substring(2).equals(other.substring(2))) {
+			String a = primary.substring(0, 2), b = other.substring(0, 2);
+			return (a.equals("Nt") && b.equals("Zw")) || (a.equals("Zw") && b.equals("Nt"));
+		}
+		return false;
+	}
+
+	// 같은 주소에 사용자/PDB 가 붙인 다른 이름이 있으면 alias:<이름>+N 으로 표시한다.
+	private String withAliases(Address a, String primary) {
+		List<String> others = new ArrayList<>();
+		for (Symbol s : currentProgram.getSymbolTable().getSymbols(a)) {
+			String nm = s.getName();
+			if (s.getSource() == SourceType.DEFAULT || nm.equals(primary) || others.contains(nm)
+				|| harmlessAlias(primary, nm)) {
+				continue;
+			}
+			others.add(nm);
+		}
+		lastAliases = others;
+		return others.isEmpty() ? primary : "alias:" + primary + "+" + others.size();
+	}
+
 	private String calleeName(Instruction ins, FunctionManager fm) {
+		lastAliases = new ArrayList<>();
 		Address[] flows = ins.getFlows();
 		if (flows != null && flows.length > 0) {
 			Function cf = fm.getFunctionAt(flows[0]);
 			if (cf != null) {
-				return cf.getName();
+				return withAliases(flows[0], cf.getName());
 			}
 			Symbol s = currentProgram.getSymbolTable().getPrimarySymbol(flows[0]);
 			return s != null ? s.getName() : flows[0].toString();
@@ -59,7 +107,7 @@ public class ExportFunctions extends GhidraScript {
 			Address to = ref.getToAddress();
 			Function cf = fm.getFunctionAt(to);
 			if (cf != null) {
-				return cf.getName();
+				return withAliases(to, cf.getName());
 			}
 			Symbol s = currentProgram.getSymbolTable().getPrimarySymbol(to);
 			if (s != null) {
@@ -214,7 +262,7 @@ public class ExportFunctions extends GhidraScript {
 							}
 							else if (mn.startsWith("J")) {
 								String tgt = calleeName(ins, fm);
-								line.append("    ; TAILJMP -> ").append(tgt);
+								line.append("    ; TAILJMP -> ").append(tgt).append(aliasNote());
 								calls.printf("%s\t%s\t%s\t%s%n", name, off(o), "tail", tgt);
 							}
 							else {
@@ -222,8 +270,9 @@ public class ExportFunctions extends GhidraScript {
 								String tgt = calleeName(ins, fm);
 								if (isCfgDispatch(tgt)) {
 									tgt = cfgTarget(ins, f);
+									lastAliases = new ArrayList<>();
 								}
-								line.append("    ; CALL ret=").append(off(ret)).append(" -> ").append(tgt);
+								line.append("    ; CALL ret=").append(off(ret)).append(" -> ").append(tgt).append(aliasNote());
 								calls.printf("%s\t%s\t%s\t%s%n", name, off(o), off(ret), tgt);
 							}
 						}

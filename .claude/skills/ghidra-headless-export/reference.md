@@ -42,6 +42,10 @@ LdrpCallInitRoutine	+0x41	+0x47	indirect:__guard_dispatch_icall_fptr
   - ntoskrnl 은 `CALL _guard_dispatch_icall`, ntdll 은 `CALL [__guard_dispatch_icall_fptr]` 모양이다. 진짜 대상은 RAX 안에 있다.
   - `<출처>` = CALL 앞(최대 10개 명령)에서 RAX 를 채운 메모리 자리(함수 포인터 변수)의 이름. 이름이 없으면 `@0x<rva>`, 못 찾으면 `?`.
   - 실제 대상은 동적으로만 안다 (그 변수 값 또는 CALL 직전 `rax`).
+- callee 가 `alias:<이름>+N` = 대상 주소에 **PDB 이름이 N개 더 있다.** 링커가 내용이 같은 함수를 하나로 합친 것(ICF)일 때가 많다.
+  - `<이름>` 은 Ghidra 가 고른 하나일 뿐이다. **문서에 그대로 쓰지 않는다.** `.asm` 에 `; ALIASES(N): …` 로 5개까지 보인다.
+  - `Ordinal_<숫자>`(내보내기 번호 라벨), `$thunk$` 가 든 이름, `Nt<X>`↔`Zw<X>` 짝은 이름이 틀릴 걱정이 없어서 **세지 않는다.**
+  - 예: `NtCreateUserProcess +0x3cb` 의 대상은 `xor eax,eax; ret` 3바이트인데 `?GetStoragePropertyPost@SC_DEVICE...` 로 찍혔었다 (sast/03).
 - `_calls.tsv` 는 export 할 때마다 **덧붙여 쌓인다** (`sort -u` 로 같은 줄만 합침). 스크립트를 바꾼 뒤엔 옛 줄이 남으니, 그 모듈의 `_calls.tsv` 를 지우고 필요한 함수를 다시 export 한다.
 
 ## 결과서 양식: `_workspace/sast/NN_키워드_result.md`
