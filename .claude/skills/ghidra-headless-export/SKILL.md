@@ -50,6 +50,7 @@ MS 바이너리를 **PDB와 함께** Ghidra로 분석해서, 요청서가 묻는
 
 처음 분석한 모듈이면 이 중 해당하는 것을 `_calls.tsv` 로 확인한다.
 - 다 맞으면: 스크립트의 오프셋 계산과 바이너리 둘 다 믿을 수 있다.
+- ntdll 줄은 sast/02(2026-10-19)에서 정적으로 대조해 전부 맞았다 (관찰 값 = `ret_off`).
 - 어긋나면: 먼저 스크립트(오프셋 계산, 함수 시작 주소)를 의심해 asm 파일로 직접 확인한다. 그래도 다르면 바이너리가 타깃 VM 것과 다를 수 있다고 보고한다. (빌드 확정은 커널 PDB GUID로 한다)
 
 | 모듈 | caller | ret_off | callee |
@@ -58,7 +59,10 @@ MS 바이너리를 **PDB와 함께** Ghidra로 분석해서, 요청서가 묻는
 | ntoskrnl | `PspInsertThread` | `+0x807` | `PspCallProcessNotifyRoutines` |
 | ntdll | `LdrpInitializeProcess` | `+0x1bbb` | `LdrpInitializeGraphRecurse` (call 명령은 `+0x1bb6`) |
 | ntdll | `LdrpInitializeNode` | `+0x16b` / `+0x19c` | `LdrpCallTlsInitializers` / `LdrpCallInitRoutine` |
-| ntdll | `LdrInitializeThunk` | `+0xe` | `LdrpInitializeInternal` |
+| ntdll | `LdrInitializeThunk` | `+0xe` | `LdrpInitialize` (이 함수가 `+0x3c` 에서 `JMP` 꼬리호출로 `LdrpInitializeInternal` 에 넘겨서, 콜스택엔 `LdrpInitialize` 프레임이 안 보인다) |
+| ntdll | `LdrpInitializeInternal` | `+0x5a` | `_LdrpInitialize` |
+| ntdll | `_LdrpInitialize` | `+0x16c` | `LdrpInitializeProcess` (01_sprint 문서엔 caller가 `LdrpInitialize` 로 적혀 있음. 밑줄 붙은 `_LdrpInitialize` 가 맞다. `LdrpInitialize` 는 99바이트라 `+0x16c` 가 없다) |
+| ntdll | `LdrpLoadDll` | `+0x100` | `LdrpLoadDllInternal` |
 
 ## 에러가 나면
 
@@ -66,5 +70,7 @@ MS 바이너리를 **PDB와 함께** Ghidra로 분석해서, 요청서가 묻는
 - `java` 를 못 찾음 / 버전 에러: Ghidra 11.x는 JDK 21이 필요하다. `java -version` 확인 결과를 보고한다 (설치는 사용자에게 맡긴다).
 - `SetPdb.java` 컴파일 에러: Ghidra 버전이 다를 수 있다. `$GHIDRA_HOME/Ghidra/Features/PDB` 안의 `PdbUniversalAnalyzer` 메서드 이름을 확인해 "스크립트 문제"로 보고한다.
 - 메모리 부족(`OutOfMemoryError`): `MAXMEM=16G bash run_ghidra.sh analyze ...`
+- `osgi.ee=UNKNOWN` / `ClassNotFoundException: SetPdb` 로 스크립트가 로딩 단계에서 죽음: Ghidra 11.3.2는 JDK 21이 필요하다 (`$GHIDRA_HOME/support/launch.properties` 의 `JAVA_HOME_OVERRIDE`).
+  - **JDK를 바꾼 뒤엔 `~/.config/ghidra/<Ghidra버전>/osgi/compiled-bundles/` 의 옛 컴파일 캐시를 지운다.** 안 지우면 옛 JDK로 만든 캐시를 계속 써서 같은 에러가 난다 (sast/01·02, 2026-10-19).
 - 함수 이름이 `FUN_xxxxxxxx` 로만 나옴: PDB가 안 붙은 것. `ms/ghidra/<모듈>.analyze.log` 에서 PDB 관련 줄을 찾는다.
 - 자세한 출력 형식과 결과서 양식: [reference.md](reference.md)

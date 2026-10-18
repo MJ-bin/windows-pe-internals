@@ -5,12 +5,12 @@
 ### `ms/decomp/<모듈>/_index.tsv`
 ```
 # name	entry	rva	size	thunk
-LdrpInitializeProcess	18002c404	0x2c404	7812
+LdrpInitializeProcess	18008c404	0x8c404	7750
 ```
 
 ### `ms/decomp/<모듈>/<함수>.c`
 ```c
-// ntdll!LdrpInitializeProcess  entry=18002c404  rva=0x2c404
+// ntdll!LdrpInitializeProcess  entry=18008c404  rva=0x8c404
 // callers: LdrpInitialize
 // callees: LdrpInitializeKernel32Functions LdrpInitializeGraphRecurse ...
 <Ghidra 디컴파일 C>
@@ -19,8 +19,8 @@ LdrpInitializeProcess	18002c404	0x2c404	7812
 
 ### `ms/disassemble/<모듈>/<함수>.asm`
 ```
-; ntdll!LdrpInitializeProcess  entry=18002c404  rva=0x2c404
-+0x1bb6   18002dfba  CALL 0x180027d60    ; CALL ret=+0x1bbb -> LdrpInitializeGraphRecurse
+; ntdll!LdrpInitializeProcess  entry=18008c404  rva=0x8c404
++0x1bb6   18008dfba  CALL 0x180087d60    ; CALL ret=+0x1bbb -> LdrpInitializeGraphRecurse
 ```
 - 맨 앞 `+0x…` = 함수 시작에서의 거리. 함수 조각이 시작점보다 앞에 있으면 `-0x…`.
 - `ret=` = call 다음 명령 위치 = **WinDbg 콜스택에 찍히는 `caller+0x…`**.
