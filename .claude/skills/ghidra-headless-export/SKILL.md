@@ -73,6 +73,7 @@ MS 바이너리를 **PDB와 함께** Ghidra로 분석해서, 요청서가 묻는
 - 스크립트(`scripts/`)는 **고치지 않는다.** 문제가 있으면 결과서 맨 위 "스크립트 문제" 절에 파일·줄·증상·원인 추정·고칠 방법 제안을 쓴다. 고치는 건 오케스트레이터가 사용자 검토 뒤에 한다.
 - `java` 를 못 찾음 / 버전 에러: Ghidra 11.x는 JDK 21이 필요하다. `java -version` 확인 결과를 보고한다 (설치는 사용자에게 맡긴다).
 - `SetPdb.java` 컴파일 에러: Ghidra 버전이 다를 수 있다. `$GHIDRA_HOME/Ghidra/Features/PDB` 안의 `PdbUniversalAnalyzer` 메서드 이름을 확인해 "스크립트 문제"로 보고한다.
+- `run_ghidra.sh` 종료 코드 4: 로그에 `SCRIPT ERROR` 가 있다 (Ghidra 자체는 끝났지만 SetPdb·ExportIndex·ExportFunctions 중 하나가 죽음). 결과물을 쓰지 말고 출력된 에러 줄을 결과서 "스크립트 문제" 절에 옮긴다.
 - 메모리 부족(`OutOfMemoryError`): `MAXMEM=16G bash run_ghidra.sh analyze ...`
 - `osgi.ee=UNKNOWN` / `ClassNotFoundException: SetPdb` 로 스크립트가 로딩 단계에서 죽음: Ghidra 11.3.2는 JDK 21이 필요하다 (`$GHIDRA_HOME/support/launch.properties` 의 `JAVA_HOME_OVERRIDE`).
   - **JDK를 바꾼 뒤엔 `~/.config/ghidra/<Ghidra버전>/osgi/compiled-bundles/` 의 옛 컴파일 캐시를 지운다.** 안 지우면 옛 JDK로 만든 캐시를 계속 써서 같은 에러가 난다 (sast/01·02, 2026-10-19).

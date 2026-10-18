@@ -12,6 +12,8 @@
 # 환경변수:
 #   GHIDRA_HOME  기본값: ~/tools/ghidra_11.3.2_PUBLIC_20250415/ghidra_11.3.2_PUBLIC
 #   MAXMEM       기본값: 8G   (analyzeHeadless 기본 2G로는 ntoskrnl 분석이 모자란다)
+#
+# 종료 코드: 0 성공 / 2 경로·바이너리 / 3 PDB 없음 / 4 로그에 SCRIPT ERROR (안쪽 스크립트 실패)
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
@@ -46,6 +48,11 @@ headless() {
 		ghidra.app.util.headless.AnalyzeHeadless "$@"
 }
 
+# 이번 실행에서 새로 생긴 로그 줄만 검사하려고, 시작 전 줄 수를 기억한다.
+LOG="$PROJ_DIR/$module.$cmd.log"
+LOG_START=0
+[ -f "$LOG" ] && LOG_START="$(wc -l < "$LOG")"
+
 case "$cmd" in
 analyze)
 	PDB="$ROOT/ms/sym/$bin.pdb"
@@ -57,7 +64,7 @@ analyze)
 		-preScript SetPdb.java "$PDB" \
 		-postScript ExportIndex.java "$ROOT/ms" "$module" \
 		-analysisTimeoutPerFile 21600 \
-		-log "$PROJ_DIR/$module.analyze.log"
+		-log "$LOG"
 	;;
 export)
 	regex="${3:?정규식이 필요함}"
@@ -67,11 +74,23 @@ export)
 		-process "$(basename "$BIN_PATH")" -noanalysis -readOnly \
 		-scriptPath "$HERE" \
 		-postScript ExportFunctions.java "$ROOT/ms" "$module" "$regex" "$depth" \
-		-log "$PROJ_DIR/$module.export.log"
+		-log "$LOG"
 	CALLS="$ROOT/ms/disassemble/$module/_calls.tsv"
 	[ -f "$CALLS" ] && sort -u -o "$CALLS" "$CALLS"
 	;;
 *)
 	echo "[!] 알 수 없는 명령: $cmd (analyze|export)" >&2; exit 1 ;;
 esac
-echo "[+] 끝. 로그: $PROJ_DIR/$module.$cmd.log"
+# Ghidra 는 안쪽 스크립트(SetPdb 등)가 죽어도 정상 종료한다. 로그에서 직접 찾아 실패로 알린다.
+# (로그를 덮어쓰면 LOG_START 보다 짧아진다 → 그땐 처음부터 본다)
+if [ -f "$LOG" ]; then
+	[ "$(wc -l < "$LOG")" -lt "$LOG_START" ] && LOG_START=0
+	errs="$(tail -n +"$((LOG_START + 1))" "$LOG" | grep -F "SCRIPT ERROR" || true)"
+	if [ -n "$errs" ]; then
+		echo "[!] 로그에 SCRIPT ERROR 가 있음 — Ghidra 는 끝났지만 결과를 믿으면 안 됨:" >&2
+		printf '%s\n' "$errs" | head -5 >&2
+		echo "[!] 로그: $LOG" >&2
+		exit 4
+	fi
+fi
+echo "[+] 끝. 로그: $LOG"
