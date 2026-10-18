@@ -1,0 +1,27 @@
+{
+  "agent": "orchestrator",
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "permissions": {
+    "allow": [
+      "Bash(python3 .claude/skills/*)",
+      "Bash(bash .claude/skills/*)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git rev-parse *)",
+      "Bash(git add *)",
+      "Bash(git restore --staged *)",
+      "Bash(git commit -F _workspace/.commit_msg)"
+    ],
+    "deny": [
+      "Bash(git push *)",
+      "Bash(git commit --amend *)",
+      "Bash(git reset --hard *)",
+      "Bash(git rebase *)"
+    ]
+  }
+}
