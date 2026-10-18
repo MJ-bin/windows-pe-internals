@@ -1,20 +1,20 @@
 # 분석 진행표
 
-- 마지막 갱신: 2026-10-19 (sast/02 스크립트 시험 성공 뒤)
-- 다음 항목: Q1
+- 마지막 갱신: 2026-10-19 (run9 뒤)
+- 다음 항목: Q2
 - 근거: `runs/01_sprint/flow.md` 그림 1·2, 2장, 4장·4.1 표
 
 ## 대기열 (위에서부터 처리, 새 항목은 맨 아래에)
 
 | # | 항목 | 단계 | 정적/동적 | 들어온 곳 | 상태 |
 |---|---|---|---|---|---|
-| Q1 | 2.1 `nt!NtCreateUserProcess` callee (depth 1) | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 대기 |
+| Q1 | 2.1 `nt!NtCreateUserProcess` callee (depth 1) | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 끝 (run9) |
 | Q2 | 2.1 `nt!PspAllocateProcess`, `nt!MmCreatePeb` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 대기 |
 | Q3 | 2.1 `nt!PspAllocateThread`, `nt!PspInsertProcess` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 대기 |
 | Q4 | 2.1 `nt!PspInsertThread`, `nt!PspCallProcessNotifyRoutines` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 대기 |
 | Q5 | 2.2 첫 스레드를 풀어 주는 함수 (nt 쪽 이름, `_index.tsv`로 확인) + 부모 쪽에서 그걸 부르는 곳 (`KERNELBASE!CreateProcessInternalW` 등, 이름 확인 필요) | 1 | 정적 (ntoskrnl, kernelbase) | 처음 (4장 2.2) | 대기 |
-| Q6 | 2.3 `nt!KiStartUserThread`, `nt!PspUserThreadStartup` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 2) | 대기 |
-| Q7 | 2.3 유저 첫 위치가 `ntdll!LdrInitializeThunk`로 정해지는 곳, `RtlUserThreadStart`와의 관계 | 1 | 정적 (ntoskrnl) | 처음 (4장 2.3) | 대기 |
+| Q6 | 2.3 `nt!KiStartUserThread`, `nt!PspUserThreadStartup` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 2); ntoskrnl analyze (2026-10-19): `_index.tsv` 에 `KiStartUserThread` 없음, `KxStartUserThread` 있음 (PDB엔 `KiStartUserThread`·`KiStartUserThreadReturn` 이름 있음) → 이름 대응 확인 | 대기 |
+| Q7 | 2.3 유저 첫 위치가 `ntdll!LdrInitializeThunk`로 정해지는 곳, `RtlUserThreadStart`와의 관계 | 1 | 정적 (ntoskrnl) | 처음 (4장 2.3); sast/03 결과 (`PspCreateUserContext` 91바이트 — `NtCreateUserProcess +0xd22` 에서 부름, 첫 스레드 유저 시작 문맥 후보) | 대기 |
 | Q8 | 2.4 `ntdll!LdrInitializeThunk`, `LdrpInitializeInternal`, `LdrpInitialize` callee | 2 | 정적 (ntdll) | 처음 (그림 2); sast/02 결과 (`+0x16c` 의 caller 이름이 `_LdrpInitialize`, `LdrpInitialize` 는 꼬리호출(JMP)로 `LdrpInitializeInternal` 에 넘김 → flow.md 2.4 이름 정정 필요) | 대기 |
 | Q9 | 2.4 `ntdll!LdrpInitializeProcess` callee (크면 그 자리에서 Q9a/Q9b로 나눔) | 2 | 정적 (ntdll) | 처음 (그림 2) | 대기 |
 | Q10 | 2.5 `LdrpInitializeKernel32Functions`, `LdrLoadDll`, `LdrpLoadDll` callee | 2 | 정적 (ntdll) | 처음 (그림 2) | 대기 |
@@ -26,7 +26,7 @@
 | Q16 | 2.7 `LdrpCallTlsInitializers`, `LdrpCallInitRoutine`, `ImageTlsCallbackCaller` callee | 2 | 정적 (ntdll) | 처음 (그림 2, 4장 2.7) | 대기 |
 | Q17 | 2.10 로더 끝 → 진입점: `LdrInitializeThunk` 뒤 `NtContinue`, `RtlUserThreadStart` callee | 2 | 정적 (ntdll) | 처음 (그림 2 PH4) | 대기 |
 | Q18 | 2.10 `KERNEL32!BaseThreadInitThunk` callee | 2 | 정적 (kernel32) | 처음 (그림 2) | 대기 |
-| Q19 | 2.2 첫 스레드가 실제로 풀리는 시점 (부모 스레드와의 순서) | 3 | 동적 | 처음 (4장 2.2) | 대기 |
+| Q19 | 2.2 첫 스레드가 실제로 풀리는 시점 (부모 스레드와의 순서) | 3 | 동적 | 처음 (4장 2.2); sast/03 동적 1·2 (`NtCreateUserProcess` 입구 ThreadFlags bit0, `PspInsertThread` 의 `KeSuspendThread` `+0x2e5`·`KeReadyThread` `+0x5a6` 탔는지) | 대기 |
 | Q20 | 2.5 kernel32·kernelbase가 메모리에 올라오는 순간 (`NtMapViewOfSection` 계열 + `k`) | 3 | 동적 | 처음 (4장 2.5) | 대기 |
 | Q21 | 2.5 `LdrpCallInitRoutine` → KERNELBASE·KERNEL32 시작 함수 실제 진입 + 콜스택 | 3 | 동적 | 처음 (4.1 (1)) | 대기 |
 | Q22 | 2.5 `LdrpInitializeNode` [KERNELBASE]/[KERNEL32] 대응 (긴 `k`) | 3 | 동적 | 처음 (4.1 (1)) | 대기 |
@@ -39,6 +39,9 @@
 | Q29 | 2.10 `LdrInitializeThunk` → `NtContinue` → `RtlUserThreadStart` (`k`) | 3 | 동적 | 처음 (4.1 로더 끝) | 대기 |
 | Q30 | 2.10 `RtlUserThreadStart` → `BaseThreadInitThunk` → `mainCRTStartup` (`k`) | 3 | 동적 | 처음 (4.1 로더 끝) | 대기 |
 | Q31 | 2.10 `mainCRTStartup` → `LoadLibraryExW` ×3 → `main` (`k`) | 3 | 동적 | 처음 (4.1 로더 끝, 4장 2.10) | 대기 |
+| Q32 | 2.2 `nt!PspMapThreadCreationFlags` 본문 (ThreadFlags → 최종 플래그 bit0 가 그대로 가나) | 1 | 정적 (ntoskrnl) | sast/03 결과 (정적 후보) | 대기 |
+| Q33 | 2.1 `nt!MmCreateSpecialImageSection` callee (exe 이미지 섹션, `MiCreateImageFileMap` 과의 관계) | 1 | 정적 (ntoskrnl) | sast/03 결과 (정적 후보, points.md [확인 필요]) | 대기 |
+| Q34 | 2.1 `NtCreateUserProcess` 실행 길: 간접 호출 2곳(`+0x5b2`, `+0x11bb`) 대상, `PspCreateUserContext` 길 vs `PspGetContextThreadInternal` 길, 이미지 섹션 재시도, 반환값 | 3 | 동적 | sast/03 동적 3~6, run9 flow.md 4.1 | 대기 |
 
 상태: `대기` / `진행 중` / `끝 (runN)` / `합침 → Qn` / `보류 (사용자 결정, 날짜)`
 
@@ -52,3 +55,10 @@
 - 2026-10-19: sast/01 실패 (JDK 25 + Ghidra 11.3.2 OSGi 로더). 사용자가 JDK 21 설치·`launch.properties` 지정. 사용자 허락으로 ntoskrnl 작업 종료, PDB 없는 Ghidra 프로젝트 2개 삭제 → sast/02_script-check 로 재시도
 - 2026-10-19: sast/02 실패 (JDK 25 때 만든 Ghidra 스크립트 캐시 `~/.config/ghidra/ghidra_11.3.2_PUBLIC/osgi/compiled-bundles/d5ff6acd` 재사용). 사용자 허락으로 ntoskrnl 작업 종료·PDB 없는 프로젝트 삭제·캐시 삭제 → 같은 요청서 sast/02로 한 번 더 (사용자 결정)
 - 2026-10-19: sast/02 재실행 성공. ntdll 알려진 오프셋 8/8 일치 (전부 ret_off). ntoskrnl analyze 뒤에서 도는 중 (PID 847212, PDB 붙음)
+- 2026-10-19: 사용자 결정 — 하네스는 오케스트레이터가 사용자 검토 뒤 고치고, 묶음마다 하네스 전용 커밋으로 관리 (되돌리기 = `git revert`)
+- 2026-10-19: 하네스 묶음 A (수정 규칙) 커밋 `e3ac6ba`, 묶음 C (ghidra-headless-export 알려진 사실 표·reference 예시·JDK 캐시 항목 정정) 커밋 `933fd83`. 사용자 검토 완료
+- 2026-10-19: 하네스 묶음 B·D-1·D-2·E 사용자 OK. D-2 (analyze 건너뛰기 조건 강화, 실패면 원인 보고 후 사용자 결정) 커밋 `40df1ae`, E (check_commit.sh 한글 첫 줄 검사) 커밋 `b1fd76f`
+- 2026-10-19: B (ExportFunctions 꼬리호출 `tail`·`INT` 제외), D-1 (run_ghidra.sh SCRIPT ERROR면 실패 종료)는 ntoskrnl analyze 끝난 뒤 고침 (도는 중인 스크립트). Q1은 B 뒤에 시작 (사용자 결정 "(나)")
+- 2026-10-19: ntoskrnl analyze 끝 (01:02 ~ 01:54, 함수 34982개, `FUN_` 4625개, SetPdb 성공, SCRIPT ERROR 0)
+- 2026-10-19: 하네스 묶음 B (ExportFunctions 꼬리호출 `tail`·`INT` → `TRAP`) 커밋 `ef63cc2`, D-1 (run_ghidra.sh SCRIPT ERROR → exit 4) 커밋 `11f2a2d`. ntdll 재export 시험 통과. Q1 시작 (sast/03)
+- 2026-10-19: Q1 끝 (run9, sast/03). 새 할 일 — 사용자: "제안대로" → Q32·Q33·Q34 맨 아래 추가, `PspCreateUserContext` 는 Q7 에, ThreadFlags·KeSuspendThread 동적 확인은 Q19 에 출처만 추가
