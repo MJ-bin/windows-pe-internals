@@ -7,7 +7,7 @@
 - 디버거: WinDbg 커널 디버깅 (KDNET)
 - 부모: `cmd.exe`에서 `test.exe` 실행
 - 근거 로그: `runs/01_sprint/` run3 ~ run8 (디버거)
-- 정적 근거: `runs/02_sprint/` run9 (Ghidra 디컴파일·디스어셈블, ntoskrnl pdb GUID 위와 같음)
+- 정적 근거: `runs/02_sprint/` run9 ~ run10 (Ghidra 디컴파일·디스어셈블, ntoskrnl pdb GUID 위와 같음)
 - 테스트 프로그램: `sample/` (`test.c`, `dll1.c`, `dll2.c`, `build.bat`)
   - 의존 관계: **`test.exe` → `dll1.dll` → `dll2.dll`**
     - `test.c`가 `Dll1Hello`를, `dll1.c`가 `Dll2Hello`를 import
@@ -66,7 +66,7 @@
 - **점선 테두리** = 이름이나 실행이 확실하지 않은 것. **노란 메모** = 같은 무렵 다른 스레드에서 일어난 일.
 - `[dll1 추정]`처럼 대괄호 = 그 함수가 그때 맡은 모듈. "추정"이 붙으면 추측이다.
 
-### 그림 1 — 부모 cmd.exe 스레드 (run3, run9)
+### 그림 1 — 부모 cmd.exe 스레드 (run3, run9, run10)
 
 ```mermaid
 flowchart LR
@@ -83,7 +83,15 @@ flowchart LR
             s2["nt!IopCreateFile<br/>(정적: exe 파일 열기)"]
             s3["nt!MmCreateSpecialImageSection<br/>(정적: 이미지 섹션)"]
             a2["nt!PspAllocateProcess"]
+            p1["nt!MmCreateProcessAddressSpace<br/>(정적: 주소 공간 껍데기)"]
+            p2["nt!MmInitializeProcessAddressSpace<br/>(정적: 보통 길, 복제 길은 +0x2113)"]
+            p3["nt!MiMapProcessExecutable<br/>(정적)"]
+            p4["nt!MmMapViewOfSectionEx<br/>(정적: exe 올리기)"]
+            p5["nt!PsMapSystemDlls<br/>(정적)"]
+            p6["nt!PspMapSystemDll<br/>(정적)"]
+            p7["nt!MmMapViewOfSectionEx<br/>(정적: ntdll 올리기)"]
             a3["nt!MmCreatePeb"]
+            p8["nt!PspSetupUserProcessAddressSpace<br/>(정적)"]
             s4["nt!PspCreateUserContext<br/>(정적: 갈림길 한쪽)"]
             s5["nt!PspMapThreadCreationFlags<br/>(정적)"]
             a4["nt!PspAllocateThread"]
@@ -103,7 +111,15 @@ flowchart LR
     a1 -->|"(2) +0x6cb"| s2
     a1 -->|"(3) +0x93c"| s3
     a1 -->|"(4) +0xc36"| a2
-    a2 -->|+0x2314| a3
+    a2 -->|"(1) +0x163c"| p1
+    a2 -->|"(2) +0x2095"| p2
+    p2 -->|+0x1ce| p3
+    p3 -->|"(1) +0xb8"| p4
+    p3 -->|"(2) +0xdc"| p5
+    p5 -->|+0xc0| p6
+    p6 -->|+0x11d| p7
+    a2 -->|"(3) +0x2314"| a3
+    a2 -->|"(4) +0x239c"| p8
     a2 -.-> a1
     a1 -->|"(5) +0xd22"| s4
     a1 -->|"(6) +0xdd3"| s5
@@ -120,7 +136,7 @@ flowchart LR
     a1 -->|"(12) +0x1129"| s8
 
     class a0,a1,a2,a3,a4,a5,a6,a7 kern
-    class s1,s2,s3,s4,s5,s6,s7,s8,t1,t2 kerng
+    class s1,s2,s3,s4,s5,s6,s7,s8,t1,t2,p1,p2,p3,p4,p5,p6,p7,p8 kerng
 ```
 
 ### 그림 2 — test.exe 메인 스레드 (run4 ~ run8)
@@ -314,7 +330,7 @@ flowchart LR
 
 ## 2. 단계별 설명
 
-### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9)
+### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9, run10)
 
 이 구간은 **test.exe가 아니라 부모 cmd.exe**가 일하는 시간이다.
 test.exe는 아직 "만들어지는 중"이라, 자기 코드는 한 줄도 안 돌았다.
@@ -325,7 +341,15 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
  ├─ (2)  +0x6cb   IopCreateFile                         [정적]
  ├─ (3)  +0x93c   MmCreateSpecialImageSection           [정적]
  ├─ (4)  +0xc36   PspAllocateProcess                    [관찰]+[정적]
- │                 └─ +0x2314  MmCreatePeb              [관찰]
+ │                 ├─ (1) +0x163c  MmCreateProcessAddressSpace       [정적] 주소 공간
+ │                 ├─ (2) +0x2095  MmInitializeProcessAddressSpace   [정적] 보통 길로 [추측]
+ │                 │     └─ +0x1ce  MiMapProcessExecutable           [정적]
+ │                 │          ├─ (1) +0xb8  MmMapViewOfSectionEx     [정적] exe 올리기
+ │                 │          └─ (2) +0xdc  PsMapSystemDlls          [정적]
+ │                 │               └─ +0xc0  PspMapSystemDll         [정적]
+ │                 │                    └─ +0x11d  MmMapViewOfSectionEx  [정적] ntdll 올리기
+ │                 ├─ (3) +0x2314  MmCreatePeb                       [관찰]+[정적]
+ │                 └─ (4) +0x239c  PspSetupUserProcessAddressSpace   [정적]
  ├─ (5)  +0xd22   PspCreateUserContext                  [정적]
  ├─ (6)  +0xdd3   PspMapThreadCreationFlags             [정적]
  ├─ (7)  +0xe5c   PspAllocateThread                     [관찰]+[정적]
@@ -345,6 +369,8 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
 - `[정적]` (run9) `NtCreateUserProcess`가 직접 부르는 호출은 모두 **83줄**이다. 위 트리는 그중 대표 12개만. 나머지는 검사·잠금·해제·정리 같은 잡일이다.
   - 관찰 4개를 경계로 나누면: 앞 47개 / 사이 10개 / 사이 5개 / **사이 0개** / 뒤 17개 (+ 경계 4개).
 - `[관찰]`+`[정적]` 관찰 4개(`+0xc36`, `+0xe5c`, `+0xfc2`, `+0x101a`)와 `PspInsertThread +0x807`은 디스어셈블 코드의 돌아올 자리와 **오프셋까지 같다**. 네 함수는 한 번씩만 불린다.
+- `[관찰]`+`[정적]` (run10) `PspAllocateProcess +0x2314` → `MmCreatePeb`도 코드와 오프셋까지 같다 (call `+0x230f`).
+- `[정적]` (run10) `PspAllocateProcess` 안에서 **주소 공간 → exe 올리기 → ntdll 올리기 → PEB** 순서다. 트리의 `PspAllocateProcess` 아래가 그 길이다.
 - 주의 `[정적]`: 오프셋 순서가 늘 실행 순서인 건 아니다. 에러 길·공통 정리 길이 코드 뒤쪽에 모여 있고, 서명 검사 재시도는 루프다. 위 트리 번호는 **성공 길로 보이는 코드 순서**이고, `(정적)` 줄은 실행을 아직 안 봤다.
 
 #### `nt!NtCreateUserProcess`
@@ -378,12 +404,85 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
 
 - `[관찰]` `NtCreateUserProcess+0xc36`에서 불린다. 안에서 `MmCreatePeb`를 부른다.
   - `[정적]` (run9) 코드도 같은 자리(call `+0xc31`, 돌아올 자리 `+0xc36`).
-- `[추측]` 새 프로세스의 정보 묶음(`_EPROCESS`)과 메모리 공간을 준비한다. 비유하면 **가게 건물 짓기**.
+- `[정적]` (run10) 직접 호출 **144줄**. 하는 일로 묶으면 14단위 + 실패 정리 + 복제 갈래다 (표는 run10 문서).
+  - 앞쪽: 프로세스 객체 만들기, exe 이미지 정보·IFEO 레지스트리 읽기, 토큰·세션·쿼터, 보안·핸들 표, 완화 정책
+  - 메모리 쪽 4가지 일이 **이 순서로** 있다:
+    1. `+0x163c` `MmCreateProcessAddressSpace` — 주소 공간 껍데기
+    2. `+0x2095` `MmInitializeProcessAddressSpace` — 그 안에서 exe, 그다음 ntdll 올리기
+    3. `+0x2314` `MmCreatePeb` — PEB
+    4. `+0x239c` `PspSetupUserProcessAddressSpace` — 유저 쪽 준비 마무리
+  - 끝쪽: `PspCidTable`에 핸들을 만들어(`ExCreateHandleEx` `+0x2703`) 새 프로세스 `+0x1d0`에 둔다. `[추측]` 이게 프로세스 ID.
+- `[정적]` (run10) 이 함수를 부르는 곳은 `NtCreateUserProcess` 말고도 `PspCreateProcess`, `PsCreateMinimalProcess`가 있다.
+- `[정적]` (run10) 함수 포인터로 부르는 **간접 호출이 2곳** 있다 (`+0x121a`, `+0x17c4`). 대상은 실행해 봐야 안다 (4장).
+- `[추측]` 비유하면 **가게 건물 짓기**: 땅 다지기(주소 공간) → 설계도대로 건물 올리기(exe) → 관리실 들이기(ntdll) → 안내판 달기(PEB).
+
+#### `nt!MmCreateProcessAddressSpace` (정적)
+
+- `[정적]` (run10) `PspAllocateProcess+0x163c`(call `+0x1637`)에서 부른다. caller 는 이 하나뿐.
+- `[정적]` 맨 위 페이지 표를 만들고(`MiAllocateTopLevelPage` `+0x1fd`), 커널 쪽 매핑을 잇고(`MiCreateNewProcessTopLevelMappings` `+0x208`), 세션에 넣는다(`PsJoinSession` `+0x21f`).
+- `[추측]` 새 프로세스 메모리의 **빈 껍데기**. 유저 쪽 장부와 내용물은 다음 함수 몫이다.
+
+#### `nt!MmInitializeProcessAddressSpace` (정적)
+
+- `[정적]` (run10) `PspAllocateProcess`가 **두 곳에서** 부른다. points.md `[확인 필요]` 이름이 여기서 풀렸다.
+  - `+0x2095`(call `+0x2090`): 보통 길. 부모 없음, 이미지 섹션 있음.
+  - `+0x2113`(call `+0x210e`): 복제 길. 부모 있음, 섹션 없음.
+  - 두 길은 같은 플래그(bit `0x4`)로 갈린다. `MmCreatePeb`도 그 플래그가 꺼졌을 때만 부른다 (`+0x22e9`).
+  - `[추측]` run3 에서 `+0x2314`(`MmCreatePeb`)가 찍혔으니 test.exe 때는 `+0x2095` 쪽이다. 같은 변수라는 가정이라 동적으로 확인할 것 (4.1).
+- `[정적]` 세 번째 인자로 받는 섹션 = run9 의 `MmCreateSpecialImageSection`(`NtCreateUserProcess +0x93c`)이 만든 **exe 이미지 섹션**이다 (`NtCreateUserProcess +0xc0c` → `PspAllocateProcess +0x2080` ~ `+0x2090`).
+- `[정적]` 안에서 순서: 새 프로세스 안으로 들어감(`KiStackAttachProcess` `+0xb5`) → 작업 집합 장부(`+0xed`) → 유저 주소 범위 계산(`+0x13b`) → VAD(메모리 구역 장부) 만들고 넣기(`+0x161`, `+0x1a8`) → **`MiMapProcessExecutable` `+0x1ce`** → 나옴(`+0x1e5`).
+- `[정적]` 부팅 때 `MiInitializeBootProcess`도 이 함수를 부른다.
+
+#### `nt!MiMapProcessExecutable` (정적)
+
+- `[정적]` (run10) `MmInitializeProcessAddressSpace+0x1ce`에서 부른다. caller 는 이 하나뿐.
+- `[정적]` **exe 먼저, ntdll 다음.**
+  1. `+0xb8` `MmMapViewOfSectionEx` — exe 이미지 섹션을 새 프로세스 메모리에 올린다.
+  2. `+0xc5` 올린 주소를 새 프로세스 `+0x2b0`에 저장 (나중에 `MmCreatePeb`가 PEB `+0x10`에 옮김).
+  3. `+0xdc` `PsMapSystemDlls` — ntdll 쪽.
+
+#### `nt!PsMapSystemDlls` → `nt!PspMapSystemDll` (정적)
+
+- `[정적]` (run10) `PsMapSystemDlls`는 `MiMapProcessExecutable+0xdc`에서 불리고, `+0xc0`에서 `PspMapSystemDll`을 부른다.
+- `[정적]` `PsMapSystemDlls`는 `PspSystemDlls` 표를 최대 6칸 돈다. 0번 칸은 늘 부르고, 나머지 칸은 WOW64(32비트) 조건이 붙는다.
+  - `[추측]` 64비트 test.exe 면 0번 칸(ntdll) 하나만.
+- `[정적]` `PspMapSystemDll`은 미리 준비된 섹션을 잡아(`PspReferenceSystemDll` `+0x40`) **`+0x11d` `MmMapViewOfSectionEx`로 올린다.**
+- `[정적]` points.md 의 `PspMapSystemDll`은 `PspAllocateProcess`가 **직접 부르지 않는다**. 새 프로세스 길의 직접 caller 는 `PsMapSystemDlls`.
+  - 다른 caller 3곳(`PspInitPhase3`, `PsLocateSystemDlls`, `PspLocateSystemDll`)도 있다. `[추측]` 부팅 때 ntdll 섹션을 준비하는 쪽.
+- `[추측]` ntdll 섹션은 부팅 때 한 번 만들어 두고, 프로세스마다 **같은 섹션을 붙이기만** 한다.
 
 #### `nt!MmCreatePeb`
 
 - `[관찰]` `PspAllocateProcess+0x2314`에서 불린다.
-- `[추측]` 유저 쪽(ntdll)이 나중에 읽을 프로세스 정보판(PEB)을 만든다.
+  - `[정적]` (run10) 코드도 같은 자리(call `+0x230f`).
+- `[정적]` (run10) 새 프로세스 안으로 들어가서(`+0xc7`) PEB 자리를 만들고(`MiCreatePebOrTeb` `+0x14b`), exe 헤더를 읽어(`+0x2ce`, `+0x311`) 값을 채운 뒤 나온다.
+  - 그 전에 leap second 데이터 섹션을 새 프로세스에 올린다 (`MmMapViewOfSection` `+0x132`).
+  - 32비트 조건이면 `MiInitializeWowPeb`(`+0x680`)도.
+- `[정적]` PEB 주소는 새 프로세스 `+0x2e0`에 돌려준다 (`PspAllocateProcess +0x22f2`에서 그 자리를 인자로 줌).
+- PEB 에 쓰는 것 — **오프셋은 `[정적]`, 이름은 `[추측]`** (알려진 PEB 배치에 맞춰 본 것):
+
+| PEB 오프셋 `[정적]` | 무엇을 쓰나 `[정적]` | 이름 `[추측]` |
+|---|---|---|
+| `+0x0`, `+0x3`, `+0x8` | `PspAllocateProcess`가 넘긴 견본 복사 | InheritedAddressSpace / BitField / Mutant |
+| `+0x10` | 새 프로세스 `+0x2b0` = exe 를 올린 주소 | ImageBaseAddress |
+| `+0xb8` ~ `+0xe0` | 프로세서 개수, 전역 플래그 등 | NumberOfProcessors, NtGlobalFlag 등 |
+| `+0x118` ~ `+0x124` | 버전 숫자 (exe 헤더 값이 있으면 덮어씀) | OS 버전 칸들 |
+| `+0x128` ~ `+0x130` | exe 헤더의 서브시스템 값 | ImageSubsystem 등 |
+| `+0x2c0` | 세션 번호 | SessionId |
+| `+0x7b8` | leap second 뷰 주소 | LeapSecondData |
+
+- `[정적]` **PEB `+0x18`, `+0x20`, `+0x30`은 쓰지 않는다.** ntdll 은 `+0x20`을 읽는데, 누가 채우는지는 아직 모른다 (4장).
+- `[추측]` 유저 쪽(ntdll)이 나중에 읽을 프로세스 **안내판**(PEB). 비유하면 새 가게 문 앞에 "주소·층수·영업 규칙"을 붙여 두는 것.
+
+#### `nt!PspSetupUserProcessAddressSpace` (정적)
+
+- `[정적]` (run10) `PspAllocateProcess+0x239c`(call `+0x2397`)에서 부른다. `MmCreatePeb` 바로 다음 대표 호출.
+- `[정적]` 새 프로세스 안으로 들어가서(`+0xfa`) 차례로:
+  - 메모리 할당(`ZwAllocateVirtualMemory` `+0x19c`) → `PspCopyAndFixupParameters` `+0x1b9`
+  - `PspPrepareSystemDllInitBlock` `+0x1e6`
+  - ApiSet 뷰 올리기(`MmMapApiSetView` `+0x255`), silo 공유 데이터 뷰(`PspMapSiloSharedDataView` `+0x263`)
+- `[추측]` `PspCopyAndFixupParameters`가 프로세스 매개변수(명령줄 등)를 새 프로세스로 복사하고 PEB `+0x20`에 잇는 곳. 본문은 안 봤다.
+- `[추측]` `PspPrepareSystemDllInitBlock`은 ntdll 에 넘길 시작 정보 묶음을 준비한다 (이름으로 본 것).
 
 #### `nt!PspCreateUserContext` (정적)
 
@@ -450,7 +549,8 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
 #### 아직 어디서 하는지 모르는 일
 
 - `[정적]` (run9) points.md에 `[확인 필요]`로 적어 둔 `MiCreateImageFileMap`, `MmInitializeProcessAddressSpace`, `PspMapSystemDll`, `MmCreateTeb`는 이 빌드에 함수로 **있지만**, `NtCreateUserProcess`가 **직접 부르지는 않는다.**
-- `[추측]` 위 대표 함수들 안쪽 어딘가에서 불린다 (`PspAllocateProcess`, `PspAllocateThread` 등). 대기열 Q2 이후에서 찾는다.
+- (해결됨) `MmInitializeProcessAddressSpace` ← `PspAllocateProcess` `+0x2095`/`+0x2113`, `PspMapSystemDll` ← `PsMapSystemDlls` `+0xc0` → run10 `[정적]`
+- 남은 것: `MiCreateImageFileMap`, `MmCreateTeb`. `[추측]` 앞은 `MmCreateSpecialImageSection` 안쪽(대기열 Q33), 뒤는 `PspAllocateThread` 안쪽 (TEB 는 스레드마다 하나라서).
 
 ---
 
@@ -598,6 +698,8 @@ LdrpInitializeProcess
 - `[추측]` 그 **앞부분**에서 kernel32를 올리고, kernel32가 import하는 kernelbase도 따라 올리고, 주소 연결까지 끝낸다.
 - `[추측]` 이렇게 올리면서 **"누가 누구에게 기대는지" 정보(의존 관계 그래프)도 같이 만든다.** 켜기 단계의 `LdrpInitializeGraphRecurse`는 이렇게 만들어진 그래프를 따라간다.
 - `[추측]` `LdrpInitializeProcess`가 시작될 때는 test.exe와 ntdll만 올라와 있고, kernel32·kernelbase는 아직 없다. (커널이 프로세스를 만들 때 올려 주는 건 exe와 ntdll뿐이라고 알려져 있다)
+  - `[정적]` (run10) 커널 쪽에서 exe와 ntdll을 **올리는 코드는 있다** (2.1): exe = `MiMapProcessExecutable +0xb8`, ntdll = `PspMapSystemDll +0x11d`, 둘 다 `MmMapViewOfSectionEx`.
+  - `[추측]` 그래도 "**그 둘뿐**"은 아직 추측이다. 다른 매핑이 없다는 건 확인 안 했다. 같은 단계에 leap second 섹션(`MmCreatePeb +0x132`), ApiSet 뷰, silo 공유 데이터 뷰(`PspSetupUserProcessAddressSpace +0x255`, `+0x263`)도 새 프로세스에 붙는다 `[정적]`. 이것들은 DLL 은 아니다.
 - 확인 방법: 메모리에 올릴 때 커널에 부탁하는 창구(`nt!NtMapViewOfSection` 계열, 이름 확인 필요)에 멈춤점 + `k`. 그래프를 만드는 함수는 디컴파일로 이름부터 찾는다.
 
 #### KERNELBASE · KERNEL32 시작 함수
@@ -774,7 +876,13 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 위치 | 무엇이 비었나 |
 |---|---|
 | 2.1 | (해결됨) `NtCreateUserProcess`가 직접 부르는 함수 목록 → run9 `[정적]` (83줄, 대표 12개) |
-| 2.1 | points.md의 `MiCreateImageFileMap`, `MmInitializeProcessAddressSpace`, `PspMapSystemDll`, `MmCreateTeb`가 어느 함수 안에서 불리는지 (run9: `NtCreateUserProcess` 직접 호출은 아님) |
+| 2.1 | (일부 해결) points.md의 `MmInitializeProcessAddressSpace` ← `PspAllocateProcess +0x2095`/`+0x2113`, `PspMapSystemDll` ← `PsMapSystemDlls +0xc0` → run10 `[정적]` |
+| 2.1 | 남은 것: `MiCreateImageFileMap`, `MmCreateTeb`가 어느 함수 안에서 불리는지 (run9: `NtCreateUserProcess` 직접 호출은 아님) |
+| 2.1 | (해결됨) `PspAllocateProcess`가 직접 부르는 함수, 주소 공간·exe·ntdll·PEB 순서 → run10 `[정적]` (144줄, (가)→(나)→(다)→(라)) |
+| 2.1 | `MmInitializeProcessAddressSpace`를 test.exe 때 `+0x2095`(보통 길)와 `+0x2113`(복제 길) 중 어디서 탔는지 — `[추측]` `+0x2095` |
+| 2.1 | `PspAllocateProcess`의 간접 호출 2곳 대상: `+0x121a`(전역 포인터 `nt+0xf04d28`), `+0x17c4`(전역 포인터 `nt+0xf04d20`) — 동적으로만 앎 |
+| 2.1 · 2.4 | PEB `+0x20`은 `MmCreatePeb`가 안 씀 (run10 `[정적]`) → 누가 쓰나. 후보 `PspSetupUserProcessAddressSpace +0x1b9` `PspCopyAndFixupParameters` (본문 안 봄) |
+| 2.1 | `PspPrepareSystemDllInitBlock`(`PspSetupUserProcessAddressSpace +0x1e6`) 안쪽: ntdll 로 넘기는 시작 정보인지 (2.3 공백과 이어질 수 있음 `[추측]`) |
 | 2.1 | `NtCreateUserProcess`의 간접 호출 2곳의 실제 대상: `+0x5b2`(전역 포인터 `nt+0xfd83d0`), `+0x11bb`(전역 포인터 `nt+0xf04d30`) — 동적으로만 앎 |
 | 2.1 | `PspMapThreadCreationFlags` 안쪽: `ThreadFlags` bit0 → 안쪽 플래그 bit0 그대로인지 (80바이트, 정적으로 싸게 볼 수 있음) |
 | 2.1 | `PspCreateUserContext` 안쪽: 첫 스레드의 유저 시작 위치를 정하는 곳인지 (91바이트, 2.3 공백과 이어질 수 있음 `[추측]`) |
@@ -783,6 +891,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.3 | 커널 → 유저 전환 방법 (`LdrInitializeThunk`로 오는 방법, `RtlUserThreadStart`와의 관계) |
 | 2.5 | KERNELBASE·KERNEL32 시작 함수의 정확한 이름 |
 | 2.5 | kernel32·kernelbase가 메모리에 올라오는 순간 (`LdrpLoadDllInternal+0x284` 앞으로 추정) |
+| 2.5 | 커널이 프로세스를 만들 때 올리는 게 exe·ntdll "뿐"인지 (run10: 둘을 올리는 코드는 `[정적]`, 다른 매핑이 없다는 건 미확인. leap second·ApiSet·silo 뷰도 붙음) |
 | 2.5 · 2.6 | 올리면서 의존 관계 그래프를 만드는 함수와 시점 |
 | 2.6 | dll1·dll2가 메모리에 올라오는 순간 |
 | 2.7 | `ImageTlsCallbackCaller` 안쪽 |
@@ -805,6 +914,13 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 그림 1 nt | `PspInsertThread` → (1) `KeSuspendThread` | 코드상 플래그 bit0일 때만 | `PspInsertThread` 입구에서 `poi(@r9) & 1`, `KeSuspendThread` 입구(또는 `PspInsertThread+0x2e0`)에서 `k` |
 | 그림 1 nt | `PspInsertThread` → (3) `KeReadyThread` | 코드상 끝 쪽에서 늘 지남 | `KeReadyThread` 입구에서 `k`, 돌아올 자리 `PspInsertThread+0x5a6`인지 |
 | 그림 1 nt | `NtCreateUserProcess` → (11)(12) `PspCreateObjectHandle` / `PspUpdateCreateInfo` | 코드상 성공 길 끝, 값 6 | `NtCreateUserProcess+0x1124`에서 `ecx`=6, 반환값 `rax` |
+| 그림 1 nt | `PspAllocateProcess` → (1) `MmCreateProcessAddressSpace` | 코드의 call 자리 (run10 `[정적]`) | `PspAllocateProcess+0x163c`에서 멈춤 또는 callee 입구에서 `k` |
+| 그림 1 nt | `PspAllocateProcess` → (2) `MmInitializeProcessAddressSpace` | 코드상 두 곳 (`+0x2095` 보통 / `+0x2113` 복제), 플래그 bit `0x4`로 갈림 | callee 입구에서 `k`. 돌아올 자리가 `+0x2095`인지 |
+| 그림 1 nt | `MiMapProcessExecutable` → (1) `MmMapViewOfSectionEx` (exe) / (2) `PsMapSystemDlls` → `PspMapSystemDll` → `MmMapViewOfSectionEx` (ntdll) | 코드의 call 자리 | `MiMapProcessExecutable+0xb8`·`+0xdc`에 멈춤. `+0xdc` 뒤 새 프로세스의 ntdll 위치가 나중 `LdrInitializeThunk` 주소와 맞는지. `PspMapSystemDll` 입구는 부팅 때 System 에도 걸리니 피한다 |
+| 그림 1 nt | `PspAllocateProcess` → (3) `MmCreatePeb` 이 쓰는 PEB 값 | 오프셋 `[정적]`, 필드 이름 `[추측]` | `+0x2314`에서 `poi(새 EPROCESS+0x2e0)`의 `+0x10`, `+0xb8`, `+0xbc`, `+0x118~`, `+0x20`(아직 0이어야 함) |
+| 그림 1 nt | `PspAllocateProcess` → (4) `PspSetupUserProcessAddressSpace` | 코드의 call 자리 | `+0x239c`에서 PEB `+0x20`이 채워졌는지 |
+| 그림 1 nt (그림 밖) | `PspAllocateProcess` 갈림길: `PspWow64PickBestNtdll` `+0xffb`, `PspSetProcessAffinitySafe` `+0x2364`, `KeSecureProcess` `+0x27a0` | 코드상 조건부 | 각 자리에 멈춤. 64비트 test.exe 면 `+0xffb`는 안 타야 함 `[추측]` |
+| 그림 1 nt (그림 밖) | `PspAllocateProcess` 간접 호출 `+0x121a`, `+0x17c4` | 대상이 전역 포인터 | `[nt+0xf04d28]`, `[nt+0xf04d20]` 값을 `ln` |
 | 그림 2 (1) kernel32 준비 | `LdrpCallInitRoutine` → KERNELBASE·KERNEL32 시작 함수 | `rcx`가 기호 근처 (정확히 일치 아님) | 실제 진입 함수 이름과 콜스택 |
 | 그림 2 (1) kernel32 준비 | `LdrpInitializeNode` [KERNELBASE] / [KERNEL32] 대응 | 재귀 깊이가 다름 | `LdrpInitializeNode`에서 긴 `k` + 시작 함수 이름 |
 | 그림 2 (2) · (3) | `LdrpCallInitRoutine` → `ImageTlsCallbackCaller` | `rcx` 정확히 일치 | `ImageTlsCallbackCaller`에서 `k` |
@@ -830,6 +946,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run7 | 유저 쪽 첫 시간표 (dll 주소 문제로 일부 정정) |
 | run8 | DLL 주소 확정, `LdrpCallInitRoutine`의 대상 이름 확인 |
 | run9 | (정적) `NtCreateUserProcess` 직접 호출 83줄, 관찰 4개 오프셋 일치, `PspInsertThread`의 멈춤 갈림길 |
+| run10 | (정적) `PspAllocateProcess` 직접 호출 144줄, 주소 공간 → exe → ntdll → PEB 순서, `+0x2314` 오프셋 일치, `MmCreatePeb`가 쓰는 PEB 오프셋 |
 | `sample/` 소스 | 의존 관계, 모듈별 TLS 콜백, `/MT` 빌드 |
 
 - run3 ~ run5는 타깃에서 빌드한 test.exe, run6 ~ run8은 디버거 VM에서 빌드해 옮긴 test.exe (같은 소스).
@@ -840,3 +957,4 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run | sast | dast | 비고 |
 |---|---|---|---|
 | run9 | `_workspace/sast/03_create-user-process` | 없음 | 정적만 (대기열 Q1) |
+| run10 | `_workspace/sast/04_allocate-process` | 없음 | 정적만 (대기열 Q2) |
