@@ -6,3 +6,4 @@ sample/bin/
 *.dmp
 *.run
 symbols/
+ms/bin/
