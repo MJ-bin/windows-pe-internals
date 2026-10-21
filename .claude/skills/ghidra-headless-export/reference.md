@@ -52,6 +52,10 @@ LdrpCallInitRoutine	+0x41	+0x47	indirect:__guard_dispatch_icall_fptr
   - 스크립트는 함수가 `JMP`/`Jcc` 로 넘어가는 `FUN_` 함수를 조각으로 보고 따라가서 (조각의 조각도, 최대 20개) `.asm` 맨 아래 `; --- 조각 …` 아래에 붙인다.
   - 오프셋은 **조각 시작 기준**이다. WinDbg 가 이 주소를 콜스택에서 어떻게 보여 줄지는 확인 전이라 `caller+0x..` 로 바꿔 쓰지 않는다.
   - 예: `PspInsertThread +0xa33 tail FUN_140b0d692` 의 조각 안 `KeForceResumeThread` 등 (sast/03).
+- **주인 없는 덩어리**: 함수가 `JMP`/`Jcc` 로 넘어가는 곳이 **어느 함수에도 안 속한 코드**면 (Ghidra 가 함수 범위에 못 넣은 것), 스크립트가 거기서부터 흐름을 따라가 그 함수 몫으로 읽는다.
+  - `_calls.tsv` 오프셋은 **본래 함수 시작 기준 `+0x..`** 그대로 (조각처럼 `frag:` 를 붙이지 않는다). `.asm` 에는 `; --- 주인 없는 덩어리 <시작>~<끝> ...` 머리 아래에 붙는다.
+  - 예: `PspAllocateThread +0x849 ~ +0xbba` 안의 `PspWow64InitThread` 등 (sast/06). 고치기 전 장부엔 빠져 있었다. 커널에 이런 덩어리가 1225개(호출 576곳) 있다.
+  - Ghidra 디컴파일(`.c`) 맨 위 `// callees:` 줄은 Ghidra 기준이라 여전히 이 호출들을 빠뜨릴 수 있다. 호출 목록은 `_calls.tsv` 를 믿는다.
 - `_calls.tsv` 는 export 할 때마다 **덧붙여 쌓인다** (`sort -u` 로 같은 줄만 합침). 스크립트를 바꾼 뒤엔 옛 줄이 남으니, 그 모듈의 `_calls.tsv` 를 지우고 필요한 함수를 다시 export 한다.
 
 ## 지도 (`run_ghidra.sh map`, `CallGraphMap.java`)

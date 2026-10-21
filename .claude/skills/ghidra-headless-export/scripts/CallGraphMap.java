@@ -19,12 +19,15 @@
 //   helper        공용 도구: 프로그램 전체에서 caller 가 기준 이상 → 여기서 안 펼침 (지도 크기를 줄이려는 선택, 진짜 끊김 아님)
 //   depth         최대 깊이에 닿음
 //   (seen)        이미 지도에 있는 함수 — 줄만 남기고 다시 펼치지 않음
-// 그대로 따라가는 것: 직접 CALL, 꼬리호출(JMP → 이름 있는 함수, kind=tail), 떨어진 조각(JMP/Jcc → FUN_, 본래 함수에 합침)
+// 그대로 따라가는 것: 직접 CALL, 꼬리호출(JMP → 이름 있는 함수, kind=tail), 떨어진 조각(JMP/Jcc → FUN_, 본래 함수에 합침),
+//   주인 없는 덩어리(JMP/Jcc → 어느 함수에도 안 속한 코드, 본래 함수에 합침, 오프셋은 본래 함수 기준 — sast/06)
 // 표시만: alias (대상 주소에 다른 PDB 이름이 N개 — 이름을 믿지 말 것)
 //@category PE-Internals
 import java.io.File;
 import java.io.PrintWriter;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -35,6 +38,8 @@ import java.util.Set;
 
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressSet;
+import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionManager;
@@ -79,11 +84,11 @@ public class CallGraphMap extends GhidraScript {
 		return others.size();
 	}
 
-	private String cfgSource(Instruction call, Function body) {
+	private String cfgSource(Instruction call, AddressSetView region) {
 		Instruction p = call;
 		for (int i = 0; i < 10; i++) {
 			p = currentProgram.getListing().getInstructionBefore(p.getAddress());
-			if (p == null || !body.getBody().contains(p.getAddress()) || p.getFlowType().isCall()) {
+			if (p == null || !region.contains(p.getAddress()) || p.getFlowType().isCall()) {
 				break;
 			}
 			boolean rax = false;
@@ -109,7 +114,7 @@ public class CallGraphMap extends GhidraScript {
 	}
 
 	// CFG 문: 이름으로 가린다. getFlows() 가 차 있어도(직접 CALL 모양) 먼저 본다 (sast/05 스크립트 문제 1)
-	private boolean cfgGate(Instruction ins, Function body, String name, Edge e) {
+	private boolean cfgGate(Instruction ins, AddressSetView body, String name, Edge e) {
 		if (name.contains("guard_dispatch_icall") || name.contains("guard_xfg_dispatch_icall")) {
 			e.kind = "indirect-cfg";
 			e.label = "cfg:" + cfgSource(ins, body);
@@ -126,7 +131,7 @@ public class CallGraphMap extends GhidraScript {
 	}
 
 	// 호출 대상: Function 이 있으면 그것, 없으면 끊긴 끝의 라벨을 e 에 채운다
-	private void resolve(Instruction ins, Function body, Edge e) {
+	private void resolve(Instruction ins, AddressSetView body, Edge e) {
 		Address[] flows = ins.getFlows();
 		if (flows != null && flows.length > 0) {
 			Function g = fm.getFunctionAt(flows[0]);
@@ -202,48 +207,87 @@ public class CallGraphMap extends GhidraScript {
 		return callerCache.computeIfAbsent(f, k -> k.getCallingFunctions(monitor).size());
 	}
 
-	// f 본체 + 떨어진 조각에서 호출 줄을 모은다 (한 번만 계산)
+	// 어느 함수에도 안 속한 코드 덩어리를 start 에서부터 흐름(다음 명령, 점프)을 따라 모은다
+	private AddressSet collectOrphan(Address start, AddressSetView done) {
+		AddressSet set = new AddressSet();
+		Deque<Address> q = new ArrayDeque<>();
+		q.add(start);
+		while (!q.isEmpty() && set.getNumAddresses() < 20000) {
+			Address a = q.poll();
+			if (a == null || set.contains(a) || done.contains(a) || fm.getFunctionContaining(a) != null) {
+				continue;
+			}
+			Instruction ins = currentProgram.getListing().getInstructionAt(a);
+			if (ins == null) {
+				continue;
+			}
+			set.add(ins.getMinAddress(), ins.getMaxAddress());
+			if (ins.getFallThrough() != null) {
+				q.add(ins.getFallThrough());
+			}
+			if (ins.getMnemonicString().toUpperCase().startsWith("J")) {
+				for (Address fl : ins.getFlows()) {
+					q.add(fl);
+				}
+			}
+		}
+		return set;
+	}
+
+	// f 본체 + 떨어진 조각 + 주인 없는 덩어리에서 호출 줄을 모은다 (한 번만 계산)
 	private List<Edge> edges(Function f) {
 		List<Edge> got = cache.get(f);
 		if (got != null) {
 			return got;
 		}
 		List<Edge> out = new ArrayList<>();
-		List<Function> bodies = new ArrayList<>();
-		bodies.add(f);
-		Set<Function> seen = new HashSet<>(bodies);
-		for (int bi = 0; bi < bodies.size() && bi < 21; bi++) {
-			Function body = bodies.get(bi);
-			String prefix = body == f ? "" : "frag:" + body.getName();
-			long start = body.getEntryPoint().getOffset();
-			InstructionIterator it = currentProgram.getListing().getInstructions(body.getBody(), true);
+		// 읽을 곳: {영역, 오프셋 기준 주소, 접두어}
+		List<Object[]> regions = new ArrayList<>();
+		regions.add(new Object[] { f.getBody(), f.getEntryPoint().getOffset(), "" });
+		Set<Function> seenFrag = new HashSet<>();
+		AddressSet orphanDone = new AddressSet();
+		for (int ri = 0; ri < regions.size() && ri < 60; ri++) {
+			AddressSetView region = (AddressSetView) regions.get(ri)[0];
+			long start = (Long) regions.get(ri)[1];
+			String prefix = (String) regions.get(ri)[2];
+			InstructionIterator it = currentProgram.getListing().getInstructions(region, true);
 			while (it.hasNext()) {
 				Instruction ins = it.next();
 				String mn = ins.getMnemonicString().toUpperCase();
 				long o = ins.getAddress().getOffset() - start;
-				boolean frag = false;
+				boolean inner = false; // 조각·덩어리로 가는 점프 = 함수 안 이동, 호출 아님
 				if (mn.startsWith("J")) {
 					for (Address fl : ins.getFlows()) {
-						if (f.getBody().contains(fl) || body.getBody().contains(fl)) {
+						if (f.getBody().contains(fl) || region.contains(fl)) {
 							continue;
 						}
 						Function g = fm.getFunctionContaining(fl);
-						if (g != null && g != f && !g.isExternal() && g.getName().startsWith("FUN_")) {
-							frag = true;
-							if (seen.add(g)) {
-								bodies.add(g);
+						if (g == null) {
+							if (!orphanDone.contains(fl) && currentProgram.getListing().getInstructionAt(fl) != null) {
+								AddressSet chunk = collectOrphan(fl, orphanDone);
+								if (!chunk.isEmpty()) {
+									orphanDone.add(chunk);
+									regions.add(new Object[] { chunk, f.getEntryPoint().getOffset(), "" });
+								}
+							}
+							inner = true;
+						}
+						else if (g != f && !g.isExternal() && g.getName().startsWith("FUN_")) {
+							inner = true;
+							if (seenFrag.add(g) && seenFrag.size() <= 20) {
+								regions.add(new Object[] { g.getBody(), g.getEntryPoint().getOffset(), "frag:" + g.getName() });
 							}
 						}
 					}
 				}
-				if (!ins.getFlowType().isCall() || mn.startsWith("INT") || frag) {
+				if (!ins.getFlowType().isCall() || mn.startsWith("INT") || inner) {
 					continue;
 				}
 				Edge e = new Edge();
 				e.callOff = prefix + off(o);
 				e.kind = mn.startsWith("J") ? "tail" : "call";
 				e.retOff = mn.startsWith("J") ? "tail" : prefix + off(ins.getAddress().getOffset() + ins.getLength() - start);
-				resolve(ins, body, e);
+				resolve(ins, region, e);
 				if (e.target != null) {
 					int n = aliasCount(e.target.getEntryPoint(), e.target.getName());
 					if (n > 0) {

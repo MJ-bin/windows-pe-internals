@@ -21,11 +21,16 @@
 //                        안의 호출. 함수가 JMP/Jcc 로 넘어가는 이름 없는(FUN_) 함수를 조각으로 보고 따라간다.
 //                        오프셋은 조각 시작 기준 (WinDbg 가 이 주소를 어떻게 보여 줄지는 확인 전이라 caller+0x.. 로 적지 않는다).
 //                        .asm 맨 아래에 "; --- 조각 ..." 머리와 함께 붙는다.
+//      주인 없는 덩어리 : 함수가 JMP/Jcc 로 넘어가는 곳이 **어느 함수에도 안 속한 코드**면 (Ghidra 가 함수 범위에 못 넣은 것)
+//                        거기서부터 흐름(다음 명령, 점프)을 따라가 그 함수 몫으로 읽는다. 오프셋은 본래 함수 시작 기준(+0x..),
+//                        .asm 에 "; --- 주인 없는 덩어리 ..." 머리와 함께 붙는다 (sast/06, 2026-10-21).
 //@category PE-Internals
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -38,6 +43,8 @@ import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressSet;
+import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionIterator;
@@ -128,12 +135,12 @@ public class ExportFunctions extends GhidraScript {
 
 	// CFG 간접 호출: CALL 앞을 최대 10개 거슬러 올라가 RAX 를 채운 명령을 찾고,
 	// 그 명령이 읽은 메모리 자리(함수 포인터 변수)의 이름을 돌려준다.
-	private String cfgTarget(Instruction call, Function owner) {
+	private String cfgTarget(Instruction call, AddressSetView region) {
 		long base = currentProgram.getImageBase().getOffset();
 		Instruction p = call;
 		for (int i = 0; i < 10; i++) {
 			p = currentProgram.getListing().getInstructionBefore(p.getAddress());
-			if (p == null || !owner.getBody().contains(p.getAddress()) || p.getFlowType().isCall()) {
+			if (p == null || !region.contains(p.getAddress()) || p.getFlowType().isCall()) {
 				break;
 			}
 			boolean writesRax = false;
@@ -161,13 +168,41 @@ public class ExportFunctions extends GhidraScript {
 		return "indirect:cfg:?";
 	}
 
-	// body 의 명령을 차례로 .asm 에 쓰고, 호출은 _calls.tsv 에 caller=ownerName 으로 적는다.
-	// prefix 가 "" 이면 본체 (+0x..), 아니면 조각 ("frag:FUN_..+0x..").
-	// owner 밖·body 밖으로 가는 점프의 목적지가 이름 없는(FUN_) 함수면 frags 에 모은다.
-	private void walkBody(String ownerName, Function owner, Function body, String prefix, PrintWriter w,
-			PrintWriter calls, FunctionManager fm, Set<Function> frags) {
-		long start = body.getEntryPoint().getOffset();
-		InstructionIterator it = currentProgram.getListing().getInstructions(body.getBody(), true);
+	// 어느 함수에도 안 속한 코드 덩어리를 start 에서부터 흐름(다음 명령, 점프)을 따라 모은다.
+	// 함수 안 주소, 이미 모은 주소, 명령이 없는 곳에서 멈춘다.
+	private AddressSet collectOrphan(Address start, AddressSetView done) {
+		AddressSet set = new AddressSet();
+		Deque<Address> q = new ArrayDeque<>();
+		q.add(start);
+		FunctionManager fm = currentProgram.getFunctionManager();
+		while (!q.isEmpty() && set.getNumAddresses() < 20000) {
+			Address a = q.poll();
+			if (a == null || set.contains(a) || done.contains(a) || fm.getFunctionContaining(a) != null) {
+				continue;
+			}
+			Instruction ins = currentProgram.getListing().getInstructionAt(a);
+			if (ins == null) {
+				continue;
+			}
+			set.add(ins.getMinAddress(), ins.getMaxAddress());
+			if (ins.getFallThrough() != null) {
+				q.add(ins.getFallThrough());
+			}
+			if (ins.getMnemonicString().toUpperCase().startsWith("J")) {
+				for (Address fl : ins.getFlows()) {
+					q.add(fl);
+				}
+			}
+		}
+		return set;
+	}
+
+	// region 의 명령을 차례로 .asm 에 쓰고, 호출은 _calls.tsv 에 caller=ownerName 으로 적는다.
+	// start = 오프셋 기준 주소, prefix 가 "" 이면 +0x.., 조각이면 "frag:FUN_..+0x..".
+	// owner·region 밖으로 가는 점프의 목적지가 이름 없는(FUN_) 함수면 frags, 어느 함수에도 안 속하면 orphans 에 모은다.
+	private void walkBody(String ownerName, Function owner, AddressSetView region, long start, String prefix,
+			PrintWriter w, PrintWriter calls, FunctionManager fm, Set<Function> frags, Set<Address> orphans) {
+		InstructionIterator it = currentProgram.getListing().getInstructions(region, true);
 		while (it.hasNext()) {
 			Instruction ins = it.next();
 			long o = ins.getAddress().getOffset() - start;
@@ -177,11 +212,16 @@ public class ExportFunctions extends GhidraScript {
 			String mn = ins.getMnemonicString().toUpperCase();
 			if (mn.startsWith("J")) {
 				for (Address fl : ins.getFlows()) {
-					if (owner.getBody().contains(fl) || body.getBody().contains(fl)) {
+					if (owner.getBody().contains(fl) || region.contains(fl)) {
 						continue;
 					}
 					Function g = fm.getFunctionContaining(fl);
-					if (g != null && g != owner && !g.isExternal() && g.getName().startsWith("FUN_")) {
+					if (g == null) {
+						if (currentProgram.getListing().getInstructionAt(fl) != null) {
+							orphans.add(fl);
+						}
+					}
+					else if (g != owner && !g.isExternal() && g.getName().startsWith("FUN_")) {
 						frags.add(g);
 					}
 				}
@@ -199,7 +239,7 @@ public class ExportFunctions extends GhidraScript {
 					String ret = prefix + off(ins.getAddress().getOffset() + ins.getLength() - start);
 					String tgt = calleeName(ins, fm);
 					if (isCfgDispatch(tgt)) {
-						tgt = cfgTarget(ins, body);
+						tgt = cfgTarget(ins, region);
 						lastAliases = new ArrayList<>();
 					}
 					line.append("    ; CALL ret=").append(ret).append(" -> ").append(tgt).append(aliasNote());
@@ -304,21 +344,44 @@ public class ExportFunctions extends GhidraScript {
 				try (PrintWriter w = new PrintWriter(new File(disDir, safe + ".asm"), "UTF-8")) {
 					w.println("; " + head);
 					Set<Function> frags = new LinkedHashSet<>();
-					walkBody(name, f, f, "", w, calls, fm, frags);
-					// 떨어진 조각들 (조각이 또 다른 조각으로 가면 그것도, 같은 조각은 한 번만, 최대 20개)
-					List<Function> todo = new ArrayList<>(frags);
-					Set<Function> seen = new HashSet<>(frags);
-					for (int i = 0; i < todo.size() && i < 20; i++) {
-						Function g = todo.get(i);
-						w.println();
-						w.println(String.format("; --- 조각 %s  entry=%s  rva=0x%x  (%s 에서 점프로 옴. 오프셋은 조각 시작 기준) ---",
-							g.getName(), g.getEntryPoint(), g.getEntryPoint().getOffset() - base, name));
-						Set<Function> more = new LinkedHashSet<>();
-						walkBody(name, f, g, "frag:" + g.getName(), w, calls, fm, more);
-						for (Function m : more) {
-							if (seen.add(m)) {
-								todo.add(m);
+					Set<Address> orphans = new LinkedHashSet<>();
+					walkBody(name, f, f.getBody(), entry, "", w, calls, fm, frags, orphans);
+					// 떨어진 조각(최대 20개)과 주인 없는 덩어리를 새로 안 나올 때까지 따라간다
+					List<Function> todo = new ArrayList<>();
+					Set<Function> seen = new HashSet<>();
+					AddressSet orphanDone = new AddressSet();
+					int fi = 0;
+					boolean progress = true;
+					while (progress) {
+						progress = false;
+						for (Function g : new ArrayList<>(frags)) {
+							if (seen.add(g)) {
+								todo.add(g);
 							}
+						}
+						while (fi < todo.size() && fi < 20) {
+							Function g = todo.get(fi++);
+							w.println();
+							w.println(String.format("; --- 조각 %s  entry=%s  rva=0x%x  (%s 에서 점프로 옴. 오프셋은 조각 시작 기준) ---",
+								g.getName(), g.getEntryPoint(), g.getEntryPoint().getOffset() - base, name));
+							walkBody(name, f, g.getBody(), g.getEntryPoint().getOffset(), "frag:" + g.getName(), w, calls,
+								fm, frags, orphans);
+							progress = true;
+						}
+						for (Address oa : new ArrayList<>(orphans)) {
+							if (orphanDone.contains(oa)) {
+								continue;
+							}
+							AddressSet chunk = collectOrphan(oa, orphanDone);
+							if (chunk.isEmpty()) {
+								continue;
+							}
+							orphanDone.add(chunk);
+							w.println();
+							w.println(String.format("; --- 주인 없는 덩어리 %s~%s  (어느 함수에도 안 속함. %s 에서 점프로 옴. 오프셋은 %s 시작 기준) ---",
+								chunk.getMinAddress(), chunk.getMaxAddress(), name, name));
+							walkBody(name, f, chunk, entry, "", w, calls, fm, frags, orphans);
+							progress = true;
 						}
 					}
 				}
