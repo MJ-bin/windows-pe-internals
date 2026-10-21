@@ -45,7 +45,7 @@
 | Q35 | 2.1 `PspAllocateProcess` 실행 길: `MmInitializeProcessAddressSpace` `+0x2095`(보통) vs `+0x2113`(복제) 중 탄 쪽, 간접 호출 2곳(`+0x121a` @0xf04d28, `+0x17c4` @0xf04d20) 대상, `PspWow64PickBestNtdll` `+0xffb` 타는지, `+0x2314`·`+0x239c` 에서 새 PEB `+0x10`·`+0x20` 값 | 3 | 동적 | sast/04 동적 확인 | 대기 |
 | Q36 | 2.1 `nt!PspCopyAndFixupParameters`(PEB `+0x20` 프로세스 매개변수를 누가 쓰나), `nt!PspPrepareSystemDllInitBlock`(ntdll 로 넘기는 시작 정보) | 1 | 정적 (ntoskrnl) | sast/04 결과 (다음 정적 후보) | 대기 |
 | Q37 | 지도 크기 재기 (실험): 정적 호출 관계를 뿌리에서 끝까지 따라가 깊이별 함수 수를 재고, 끊기는 노드에 끊긴 이유를 적는다. 뿌리 = 커널 `nt!NtCreateUserProcess`, 유저 `ntdll!LdrInitializeThunk` | - | 정적 (ntoskrnl, ntdll) | 사용자 제안 (2026-10-21) | 끝 (run 없음, 도구 실험 — 결과서 sast/05) — 사용자 결정으로 Q3 앞에서 처리 |
-| Q38 | 2.1 `PspAllocateThread`·`PspInsertProcess` 실행 길: 입구 11번째 인자(`poi(@rsp+0x58)`) 가 0인지(보통 길), `+0x6f4` 에서 `KeInitThread` 시작 정보(`dqs @rdx`), 먼 덩어리(`nt+0xb0d315`) 를 WinDbg 가 무슨 이름으로 보이나(`ln`), `PspInsertProcess+0x115` 에서 test.exe 가 목록에 보이나, `CONTEXT.Rip/Rcx` ↔ `_ETHREAD.StartAddress/Win32StartAddress` 비교, `PspInsertProcess+0x1e3` 앞뒤 핸들 표, `PspSetupUserStack`·`MmCreateTeb` 반환값과 TEB 주소 | 3 | 동적 | sast/06 동적 확인, run11 4.1 | 대기 |
+| Q38 | 2.1 `PspAllocateThread`·`PspInsertProcess` 실행 길: 입구 11번째 인자(`poi(@rsp+0x58)`) 가 0인지(보통 길), `+0x6f4` 에서 `KeInitThread` 시작 정보(`dqs @rdx`), 먼 덩어리(`nt+0xb0d315`) 를 WinDbg 가 무슨 이름으로 보이나(`ln`), `PspInsertProcess+0x115` 에서 test.exe 가 목록에 보이나, `CONTEXT.Rip/Rcx` ↔ `_ETHREAD.StartAddress/Win32StartAddress` 비교, `PspInsertProcess+0x1e3` 앞뒤 핸들 표, `PspSetupUserStack`·`MmCreateTeb` 반환값과 TEB 주소 | 3 | 동적 | sast/06 동적 확인, run11 4.1; 묶음 M 시험 (`PspSetupUserShadowStack` `+0xb65` 를 타는지 = 이 VM 에서 CET 섀도 스택이 켜졌나) | 대기 |
 
 상태: `대기` / `진행 중` / `끝 (runN)` / `합침 → Qn` / `보류 (사용자 결정, 날짜)`
 
@@ -76,3 +76,4 @@
 - 하네스 후보 (나중에 검토): CallGraphMap/ExportFunctions 의 `cfgSource()` 가 외부 주소 참조를 `@0xfffffffe…` 로 찍음 (커널 2곳, ntdll 7곳)
 - 2026-10-21: 하네스 묶음 L 커밋 `6159550` (CallGraphMap.java, run_ghidra.sh map, 지도 = 색인)
 - 2026-10-21: Q3 끝 (run11, sast/06). Q38(동적) 맨 아래 추가, Q4·Q7 에 출처 추가. sast/06 이 찾은 스크립트 구멍(함수에 안 속한 코드 덩어리 안 호출이 _calls.tsv·지도에서 빠짐) 은 바퀴 끝난 뒤 사용자에게 따로 제안
+- 2026-10-21: 사용자 승인 → 하네스 묶음 M (주인 없는 코드 덩어리를 본래 함수 몫으로 읽기, ExportFunctions·CallGraphMap). 재추출 결과 이전 바퀴 숫자 변화 없음 (NtCreateUserProcess 83, PspAllocateProcess 144 등 그대로), PspAllocateThread 만 37→49줄 (run11 에 이미 표로 있음) → run9·10·11 정정 필요 없음. 지도 커널 기준20 5694→5757, 흐름도 함수 41개 변화 없음. .pdata 대조 720/720
