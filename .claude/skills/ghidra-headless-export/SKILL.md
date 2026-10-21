@@ -30,6 +30,11 @@ MS 바이너리를 **PDB와 함께** Ghidra로 분석해서, 요청서가 묻는
    python3 .claude/skills/ghidra-headless-export/scripts/fetch_pdb.py ntoskrnl.exe ntdll.dll
    ```
    - 커널은 출력된 `guid` 가 위 기준 GUID와 같은지 확인한다. 다르면 **멈추고** 빌드가 다르다고 보고한다.
+   - 이어서 **별칭 표**를 만든다 (몇 초):
+     ```bash
+     python3 .claude/skills/ghidra-headless-export/scripts/pdb_aliases.py ntoskrnl.exe ntdll.dll
+     ```
+     → `ms/sym/<바이너리>.aliases.tsv`. 한 주소에 함수 이름이 여러 개인 곳(ICF 등) 전부. 커밋하지 않는다.
 3. **분석** (모듈마다 처음 한 번). 아래 셋이 **다 있으면** 이미 분석된 것으로 보고 건너뛴다:
    - `ms/ghidra/<모듈>.gpr` (프로젝트)
    - `ms/decomp/<모듈>/_index.tsv` (ExportIndex가 끝까지 돌았다는 증거)

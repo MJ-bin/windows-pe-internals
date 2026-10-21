@@ -28,6 +28,7 @@ allowed-tools: Read Write Edit Glob Grep Bash
 1. **입력 모으기**: 오케스트레이터가 준 경로들을 읽는다 — sast 요청서·결과서, dast 요청서·runbook, `ms/logs/NN_키워드.txt`·`_result.md`, 필요하면 `ms/decomp`, `ms/disassemble` 의 해당 함수 파일.
 2. **스프린트 폴더 확인**: `runs/NN_sprint/flow.md` 가 없으면 바로 전 스프린트의 `flow.md` 를 **복사**해서 시작한다. 복사했다고 보고에 적는다. 이전 스프린트 파일은 건드리지 않는다.
 3. **run 문서 쓰기**: `runs/NN_sprint/runN-키워드.md` — [run-template.md](run-template.md) 양식. 로그·결과서에 있는 것만 쓴다.
+   - 결과서·`_calls.tsv` 에 `alias:` 로 나온 함수를 문서에 언급해야 하면, Ghidra 가 고른 이름을 그대로 쓰지 말고 하는 일(예: "0을 돌려주는 빈 함수")로 적은 뒤 "같은 주소 이름 N개, 후보: …" 를 한 줄 붙인다. 이름 전부는 `pdb_aliases.py --lookup <모듈> <0xRVA>`.
    - 이전 run이 틀렸던 게 드러나면 "정정" 절을 쓰고, 이전 run 문서 맨 위에도 정정 안내를 한 줄 넣는다 (run7 방식).
 4. **flow.md 글 고치기** (그림은 아직):
    - "기준"의 근거 로그 범위, 2장 해당 절, 3장(다른 스레드), 4장 공백 목록·4.1 추측 표, 5장 근거 run 표.

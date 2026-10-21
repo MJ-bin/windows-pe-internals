@@ -44,6 +44,7 @@ LdrpCallInitRoutine	+0x41	+0x47	indirect:__guard_dispatch_icall_fptr
   - 실제 대상은 동적으로만 안다 (그 변수 값 또는 CALL 직전 `rax`).
 - callee 가 `alias:<이름>+N` = 대상 주소에 **PDB 이름이 N개 더 있다.** 링커가 내용이 같은 함수를 하나로 합친 것(ICF)일 때가 많다.
   - `<이름>` 은 Ghidra 가 고른 하나일 뿐이다. **문서에 그대로 쓰지 않는다.** `.asm` 에 `; ALIASES(N): …` 로 5개까지 보인다.
+  - 그 주소의 **이름 전부**는 별칭 표에서 본다: `python3 .claude/skills/ghidra-headless-export/scripts/pdb_aliases.py --lookup ntoskrnl.exe <이름 또는 0xRVA>` (표: `ms/sym/<바이너리>.aliases.tsv`). PDB 기준이라 Ghidra 의 N 과 한두 개 다를 수 있다 (Ghidra 는 내보내기 이름도 센다).
   - `Ordinal_<숫자>`(내보내기 번호 라벨), `$thunk$` 가 든 이름, `Nt<X>`↔`Zw<X>` 짝은 이름이 틀릴 걱정이 없어서 **세지 않는다.**
   - 예: `NtCreateUserProcess +0x3cb` 의 대상은 `xor eax,eax; ret` 3바이트인데 `?GetStoragePropertyPost@SC_DEVICE...` 로 찍혔었다 (sast/03).
 - `call_off`·`ret_off` 가 `frag:<FUN_이름>+0x..` = **함수에서 떨어져 나간 조각 안의 호출.** caller 칸은 본래 함수 이름이다.
