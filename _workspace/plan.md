@@ -66,3 +66,5 @@
 - 2026-10-19: Q1 끝 (run9, sast/03). 새 할 일 — 사용자: "제안대로" → Q32·Q33·Q34 맨 아래 추가, `PspCreateUserContext` 는 Q7 에, ThreadFlags·KeSuspendThread 동적 확인은 Q19 에 출처만 추가
 - 2026-10-19: 사용자 "F 먼저" → 하네스 묶음 F (sast/03 스크립트 문제 1~3) 사용자 검토 후 커밋: F-1 CFG `indirect:cfg:` `a7a7c92`, F-2 ICF `alias:` (Ordinal_/$thunk$/Nt·Zw 제외) `41bdb35`, F-3 조각 `frag:` `41b7428`. ntoskrnl·ntdll 재export 시험 통과. 그다음 Q2 시작 (sast/04)
 - 2026-10-19: Q2 끝 (run10, sast/04). 새 할 일 Q35(동적)·Q36(정적) 맨 아래 추가 (기존 항목과 겹침 없음). 그림 1 정적 상자 8개 (요청 5~7 보다 1개 많음, MmMapViewOfSectionEx 두 번 = 상자 둘이라 그대로 둠)
+- 2026-10-19: 사용자 "너무 빠르다" → 속도 규칙·해설 담당·별칭 표 제안. 사용자: 중복 이름은 추천대로, 해설에서 "스스로 확인 질문"은 뺌, 나머지 동의
+- 2026-10-21: 하네스 묶음 H (바퀴 사이 멈춤, 주제 하나씩) `e568e3d`, I (explainer·run-explainer, runN-키워드-해설.md) `a09703d`, J (pdb_aliases.py 별칭 표, P19) `bdedf48`. ms/sym/*.aliases.tsv 생성 (커밋 안 함). 다음: run9·run10 해설서 채워 넣기, Q3 는 사용자 "다음" 뒤
