@@ -7,7 +7,7 @@
 - 디버거: WinDbg 커널 디버깅 (KDNET)
 - 부모: `cmd.exe`에서 `test.exe` 실행
 - 근거 로그: `runs/01_sprint/` run3 ~ run8 (디버거)
-- 정적 근거: `runs/02_sprint/` run9 ~ run10 (Ghidra 디컴파일·디스어셈블, ntoskrnl pdb GUID 위와 같음)
+- 정적 근거: `runs/02_sprint/` run9 ~ run11 (Ghidra 디컴파일·디스어셈블, ntoskrnl pdb GUID 위와 같음)
 - 테스트 프로그램: `sample/` (`test.c`, `dll1.c`, `dll2.c`, `build.bat`)
   - 의존 관계: **`test.exe` → `dll1.dll` → `dll2.dll`**
     - `test.c`가 `Dll1Hello`를, `dll1.c`가 `Dll2Hello`를 import
@@ -51,8 +51,9 @@
   - **위아래 자리는 순서가 아니다.** 머메이드는 선이 덜 꼬이도록 같은 줄의 상자 자리를 바꾸고, 버전마다 결과도 다르다.
   - 시간 순서로 읽으려면: 맨 왼쪽에서 출발 → `(1)` 가지를 끝까지 따라감 → 돌아와서 `(2)` 가지 → `(3)` 가지.
 - **실선 화살표 = 호출(call).**
-  - 라벨 `+0x…` = **콜스택으로 직접 본 호출.** caller 안에서 그 call이 있는 자리(돌아올 주소의 오프셋)다.
-    - 단, 화살표 끝 상자가 **점선 테두리 + `(정적)`** 이면: 디스어셈블 코드에 있는 call 자리다 (돌아올 주소 기준으로 맞춤). 실행 때 정말 불렸는지는 아직 안 봤다.
+  - 라벨 `+0x…` = **콜스택으로 직접 본 호출.** 숫자는 caller 안에서 **돌아올 자리**(ret, call 바로 다음 명령)의 오프셋이다. WinDbg 콜스택에 `caller+0x…` 로 찍히는 값이 이것이다.
+    - call 명령 자체의 자리(call)는 이보다 몇 바이트 앞이다. 글에서 call 을 쓸 땐 "(call `+0x…`)" 처럼 따로 적는다.
+    - 단, 화살표 끝 상자가 **점선 테두리 + `(정적)`** 이면: 디스어셈블 코드에서 읽은 호출이다. 라벨은 똑같이 돌아올 자리(ret)다. 실행 때 정말 불렸는지는 아직 안 봤다.
     - `(정적)` 상자가 섞인 caller의 `(n)` 번호는 **코드 흐름 순서**다. 관찰한 상자끼리의 순서는 관찰 그대로다.
   - 라벨 **`?`** = **추측한 호출.** 콜스택으로 caller를 직접 보지 못했다. 사이에 다른 함수가 더 끼어 있을 수도 있다. → 4.1에서 추가 분석
 - **점선 화살표 = 돌아옴(return).** 다음 번호의 호출이 관찰돼서 앞 번호가 돌아온 게 확실한 곳에만 그렸다.
@@ -66,7 +67,7 @@
 - **점선 테두리** = 이름이나 실행이 확실하지 않은 것. **노란 메모** = 같은 무렵 다른 스레드에서 일어난 일.
 - `[dll1 추정]`처럼 대괄호 = 그 함수가 그때 맡은 모듈. "추정"이 붙으면 추측이다.
 
-### 그림 1 — 부모 cmd.exe 스레드 (run3, run9, run10)
+### 그림 1 — 부모 cmd.exe 스레드 (run3, run9, run10, run11)
 
 ```mermaid
 flowchart LR
@@ -95,8 +96,15 @@ flowchart LR
             s4["nt!PspCreateUserContext<br/>(정적: 갈림길 한쪽)"]
             s5["nt!PspMapThreadCreationFlags<br/>(정적)"]
             a4["nt!PspAllocateThread"]
+            u1["nt!ObCreateObjectEx<br/>(정적: 스레드 객체)"]
+            u2["nt!PsAssignThreadId<br/>(정적: 스레드 ID)"]
+            u3["nt!PspSetupUserStack<br/>(정적: 유저 스택, 갈림길 한쪽)"]
+            u4["nt!MmCreateTeb<br/>(정적: TEB)"]
+            u5["nt!KeInitThread<br/>(정적: 시작점 PspUserThreadStartup 주소를 받음)"]
             s6["nt!PsTestProtectedProcessIncompatibility<br/>(정적)"]
             a5["nt!PspInsertProcess"]
+            v1["nt!PspLockProcessListExclusive<br/>(정적: 목록 잠금, 잇기는 호출 없이 직접)"]
+            v2["nt!ObInsertObjectEx<br/>(정적: 객체 등록, 부모용 핸들 아님)"]
             a6["nt!PspInsertThread"]
             t1["nt!KeSuspendThread<br/>(정적: 플래그 bit0 일 때만)"]
             a7["nt!PspCallProcessNotifyRoutines"]
@@ -124,9 +132,16 @@ flowchart LR
     a1 -->|"(5) +0xd22"| s4
     a1 -->|"(6) +0xdd3"| s5
     a1 -->|"(7) +0xe5c"| a4
+    a4 -->|"(1) +0x2e7"| u1
+    a4 -->|"(2) +0x532"| u2
+    a4 -->|"(3) +0x5ef"| u3
+    a4 -->|"(4) +0x631"| u4
+    a4 -->|"(5) +0x6f9"| u5
     a4 -.-> a1
     a1 -->|"(8) +0xe94"| s6
     a1 -->|"(9) +0xfc2"| a5
+    a5 -->|"(1) +0xa6"| v1
+    a5 -->|"(2) +0x1e3"| v2
     a5 -.-> a1
     a1 -->|"(10) +0x101a"| a6
     a6 -->|"(1) +0x2e5"| t1
@@ -136,7 +151,7 @@ flowchart LR
     a1 -->|"(12) +0x1129"| s8
 
     class a0,a1,a2,a3,a4,a5,a6,a7 kern
-    class s1,s2,s3,s4,s5,s6,s7,s8,t1,t2,p1,p2,p3,p4,p5,p6,p7,p8 kerng
+    class s1,s2,s3,s4,s5,s6,s7,s8,t1,t2,p1,p2,p3,p4,p5,p6,p7,p8,u1,u2,u3,u4,u5,v1,v2 kerng
 ```
 
 ### 그림 2 — test.exe 메인 스레드 (run4 ~ run8)
@@ -330,7 +345,7 @@ flowchart LR
 
 ## 2. 단계별 설명
 
-### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9, run10)
+### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9, run10, run11)
 
 이 구간은 **test.exe가 아니라 부모 cmd.exe**가 일하는 시간이다.
 test.exe는 아직 "만들어지는 중"이라, 자기 코드는 한 줄도 안 돌았다.
@@ -353,8 +368,15 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
  ├─ (5)  +0xd22   PspCreateUserContext                  [정적]
  ├─ (6)  +0xdd3   PspMapThreadCreationFlags             [정적]
  ├─ (7)  +0xe5c   PspAllocateThread                     [관찰]+[정적]
+ │                 ├─ (1) +0x2e7  ObCreateObjectEx      [정적] 스레드 객체
+ │                 ├─ (2) +0x532  PsAssignThreadId      [정적] 스레드 ID
+ │                 ├─ (3) +0x5ef  PspSetupUserStack     [정적] 유저 스택 (갈림길 한쪽)
+ │                 ├─ (4) +0x631  MmCreateTeb           [정적] TEB
+ │                 └─ (5) +0x6f9  KeInitThread          [정적] 시작점 = PspUserThreadStartup 주소
  ├─ (8)  +0xe94   PsTestProtectedProcessIncompatibility [정적]
  ├─ (9)  +0xfc2   PspInsertProcess                      [관찰]+[정적]
+ │                 ├─ (1) +0xa6   PspLockProcessListExclusive  [정적] 목록 잠금 → 직접 잇기
+ │                 └─ (2) +0x1e3  ObInsertObjectEx      [정적] 객체 등록 (부모용 핸들 아님)
  ├─ (10) +0x101a  PspInsertThread                       [관찰]+[정적]
  │                 ├─ (1) +0x2e5  KeSuspendThread       [정적] 조건부 (2.2)
  │                 ├─ (2) +0x807  PspCallProcessNotifyRoutines  [관찰]+[정적]
@@ -371,6 +393,7 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
 - `[관찰]`+`[정적]` 관찰 4개(`+0xc36`, `+0xe5c`, `+0xfc2`, `+0x101a`)와 `PspInsertThread +0x807`은 디스어셈블 코드의 돌아올 자리와 **오프셋까지 같다**. 네 함수는 한 번씩만 불린다.
 - `[관찰]`+`[정적]` (run10) `PspAllocateProcess +0x2314` → `MmCreatePeb`도 코드와 오프셋까지 같다 (call `+0x230f`).
 - `[정적]` (run10) `PspAllocateProcess` 안에서 **주소 공간 → exe 올리기 → ntdll 올리기 → PEB** 순서다. 트리의 `PspAllocateProcess` 아래가 그 길이다.
+- `[정적]` (run11) `PspAllocateThread` 안에서 **스레드 객체 → 스레드 ID → 유저 스택 → TEB → `KeInitThread`** 순서다. `PspInsertProcess` 는 목록 잠금 사이에서 **호출 없이 직접** 새 프로세스를 목록에 잇는다.
 - 주의 `[정적]`: 오프셋 순서가 늘 실행 순서인 건 아니다. 에러 길·공통 정리 길이 코드 뒤쪽에 모여 있고, 서명 검사 재시도는 루프다. 위 트리 번호는 **성공 길로 보이는 코드 순서**이고, `(정적)` 줄은 실행을 아직 안 봤다.
 
 #### `nt!NtCreateUserProcess`
@@ -500,7 +523,47 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
 
 - `[관찰]` `NtCreateUserProcess+0xe5c`에서 불린다. **프로세스를 목록에 등록하기 전에** 불린다.
   - `[정적]` (run9) 코드도 같은 자리(call `+0xe57`).
-- `[추측]` 첫 스레드(메인 스레드)를 만든다. 아직 일은 시작하지 않는다.
+- `[정적]` (run11) 첫 스레드(메인 스레드)의 **커널 쪽 몸**을 만든다. 직접 호출은 장부(`_calls.tsv`)에 **34줄** + 장부 밖 10곳(디컴파일로 확인)이다. 대표 5개가 이 순서다:
+  1. `+0x2e7` `ObCreateObjectEx` — 스레드 객체(`_ETHREAD`) 만들기
+  2. `+0x532` `PsAssignThreadId` — 스레드 ID
+  3. `+0x5ef` `PspSetupUserStack` — 유저 스택
+  4. `+0x631` `MmCreateTeb` — TEB (아래)
+  5. `+0x6f9` `KeInitThread` — 커널 쪽 스레드 초기화 (아래)
+  - 이 함수를 부르는 곳은 `NtCreateUserProcess` 말고 `PspCreateThread`, `PspCreatePicoThread` 도 있다.
+- `[정적]` (run11) 3·4번(스택·TEB)은 **유저 스레드일 때만**이고, 그 안에서도 갈림길이 있다.
+  - 5번째 인자(유저 CONTEXT)가 0이면 시스템 스레드 길: 스택·TEB 를 건너뛴다.
+  - 11번째 인자(스택 정보)가 0이 아니면 보통 길: 위 순서대로 스택·TEB 를 새로 만든다.
+  - 0이면 함수 먼 쪽 덩어리로 가서 Pico 길, 또는 "지금 스레드를 본뜨는" 길 (스택·TEB 를 새로 안 만듦).
+  - `NtCreateUserProcess` 가 이 인자에 무엇을 주는지는 코드로 못 정했다 → 4장.
+  - 32비트(WOW64) 프로세스면 `PspWow64SetupUserStack`, `PspWow64InitThread` 가, CET 면 `PspSetupUserShadowStack` 이 더 불린다 (장부에 없음, 디컴파일로 확인). `[추측]` 64비트 test.exe 면 WOW64 쪽은 안 탄다.
+- `[정적]` (run11) **유저 쪽 시작 주소는 인자로 받은 CONTEXT 에서 옮겨 적는다.**
+  - `+0x640 ~ +0x647`: `_ETHREAD.StartAddress` ← `CONTEXT.Rip`
+  - `+0x64e ~ +0x655`: `_ETHREAD.Win32StartAddress` ← `CONTEXT.Rcx`
+  - 필드 이름은 PDB 타입으로 확인한 것이다 (sast/06 결과서).
+  - 그래서 2.3 의 `[관찰]` "Win32 Start Address = `test!mainCRTStartup`" 은 여기서 `CONTEXT.Rcx` 를 옮겨 적은 값이다. CONTEXT 를 누가 채웠는지는 이 함수 밖이다 (4장).
+- `[정적]` (run11) 성공해서 돌아갈 때까지 스레드 락(`+0x51c` 에서 잡음)을 푸는 호출이 이 함수 안에 없다. `[추측]` 호출자 쪽(`PspInsertThread`)에서 푼다.
+- `[정적]` (run11) 함수 몸통 일부가 멀리 떨어진 곳에 있다 (오프셋 `+0x2ca…` 줄들, 자주 안 가는 길 모음). 예외표(.pdata)로 같은 함수임을 확인했다.
+  - `[추측]` WinDbg 는 그 줄들을 `PspAllocateThread+0x2ca…` 가 아니라 다른 이름 + 큰 오프셋으로 보여 줄 수 있다 (그 구간에 공개 심볼이 없음). 그래서 그림 라벨로는 안 쓴다 → 4장.
+- `[추측]` 비유하면 새 직원 **책상 차리기**: 사원증(객체)·사번(ID)·작업 공간(스택)·개인 서랍(TEB)을 마련하고, "첫 출근하면 여기부터"라는 쪽지(`PspUserThreadStartup`)를 붙여 둔다. 아직 출근(실행)은 안 한다.
+
+#### `nt!MmCreateTeb` (정적)
+
+- `[정적]` (run11) `PspAllocateThread+0x631`(call `+0x62c`)에서 부른다. points.md `[확인 필요]` 이름이 **맞다** (`_index.tsv` 에 있음, rva `0x9318c4`). 지도에서 caller 는 이 하나뿐.
+- `[정적]` `PspSetupUserStack`(`+0x5ef`)이 성공했을 때만 이어진다 (`+0x5f8 JS` 로 실패면 정리로).
+- `[정적]` 받는 것: 프로세스, InitialTeb, 스레드의 Cid 자리, TEB 를 돌려받을 칸. 돌려받은 TEB 는 `KeInitThread` 로 넘어간다 (sast/06 결과서 요약).
+- `[공백]` 본문은 안 봤다. TEB 에 무엇을 쓰는지 모른다.
+- `[추측]` 스레드마다 하나씩 있는 유저 쪽 **개인 메모장**(TEB). PEB 가 프로세스 안내판이면 TEB 는 스레드 이름표.
+
+#### `nt!KeInitThread` (정적)
+
+- `[정적]` (run11) `PspAllocateThread+0x6f9`(call `+0x6f4`)에서 부른다.
+- `[정적]` 2번째 인자로 **시작 정보 묶음**(`rsp+0x120`)을 받는다. 그 `+0x8` 칸에 `PspUserThreadStartup` 주소가 들어 있다.
+  - `+0x681 LEA RAX,[0x140910de0]` (= `PspUserThreadStartup`) → `+0x688` 에서 `rsp+0x128` 에 저장 → `+0x6e9` `LEA RDX,[RSP+0x120]`.
+  - `PspAllocateThread` 안에서 `PspUserThreadStartup` 주소를 참조하는 곳은 이 두 줄뿐이다.
+  - 2.3 의 `[관찰]` "모든 새 스레드가 `PspUserThreadStartup` 에서 출발" 의 **정적 근거**다. 호출이 아니라 주소를 값으로 넘기는 거라 호출 지도에는 안 나온다.
+- `[정적]` 다른 칸: TEB(`MmCreateTeb` 결과), 유저 CONTEXT, 프로세스, `_ETHREAD.StartAddress`. 칸 이름(SystemRoutine, Teb 등)은 알려진 인자 순서에 맞춘 것이라 `[추측]`.
+- `[정적]` 시스템 스레드 길은 `PspSystemThreadStartup`(`+0x949`), 보안 프로세스 조건이면 `PspSecureThreadStartup`(`+0xb98`)을 넣는다 (둘 다 장부에 없음, 디컴파일로 확인). 그러니 "모두 `PspUserThreadStartup`" 은 **유저 스레드** 얘기다.
+- `[공백]` 본문은 안 봤다 (Q6·Q7). `[추측]` 커널 스택에 이 주소를 시작점으로 심어 둔다.
 
 #### `nt!PsTestProtectedProcessIncompatibility` (정적)
 
@@ -513,8 +576,20 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
   - `[정적]` (run9) 코드도 같은 자리(call `+0xfbd`).
 - `[정적]` (run9) 여기서 `PspInsertThread`까지 사이에 **호출이 하나도 없다.** 인자만 채우고 바로 넘어간다.
   - 이 함수가 실패를 돌려줘도 `PspInsertThread`를 **먼저 부르고**, 실패 검사는 그 뒤(`+0x1025`)에 한다.
-- `[추측]` 새 프로세스를 시스템 프로세스 목록에 올린다.
-  - 참고 `[관찰]`: 이 뒤의 시점(`PspCallProcessNotifyRoutines`)에서 `!process 0 0 test.exe`로 test.exe가 보였다.
+- `[정적]` (run11) 직접 호출 21줄. 실행 순서로: 감사 → 잡 상속 → 시스템 콜 제공자 상속 → **목록에 올리기** → 디버그 포트 → 객체 등록 → 끝맺음.
+  - 이 함수를 부르는 곳은 `NtCreateUserProcess` 말고 `PspCreateProcess`, `PsCreateMinimalProcess` 도 있다.
+- `[정적]` (run11) **새 프로세스를 시스템 프로세스 목록에 올린다.** (run10 까지 `[추측]` 이던 것)
+  - `+0xa6` `PspLockProcessListExclusive` (목록 잠금) → **호출 없이 직접** 잇기 → `+0x115` `PspUnlockProcessListExclusive` (풀기).
+  - 그 사이 (`+0xa6 ~ +0x109`): 목록 끝이 머리(`PsActiveProcessHead`)를 제대로 가리키는지 검사(틀리면 `+0xc5` 빠른 실패) → 새 프로세스의 `ActiveProcessLinks`(EPROCESS `+0x1d8`)를 맨 뒤에 잇기 → 전역 순번을 1 올려 EPROCESS `+0x678` 에 적기.
+  - `[관찰]` run3 + `[정적]` run11: 이 뒤의 시점(`PspCallProcessNotifyRoutines`, `PspInsertThread +0x807`)에서 `!process 0 0 test.exe`로 test.exe가 보였다. 코드 순서와 맞는다.
+- `[정적]` (run11) `+0x1e3` `ObInsertObjectEx` 는 **객체 등록**이다. 부모(cmd.exe)에게 줄 핸들을 만드는 호출이 아니다.
+  - 핸들을 돌려받는 인자 자리에 0을 넣는다 (`+0x1c1`, `+0x1ca`). 인자 이름은 확인 못 했다 `[추측]`.
+  - 부모용 프로세스 핸들은 `NtCreateUserProcess +0x10a7` `PspCreateObjectHandle` (run9). 같은 접근 상태 버퍼(`rbp+0x400`)를 쓰지만 다른 일이다.
+- `[정적]` (run11) 그 밖에 한 줄씩:
+  - 감사: 켜져 있으면 `SeAuditProcessCreation` (`+0x78`).
+  - 잡: 부모가 잡에 있으면 `PspImplicitAssignProcessToJob` (`+0xd9`) 로 새 프로세스도 같은 잡에. **목록 잠금 전**이다.
+  - 디버그 포트: `DbgkCopyProcessDebugPort` (`+0x143`) 로 부모의 디버그 포트를 새 프로세스에 복사.
+- `[추측]` 비유하면 새 가게를 **상가 명부에 올리기**. 명부를 잠그고 맨 끝 줄에 직접 적은 뒤 잠금을 푼다.
 
 #### `nt!PspInsertThread`
 
@@ -550,7 +625,8 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
 
 - `[정적]` (run9) points.md에 `[확인 필요]`로 적어 둔 `MiCreateImageFileMap`, `MmInitializeProcessAddressSpace`, `PspMapSystemDll`, `MmCreateTeb`는 이 빌드에 함수로 **있지만**, `NtCreateUserProcess`가 **직접 부르지는 않는다.**
 - (해결됨) `MmInitializeProcessAddressSpace` ← `PspAllocateProcess` `+0x2095`/`+0x2113`, `PspMapSystemDll` ← `PsMapSystemDlls` `+0xc0` → run10 `[정적]`
-- 남은 것: `MiCreateImageFileMap`, `MmCreateTeb`. `[추측]` 앞은 `MmCreateSpecialImageSection` 안쪽(대기열 Q33), 뒤는 `PspAllocateThread` 안쪽 (TEB 는 스레드마다 하나라서).
+- (해결됨) `MmCreateTeb` ← `PspAllocateThread` `+0x631` → run11 `[정적]`
+- 남은 것: `MiCreateImageFileMap`. `[추측]` `MmCreateSpecialImageSection` 안쪽(대기열 Q33).
 
 ---
 
@@ -606,6 +682,9 @@ ntdll!RtlUserThreadStart      ← 유저 스택 쪽에 보이는 자리
 - `[관찰]` test.exe의 **모든 새 스레드**(4개 전부)가 여기서 출발한다. 콜스택 모양도 4개 모두 같다.
 - `[관찰]` 메인 스레드의 시작 주소(Win32 Start Address)는 `test!mainCRTStartup` (RVA `0x1D40`, `dumpbin /headers`로 확인).
 - `[관찰]` 메인 스레드의 `_ETHREAD` 주소가 `_EPROCESS` 주소 바로 옆이었다 (`...943f4080` / `...943f5080`).
+- `[정적]` (run11) 이 함수가 시작점이 되는 곳: 부모 쪽 `PspAllocateThread +0x681` 에서 이 함수 주소를 꺼내 `KeInitThread`(`+0x6f9`)에 넘긴다 (2.1). 호출이 아니라 주소를 값으로 넘기는 것이다.
+  - 그래서 위 `[관찰]` "모두 여기서 출발" 과 코드가 맞는다. 단, 시스템 스레드 길은 `PspSystemThreadStartup` 을 넣는다 (유저 스레드만 여기).
+- `[정적]` (run11) Win32 Start Address(`test!mainCRTStartup`)는 `PspAllocateThread` 가 인자 CONTEXT 의 `Rcx` 를 `_ETHREAD.Win32StartAddress` 에 옮겨 적은 값이다 (`+0x64e ~ +0x655`). `CONTEXT.Rip` 는 `_ETHREAD.StartAddress` 로 간다.
 - `[추측]` 커널 쪽에서 스레드가 "출근 도장"을 찍고 유저 쪽으로 넘어갈 준비를 하는 곳.
 
 #### `[공백]` 커널 → 유저 전환
@@ -613,6 +692,7 @@ ntdll!RtlUserThreadStart      ← 유저 스택 쪽에 보이는 자리
 - `[관찰]` 이 스레드가 유저 쪽에서 처음 멈춘 곳은 `ntdll!LdrInitializeThunk`이고, **부른 함수가 없다** (콜스택에 자기 혼자).
 - `[관찰]` 그런데 커널 콜스택의 유저 쪽 자리에는 `ntdll!RtlUserThreadStart`가 보인다.
 - `[추측]` 커널이 유저의 첫 위치를 `LdrInitializeThunk`로 직접 정해 보내고, 로더 일이 끝나면 `RtlUserThreadStart`로 이어지는 구조.
+  - `[추측]` (run11) 첫 스레드의 `CONTEXT.Rip` → `_ETHREAD.StartAddress` 가 `RtlUserThreadStart` 쪽 값일 수 있다 (위 커널 콜스택 유저 자리에 보인 이름). 값은 아직 안 봤다 (4장).
 - 전환 방법 자체는 관찰하지 않았다.
 
 ---
@@ -836,6 +916,7 @@ LdrpInitializeProcess+0x1c99
 ### 2.10 `test.exe` — 진입점에서 `main`까지
 
 - `[관찰]` 메인 스레드의 시작 주소 = `test!mainCRTStartup`.
+  - `[정적]` (run11) 이 값은 커널 `PspAllocateThread` 가 첫 스레드 CONTEXT 의 `Rcx` 를 옮겨 적은 것이다 (2.1). `[추측]` 그래서 `mainCRTStartup` 주소는 `RtlUserThreadStart` 에 넘기는 첫 인자 자리(`rcx`)로 간다.
 - `[관찰]` (run7) `ExeTls` 다음, `main` 전에 **test.exe 안 코드**(`0x7ff70ee67723`)에서 `LoadLibraryExW`가 3번 불렸다.
 - `[추측]` 그 코드가 test.exe의 어느 함수인지(`mainCRTStartup` 쪽인지)는 이름으로 확인하지 않았다 (그림의 `?`).
 - `[관찰]` 그다음 `test!main`.
@@ -863,6 +944,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 - `[관찰]` (run8) import DLL 초기화가 시작될 무렵(BEFORE-GRAPH 직후) 유저 쪽에 도착한다.
 - `[관찰]` `LdrInitializeThunk`만 찍히고, **DllMain·TLS 콜백은 불리지 않았다.**
 - `[추측]` DLL 여러 개를 동시에 불러오기 위한 도우미. 스레드 시작 알림을 건너뛰도록 만들어진 것.
+- `[추측]` (run11) 이 스레드들과 `test!Worker` 는 커널 `PspCreateThread` → `PspAllocateThread` 길로 만들어질 것이다. `PspAllocateThread` 의 caller 에 `PspCreateThread` 가 있다 `[정적]`. 실제로 그 길인지는 안 봤다.
 
 ### `test!Worker` 스레드 (main 이후, 이번 범위 밖)
 
@@ -877,7 +959,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 |---|---|
 | 2.1 | (해결됨) `NtCreateUserProcess`가 직접 부르는 함수 목록 → run9 `[정적]` (83줄, 대표 12개) |
 | 2.1 | (일부 해결) points.md의 `MmInitializeProcessAddressSpace` ← `PspAllocateProcess +0x2095`/`+0x2113`, `PspMapSystemDll` ← `PsMapSystemDlls +0xc0` → run10 `[정적]` |
-| 2.1 | 남은 것: `MiCreateImageFileMap`, `MmCreateTeb`가 어느 함수 안에서 불리는지 (run9: `NtCreateUserProcess` 직접 호출은 아님) |
+| 2.1 | 남은 것: `MiCreateImageFileMap`이 어느 함수 안에서 불리는지 (run9: `NtCreateUserProcess` 직접 호출은 아님). (해결됨) `MmCreateTeb` ← `PspAllocateThread +0x631` → run11 `[정적]` |
 | 2.1 | (해결됨) `PspAllocateProcess`가 직접 부르는 함수, 주소 공간·exe·ntdll·PEB 순서 → run10 `[정적]` (144줄, (가)→(나)→(다)→(라)) |
 | 2.1 | `MmInitializeProcessAddressSpace`를 test.exe 때 `+0x2095`(보통 길)와 `+0x2113`(복제 길) 중 어디서 탔는지 — `[추측]` `+0x2095` |
 | 2.1 | `PspAllocateProcess`의 간접 호출 2곳 대상: `+0x121a`(전역 포인터 `nt+0xf04d28`), `+0x17c4`(전역 포인터 `nt+0xf04d20`) — 동적으로만 앎 |
@@ -886,9 +968,18 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.1 | `NtCreateUserProcess`의 간접 호출 2곳의 실제 대상: `+0x5b2`(전역 포인터 `nt+0xfd83d0`), `+0x11bb`(전역 포인터 `nt+0xf04d30`) — 동적으로만 앎 |
 | 2.1 | `PspMapThreadCreationFlags` 안쪽: `ThreadFlags` bit0 → 안쪽 플래그 bit0 그대로인지 (80바이트, 정적으로 싸게 볼 수 있음) |
 | 2.1 | `PspCreateUserContext` 안쪽: 첫 스레드의 유저 시작 위치를 정하는 곳인지 (91바이트, 2.3 공백과 이어질 수 있음 `[추측]`) |
+| 2.1 | (해결됨) `PspAllocateThread`가 직접 부르는 함수, 스레드 객체·ID·유저 스택·TEB·`KeInitThread` 순서 → run11 `[정적]` (34줄 + 장부 밖 10곳) |
+| 2.1 | (해결됨) `PspInsertProcess`가 프로세스를 목록에 올리는 방법 → run11 `[정적]` (잠금 `+0xa6` ~ 풀기 `+0x115` 사이 직접 코드) |
+| 2.1 | `PspAllocateThread`를 test.exe 첫 스레드 때 어느 길로 탔는지: 보통 길(11번째 인자 ≠ 0, 스택·TEB 새로) / Pico 길 / 본뜨기 길. `NtCreateUserProcess`가 주는 값이 `+0xadd`(`rbp+0x720`)·`+0xbb5`(0) 둘 중 무엇인지 정적으로 못 정함 |
+| 2.1 | `PspAllocateThread` 먼 덩어리(`+0x2ca…` 줄)가 WinDbg 에서 어떤 이름+오프셋으로 보이나 (그 구간에 공개 심볼 없음) — 동적으로만 앎 |
+| 2.1 | `PspAllocateThread`가 잡은 스레드 락(`+0x51c`)을 성공 길에서 누가 푸나. `[추측]` `PspInsertThread` (Q4) |
+| 2.1 | `MmCreateTeb` 본문: TEB 에 무엇을 쓰나 |
+| 2.1 | `PspInsertProcess +0x1e3` `ObInsertObjectEx` 인자 이름·하는 일 (핸들 안 돌려받는 모양까지만 봄) |
 | 2.2 | (일부 해결) `NtCreateUserProcess` 안엔 첫 스레드를 풀어 주는 호출이 없다, 멈춤 갈림길 = `PspInsertThread` call `+0x2e0` `KeSuspendThread` / 끝 call `+0x5a1` `KeReadyThread` → run9 `[정적]` |
 | 2.2 | 남은 것: `NtCreateUserProcess` 반환 후 부모 쪽 마무리, 첫 스레드를 **누가·언제** 풀어 주는지 (Q5), test.exe 때 `ThreadFlags` bit0 실제 값 |
 | 2.3 | 커널 → 유저 전환 방법 (`LdrInitializeThunk`로 오는 방법, `RtlUserThreadStart`와의 관계) |
+| 2.3 | 첫 스레드 CONTEXT 의 `Rip`·`Rcx`를 누가 어떤 값으로 채우나 (`PspAllocateThread`는 받아서 옮기기만 함, run11). 후보 `PspCreateUserContext` (`NtCreateUserProcess +0xd22`, Q7) `[추측]` |
+| 2.3 | `KeInitThread`가 `PspUserThreadStartup` 주소(시작 정보 묶음 `+0x8` 칸)를 어떻게 쓰나 (Q6·Q7) |
 | 2.5 | KERNELBASE·KERNEL32 시작 함수의 정확한 이름 |
 | 2.5 | kernel32·kernelbase가 메모리에 올라오는 순간 (`LdrpLoadDllInternal+0x284` 앞으로 추정) |
 | 2.5 | 커널이 프로세스를 만들 때 올리는 게 exe·ntdll "뿐"인지 (run10: 둘을 올리는 코드는 `[정적]`, 다른 매핑이 없다는 건 미확인. leap second·ApiSet·silo 뷰도 붙음) |
@@ -921,6 +1012,11 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 그림 1 nt | `PspAllocateProcess` → (4) `PspSetupUserProcessAddressSpace` | 코드의 call 자리 | `+0x239c`에서 PEB `+0x20`이 채워졌는지 |
 | 그림 1 nt (그림 밖) | `PspAllocateProcess` 갈림길: `PspWow64PickBestNtdll` `+0xffb`, `PspSetProcessAffinitySafe` `+0x2364`, `KeSecureProcess` `+0x27a0` | 코드상 조건부 | 각 자리에 멈춤. 64비트 test.exe 면 `+0xffb`는 안 타야 함 `[추측]` |
 | 그림 1 nt (그림 밖) | `PspAllocateProcess` 간접 호출 `+0x121a`, `+0x17c4` | 대상이 전역 포인터 | `[nt+0xf04d28]`, `[nt+0xf04d20]` 값을 `ln` |
+| 그림 1 nt | `PspAllocateThread` → (1)~(5) `ObCreateObjectEx` / `PsAssignThreadId` / `PspSetupUserStack` / `MmCreateTeb` / `KeInitThread` | 코드의 call 자리 (run11 `[정적]`). (3)(4)는 보통 길일 때만 | 입구에서 `poi(@rsp+0x58)`(11번째 인자) ≠ 0 인지. `+0x5ef`·`+0x631` 반환값, TEB 주소 |
+| 그림 1 nt | `PspAllocateThread` → (5) `KeInitThread` 에 넘기는 시작 정보 | `+0x681` LEA = `PspUserThreadStartup` (run11 `[정적]`) | `PspAllocateThread+0x6f4` 에서 `dqs @rdx l0n0xc` (`+0x8` 칸 = `PspUserThreadStartup`, `+0x28` 칸 = TEB) |
+| 그림 1 nt | `_ETHREAD.Win32StartAddress` ← `CONTEXT.Rcx` | `+0x64e ~ +0x655` (run11 `[정적]`) | 입구 `dt nt!_CONTEXT poi(@rsp+0x28) Rip Rcx`, `+0x6f9` 에서 `dt nt!_ETHREAD @rsi StartAddress Win32StartAddress` |
+| 그림 1 nt (그림 밖) | `PspAllocateThread` 먼 덩어리 (Pico·본뜨기 길) | 오프셋 `+0x2ca…` (run11 `[정적]`, .pdata 체인으로 같은 함수) | `nt+0xb0d315` 에 걸어서 안 걸리면 보통 길. `ln nt+0xb0d383`, `ln nt+0xb0d315` 로 표기 확인 |
+| 그림 1 nt | `PspInsertProcess` → (1) `PspLockProcessListExclusive` → 직접 잇기, (2) `ObInsertObjectEx` | 코드의 call 자리 (run11 `[정적]`) | `PspInsertProcess+0x115` 에서 `!process 0 0 test.exe`. `+0x1e3` 앞뒤로 부모 핸들 표(`!handle 0 3 <부모>`) 비교 |
 | 그림 2 (1) kernel32 준비 | `LdrpCallInitRoutine` → KERNELBASE·KERNEL32 시작 함수 | `rcx`가 기호 근처 (정확히 일치 아님) | 실제 진입 함수 이름과 콜스택 |
 | 그림 2 (1) kernel32 준비 | `LdrpInitializeNode` [KERNELBASE] / [KERNEL32] 대응 | 재귀 깊이가 다름 | `LdrpInitializeNode`에서 긴 `k` + 시작 함수 이름 |
 | 그림 2 (2) · (3) | `LdrpCallInitRoutine` → `ImageTlsCallbackCaller` | `rcx` 정확히 일치 | `ImageTlsCallbackCaller`에서 `k` |
@@ -947,6 +1043,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run8 | DLL 주소 확정, `LdrpCallInitRoutine`의 대상 이름 확인 |
 | run9 | (정적) `NtCreateUserProcess` 직접 호출 83줄, 관찰 4개 오프셋 일치, `PspInsertThread`의 멈춤 갈림길 |
 | run10 | (정적) `PspAllocateProcess` 직접 호출 144줄, 주소 공간 → exe → ntdll → PEB 순서, `+0x2314` 오프셋 일치, `MmCreatePeb`가 쓰는 PEB 오프셋 |
+| run11 | (정적) `PspAllocateThread` 직접 호출 34줄 + 장부 밖 10곳, 스레드 객체 → ID → 유저 스택 → TEB(`MmCreateTeb`) → `KeInitThread` 순서, `PspUserThreadStartup` 주소를 시작점으로 넘김, Win32StartAddress ← `CONTEXT.Rcx`. `PspInsertProcess`가 목록에 직접 잇기 |
 | `sample/` 소스 | 의존 관계, 모듈별 TLS 콜백, `/MT` 빌드 |
 
 - run3 ~ run5는 타깃에서 빌드한 test.exe, run6 ~ run8은 디버거 VM에서 빌드해 옮긴 test.exe (같은 소스).
@@ -958,3 +1055,4 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 |---|---|---|---|
 | run9 | `_workspace/sast/03_create-user-process` | 없음 | 정적만 (대기열 Q1) |
 | run10 | `_workspace/sast/04_allocate-process` | 없음 | 정적만 (대기열 Q2) |
+| run11 | `_workspace/sast/06_allocate-thread` | 없음 | 정적만 (대기열 Q3). sast/05 는 run 없는 도구 실험 (Q37) |
