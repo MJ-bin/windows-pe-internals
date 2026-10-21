@@ -1,7 +1,7 @@
 # 분석 진행표
 
-- 마지막 갱신: 2026-10-19 (run10 뒤)
-- 다음 항목: Q3
+- 마지막 갱신: 2026-10-21 (run11 뒤)
+- 다음 항목: Q4
 - 근거: `runs/01_sprint/flow.md` 그림 1·2, 2장, 4장·4.1 표
 
 ## 대기열 (위에서부터 처리, 새 항목은 맨 아래에)
@@ -10,11 +10,11 @@
 |---|---|---|---|---|---|
 | Q1 | 2.1 `nt!NtCreateUserProcess` callee (depth 1) | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 끝 (run9) |
 | Q2 | 2.1 `nt!PspAllocateProcess`, `nt!MmCreatePeb` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 끝 (run10) |
-| Q3 | 2.1 `nt!PspAllocateThread`, `nt!PspInsertProcess` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 대기 |
-| Q4 | 2.1 `nt!PspInsertThread`, `nt!PspCallProcessNotifyRoutines` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 대기 |
+| Q3 | 2.1 `nt!PspAllocateThread`, `nt!PspInsertProcess` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 끝 (run11) |
+| Q4 | 2.1 `nt!PspInsertThread`, `nt!PspCallProcessNotifyRoutines` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 1); sast/06 결과 (`PspAllocateThread` 가 잡은 스레드 락을 풀지 않음 → `PspInsertThread` 에서 푸는지) | 대기 |
 | Q5 | 2.2 첫 스레드를 풀어 주는 함수 (nt 쪽 이름, `_index.tsv`로 확인) + 부모 쪽에서 그걸 부르는 곳 (`KERNELBASE!CreateProcessInternalW` 등, 이름 확인 필요) | 1 | 정적 (ntoskrnl, kernelbase) | 처음 (4장 2.2) | 대기 |
 | Q6 | 2.3 `nt!KiStartUserThread`, `nt!PspUserThreadStartup` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 2); ntoskrnl analyze (2026-10-19): `_index.tsv` 에 `KiStartUserThread` 없음, `KxStartUserThread` 있음 (PDB엔 `KiStartUserThread`·`KiStartUserThreadReturn` 이름 있음) → 이름 대응 확인 | 대기 |
-| Q7 | 2.3 유저 첫 위치가 `ntdll!LdrInitializeThunk`로 정해지는 곳, `RtlUserThreadStart`와의 관계 | 1 | 정적 (ntoskrnl) | 처음 (4장 2.3); sast/03 결과 (`PspCreateUserContext` 91바이트 — `NtCreateUserProcess +0xd22` 에서 부름, 첫 스레드 유저 시작 문맥 후보) | 대기 |
+| Q7 | 2.3 유저 첫 위치가 `ntdll!LdrInitializeThunk`로 정해지는 곳, `RtlUserThreadStart`와의 관계 | 1 | 정적 (ntoskrnl) | 처음 (4장 2.3); sast/03 결과 (`PspCreateUserContext` 91바이트 — `NtCreateUserProcess +0xd22` 에서 부름, 첫 스레드 유저 시작 문맥 후보); sast/06 결과 (`PspAllocateThread` 는 CONTEXT.Rip→StartAddress, Rcx→Win32StartAddress 로 옮겨 적기만 함, `PspUserThreadStartup` 주소는 `+0x681` 에서 `KeInitThread` 로 → CONTEXT 를 누가 채우나) | 대기 |
 | Q8 | 2.4 `ntdll!LdrInitializeThunk`, `LdrpInitializeInternal`, `LdrpInitialize` callee | 2 | 정적 (ntdll) | 처음 (그림 2); sast/02 결과 (`+0x16c` 의 caller 이름이 `_LdrpInitialize`, `LdrpInitialize` 는 꼬리호출(JMP)로 `LdrpInitializeInternal` 에 넘김 → flow.md 2.4 이름 정정 필요) | 대기 |
 | Q9 | 2.4 `ntdll!LdrpInitializeProcess` callee (크면 그 자리에서 Q9a/Q9b로 나눔) | 2 | 정적 (ntdll) | 처음 (그림 2) | 대기 |
 | Q10 | 2.5 `LdrpInitializeKernel32Functions`, `LdrLoadDll`, `LdrpLoadDll` callee | 2 | 정적 (ntdll) | 처음 (그림 2) | 대기 |
@@ -45,6 +45,7 @@
 | Q35 | 2.1 `PspAllocateProcess` 실행 길: `MmInitializeProcessAddressSpace` `+0x2095`(보통) vs `+0x2113`(복제) 중 탄 쪽, 간접 호출 2곳(`+0x121a` @0xf04d28, `+0x17c4` @0xf04d20) 대상, `PspWow64PickBestNtdll` `+0xffb` 타는지, `+0x2314`·`+0x239c` 에서 새 PEB `+0x10`·`+0x20` 값 | 3 | 동적 | sast/04 동적 확인 | 대기 |
 | Q36 | 2.1 `nt!PspCopyAndFixupParameters`(PEB `+0x20` 프로세스 매개변수를 누가 쓰나), `nt!PspPrepareSystemDllInitBlock`(ntdll 로 넘기는 시작 정보) | 1 | 정적 (ntoskrnl) | sast/04 결과 (다음 정적 후보) | 대기 |
 | Q37 | 지도 크기 재기 (실험): 정적 호출 관계를 뿌리에서 끝까지 따라가 깊이별 함수 수를 재고, 끊기는 노드에 끊긴 이유를 적는다. 뿌리 = 커널 `nt!NtCreateUserProcess`, 유저 `ntdll!LdrInitializeThunk` | - | 정적 (ntoskrnl, ntdll) | 사용자 제안 (2026-10-21) | 끝 (run 없음, 도구 실험 — 결과서 sast/05) — 사용자 결정으로 Q3 앞에서 처리 |
+| Q38 | 2.1 `PspAllocateThread`·`PspInsertProcess` 실행 길: 입구 11번째 인자(`poi(@rsp+0x58)`) 가 0인지(보통 길), `+0x6f4` 에서 `KeInitThread` 시작 정보(`dqs @rdx`), 먼 덩어리(`nt+0xb0d315`) 를 WinDbg 가 무슨 이름으로 보이나(`ln`), `PspInsertProcess+0x115` 에서 test.exe 가 목록에 보이나, `CONTEXT.Rip/Rcx` ↔ `_ETHREAD.StartAddress/Win32StartAddress` 비교, `PspInsertProcess+0x1e3` 앞뒤 핸들 표, `PspSetupUserStack`·`MmCreateTeb` 반환값과 TEB 주소 | 3 | 동적 | sast/06 동적 확인, run11 4.1 | 대기 |
 
 상태: `대기` / `진행 중` / `끝 (runN)` / `합침 → Qn` / `보류 (사용자 결정, 날짜)`
 
@@ -73,3 +74,5 @@
 - 2026-10-21: 사용자 질문 "정적 전체 지도를 먼저 뽑는 게 빠를까?" → 비교 설명 후 사용자 결정: Q3 전에 지도 크기 재기 실험 (Q37). 뿌리 nt!NtCreateUserProcess / ntdll!LdrInitializeThunk, 끊기는 노드엔 이유. 도구는 하네스 밖 실험용 스크립트 (쓸 만하면 그때 하네스 검토)
 - 2026-10-21: Q37 끝 (sast/05). 결론 — 정적 전체 지도는 커널 끝까지 11688개라 읽을 목록으론 못 씀, 흐름도 함수는 커널 깊이 5·ntdll 깊이 7 안쪽, 공용 도구(caller≥20)로 잘린 흐름도 함수 없음. 사용자: "지도는 색인, 분석은 지금처럼" → 하네스 묶음 L (CallGraphMap.java + run_ghidra.sh map) 검토 OK, 시험 통과
 - 하네스 후보 (나중에 검토): CallGraphMap/ExportFunctions 의 `cfgSource()` 가 외부 주소 참조를 `@0xfffffffe…` 로 찍음 (커널 2곳, ntdll 7곳)
+- 2026-10-21: 하네스 묶음 L 커밋 `6159550` (CallGraphMap.java, run_ghidra.sh map, 지도 = 색인)
+- 2026-10-21: Q3 끝 (run11, sast/06). Q38(동적) 맨 아래 추가, Q4·Q7 에 출처 추가. sast/06 이 찾은 스크립트 구멍(함수에 안 속한 코드 덩어리 안 호출이 _calls.tsv·지도에서 빠짐) 은 바퀴 끝난 뒤 사용자에게 따로 제안
