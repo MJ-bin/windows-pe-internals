@@ -7,7 +7,7 @@
 - 디버거: WinDbg 커널 디버깅 (KDNET)
 - 부모: `cmd.exe`에서 `test.exe` 실행
 - 근거 로그: `runs/01_sprint/` run3 ~ run8 (디버거)
-- 정적 근거: `runs/02_sprint/` run9 ~ run12 (Ghidra 디컴파일·디스어셈블, ntoskrnl pdb GUID 위와 같음)
+- 정적 근거: `runs/02_sprint/` run9 ~ run13 (Ghidra 디컴파일·디스어셈블, ntoskrnl pdb GUID 위와 같음)
 - 테스트 프로그램: `sample/` (`test.c`, `dll1.c`, `dll2.c`, `build.bat`)
   - 의존 관계: **`test.exe` → `dll1.dll` → `dll2.dll`**
     - `test.c`가 `Dll1Hello`를, `dll1.c`가 `Dll2Hello`를 import
@@ -38,10 +38,11 @@
 - 그림 1: 부모 cmd.exe 스레드 — 커널이 test.exe를 만드는 과정
 - 그림 2: test.exe 메인 스레드 — 커널에서 출발 → ntdll 로더 → `main`
 
-두 그림 사이(부모 쪽 마무리 ~ 첫 스레드 출발)는 아직 **공백**이 남아 있다 (2.2).
+두 그림 사이(부모 쪽 마무리 ~ 첫 스레드 출발)는 **nt 쪽만 코드로 채웠다** (2.2).
 - `NtCreateUserProcess` 안쪽은 코드로 봤다 (run9 `[정적]`): 거기엔 첫 스레드를 **풀어 주는 호출이 없다**.
-- `PspInsertThread` 는 멈춤 여부와 상관없이 끝에서 `KeReadyThread` 를 부른다 (run12 `[정적]`). 멈춰 둔 스레드라면 "멈춤 표시를 한 채로 줄에 세운" 모양이다.
-- 누가, 언제 풀어 주는지는 아직 모른다.
+- `PspInsertThread` 는 멈춤 여부와 상관없이 끝에서 `KeReadyThread` 를 부른다 (run12 `[정적]`).
+- 멈춰 두기 = 멈춤 APC 걸기 + `SuspendEvent` 내리기, 풀어 주기 = `NtResumeThread` → … → `KiResumeThread` (run13 `[정적]`). 그림 1 의 `(2) 풀어 주기` 상자와 그림 2 의 APC 갈래가 이것이다.
+- 부모(cmd.exe) 유저 쪽이 **정말 `NtResumeThread` 를 부르는지**, 언제 부르는지는 아직 모른다 (Q5b).
 
 > 왜 2장인가: 서로 화살표로 이어지지 않은 덩어리는 머메이드가 위아래 순서를 마음대로 정한다 (실험해보니 ③ → ② → ① 거꾸로 나왔다). 두 스레드 사이엔 호출 관계가 없어서 화살표로 이을 수 없으니, 그림을 나누고 **문서 순서로 시간 순서**를 보인다.
 
@@ -58,27 +59,34 @@
     - `(정적)` 상자가 섞인 caller의 `(n)` 번호는 **코드 흐름 순서**다. 관찰한 상자끼리의 순서는 관찰 그대로다.
   - 라벨 **`?`** = **추측한 호출.** 콜스택으로 caller를 직접 보지 못했다. 사이에 다른 함수가 더 끼어 있을 수도 있다. → 4.1에서 추가 분석
 - **점선 화살표 = 돌아옴(return).** 다음 번호의 호출이 관찰돼서 앞 번호가 돌아온 게 확실한 곳에만 그렸다.
-- **굵은 화살표 = 호출이 아니라 실행이 넘어감** (커널 → 유저 전환처럼).
+- **굵은 화살표 = 호출이 아니라 실행이 넘어감** (커널 → 유저 전환, 유저 → 커널 시스템 콜, 인터럽트처럼). 한 상자에서 여러 개 나가면 `(1)` `(2)` 가 시간 순서다.
 - **상자 = 묶음.**
   - 가장 큰 상자 = 스레드
   - 그 안의 상자 = 모듈 (`nt`, `ntdll`, `KERNELBASE`, `KERNEL32`, `dll2`, `dll1`, `test.exe`)
   - `ntdll` 상자 안의 상자 = `LdrpInitializeProcess`가 차례로 하는 일 `(1)` `(2)` `(3)`, 그리고 로더가 끝난 뒤
+  - `nt` 상자 안의 상자 = 같은 스레드에서 따로 일어나는 단계 (그림 1 `(2) 풀어 주기` = 나중의 다른 시스템 콜, 그림 2 `(1) 멈춤 APC 처리` = 멈춰 둔 스레드일 때만)
   - `ntdll` 상자가 크게 자리를 차지해서, 다른 모듈 상자는 오른쪽에 모여 그려진다. **오른쪽 모듈 상자의 위치는 호출 깊이와 상관없다.**
 - **함수 상자 색 = 모듈.** 분홍 `nt` · 파랑 `ntdll` · 초록 `KERNELBASE`/`KERNEL32` · 보라 `dll2` · 노랑 `dll1` · 청록 `test.exe`
   - 회색 = **모듈을 모르는 함수.** 함수 포인터로 부르는 간접 호출이라 대상이 실행 때 정해진다. 상자 글은 "어디서 주소를 꺼내나" 이지 함수 이름이 아니다.
 - **점선 테두리** = 이름이나 실행이 확실하지 않은 것. **노란 메모** = 같은 무렵 다른 스레드에서 일어난 일.
 - `[dll1 추정]`처럼 대괄호 = 그 함수가 그때 맡은 모듈. "추정"이 붙으면 추측이다.
 
-### 그림 1 — 부모 cmd.exe 스레드 (run3, run9, run10, run11, run12)
+### 그림 1 — 부모 cmd.exe 스레드 (run3, run9, run10, run11, run12, run13)
 
 ```mermaid
 flowchart LR
     classDef kern fill:#fde2e4,stroke:#c0606a,color:#3a1d20
     classDef kerng fill:#fde2e4,stroke:#c0606a,color:#3a1d20,stroke-dasharray:4 3
     classDef unkg fill:#eeeeee,stroke:#888888,color:#333333,stroke-dasharray:4 3
+    classDef k32g fill:#e6f4ea,stroke:#4f9a64,color:#1b3523,stroke-dasharray:4 3
+    classDef side fill:#fffbe6,stroke:#c9a400,color:#555
 
     subgraph T1["① 부모 cmd.exe 스레드"]
         direction LR
+        subgraph T1KB["KERNELBASE (추정)"]
+            direction LR
+            ub["부모 유저 쪽 CreateProcess 계열<br/>[KERNELBASE 추정] (이름 확인 필요, Q5b)"]:::k32g
+        end
         subgraph T1NT["nt (커널)"]
             direction LR
             a0["nt!KiSystemServiceCopyEnd<br/>(시스템 콜 진입)"]
@@ -111,11 +119,24 @@ flowchart LR
             a6["nt!PspInsertThread"]
             t0["nt!KeStartThread<br/>(정적: 흐름상 제일 먼저)"]
             t1["nt!KeSuspendThread<br/>(정적: flags bit0 일 때만)"]
+            y1["nt!KiSuspendThread<br/>(정적: SuspendEvent 를 0 으로)"]
+            y2["nt!KiInsertQueueApc<br/>(정적: 멈춤 APC 걸기)"]
+            y3["nt!KiSignalThreadForApc<br/>(정적: KernelApcPending 켜기)"]
             a7["nt!PspCallProcessNotifyRoutines"]
             t3["nt!PspCallThreadNotifyRoutines<br/>(정적: 모든 스레드)"]
             t2["nt!KeReadyThread<br/>(정적: 멈춘 스레드도)"]
             s7["nt!PspCreateObjectHandle<br/>(정적: 프로세스 핸들)"]
             s8["nt!PspUpdateCreateInfo<br/>(정적: 성공 길 끝)"]
+            subgraph T1NTR["(2) 풀어 주기 — 나중에 따로 들어오는 시스템 콜"]
+                direction LR
+                r0a["nt!KiSystemServiceCopyEnd<br/>(시스템 콜 진입, 이번 호출은 추측)"]
+                r0["nt!NtResumeThread<br/>(정적: 부모가 부르는지는 Q5b)"]
+                r1["nt!PsMultiResumeThread<br/>(정적)"]
+                r2["nt!KeResumeThread<br/>(정적: 멈춤 횟수 -1)"]
+                r3["nt!KiResumeThread<br/>(정적: 횟수 0 일 때만, SuspendEvent 를 1 로)"]
+                r4["nt!KiTryUnwaitThread<br/>(정적: 기다리던 스레드 깨우기)"]
+                wz["같은 무렵 test.exe 첫 스레드:<br/>KiSchedulerApc 에서 SuspendEvent 를 기다리는 중 (추측)"]:::side
+            end
         end
         subgraph T1CB["모듈 모름 — 알림 받는 쪽 (간접 호출, 대상은 실행 때)"]
             direction LR
@@ -126,6 +147,7 @@ flowchart LR
         end
     end
 
+    ub ==>|"(1) 시스템 콜 (유저 쪽은 추측)"| a0
     a0 -->|+0x28| a1
     a1 -->|"(1) +0x29a"| s1
     a1 -->|"(2) +0x6cb"| s2
@@ -158,6 +180,9 @@ flowchart LR
     a1 -->|"(10) +0x101a"| a6
     a6 -->|"(1) +0x5e2"| t0
     a6 -->|"(2) +0x2e5"| t1
+    t1 -->|+0x6b| y1
+    y1 -->|"(1) +0x88"| y2
+    y1 -->|"(2) +0x1fb"| y3
     a6 -->|"(3) +0x807"| a7
     a7 -->|"(1) +0x152"| cb1
     a7 -->|"(2) +0x321"| cb2
@@ -168,18 +193,28 @@ flowchart LR
     a1 -->|"(11) +0x10a7"| s7
     a1 -->|"(12) +0x1129"| s8
 
+    %% (2) 풀어 주기 — NtCreateUserProcess 가 돌아간 뒤
+    ub ==>|"(2) 나중 시스템 콜 (추측, Q5b)"| r0a
+    r0a -->|"?"| r0
+    r0 -->|+0x9b| r1
+    r1 -->|+0x25| r2
+    r2 -->|+0x87| r3
+    r3 -->|+0xab| r4
+    r4 -.- wz
+
     class a0,a1,a2,a3,a4,a5,a6,a7 kern
-    class s1,s2,s3,s4,s5,s6,s7,s8,t0,t1,t2,t3,p1,p2,p3,p4,p5,p6,p7,p8,u1,u2,u3,u4,u5,v1,v2 kerng
+    class s1,s2,s3,s4,s5,s6,s7,s8,t0,t1,t2,t3,p1,p2,p3,p4,p5,p6,p7,p8,u1,u2,u3,u4,u5,v1,v2,y1,y2,y3,r0a,r0,r1,r2,r3,r4 kerng
     class cb1,cb2,cb3,cb4 unkg
 ```
 
-### 그림 2 — test.exe 메인 스레드 (run4 ~ run8)
+### 그림 2 — test.exe 메인 스레드 (run4 ~ run8, run13)
 
 ```mermaid
 flowchart LR
     classDef default fill:#e3eefc,stroke:#5b7fbf,color:#1d2b45
     classDef ntg fill:#e3eefc,stroke:#5b7fbf,color:#1d2b45,stroke-dasharray:4 3
     classDef kern fill:#fde2e4,stroke:#c0606a,color:#3a1d20
+    classDef kerng fill:#fde2e4,stroke:#c0606a,color:#3a1d20,stroke-dasharray:4 3
     classDef k32 fill:#e6f4ea,stroke:#4f9a64,color:#1b3523
     classDef k32g fill:#e6f4ea,stroke:#4f9a64,color:#1b3523,stroke-dasharray:4 3
     classDef dll2 fill:#efe6fb,stroke:#8a63c7,color:#2b1d45
@@ -196,6 +231,14 @@ flowchart LR
             direction LR
             b1["nt!KiStartUserThread"]
             b2["nt!PspUserThreadStartup"]
+            subgraph T2NTA["(1) 멈춤 APC 처리 — 멈춰 둔 스레드일 때만 (추측 연결)"]
+                direction LR
+                h0["nt!KiApcInterrupt 추정<br/>(장부: 조각 FUN_1406b2db3)"]:::kerng
+                h1["nt!KiDeliverApc<br/>(정적)"]:::kerng
+                h2["nt!KiSchedulerApc<br/>(정적)"]:::kerng
+                h3["nt!KeWaitForSingleObject<br/>(정적: SuspendEvent 기다림, 이유 Suspended)"]:::kerng
+                w0["같은 무렵 부모 cmd.exe 스레드:<br/>NtResumeThread → … → KiTryUnwaitThread 로 깨움<br/>(추측, Q5b)"]:::side
+            end
         end
 
         subgraph T2DLL["ntdll"]
@@ -287,7 +330,12 @@ flowchart LR
 
     %% 커널 → 유저
     b1 -->|+0x28| b2
-    b2 ==>|"커널 → 유저 전환 (공백)"| c1
+    b2 ==>|"(1) APC 인터럽트 (추측: +0x22 IRQL 내림 직후)"| h0
+    h0 -->|"?"| h1
+    h1 -->|+0x220| h2
+    h2 -->|+0xf7| h3
+    h3 -.- w0
+    b2 ==>|"(2) 커널 → 유저 전환 (공백)"| c1
 
     %% 로더 시작
     c1 -->|"(1) +0xe"| c2
@@ -364,7 +412,7 @@ flowchart LR
 
 ## 2. 단계별 설명
 
-### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9, run10, run11, run12)
+### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9, run10, run11, run12, run13)
 
 이 구간은 **test.exe가 아니라 부모 cmd.exe**가 일하는 시간이다.
 test.exe는 아직 "만들어지는 중"이라, 자기 코드는 한 줄도 안 돌았다.
@@ -399,6 +447,9 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
  ├─ (10) +0x101a  PspInsertThread                       [관찰]+[정적]   (아래 번호 = 흐름 순서)
  │                 ├─ (1) +0x5e2  KeStartThread         [정적] 제일 먼저 (2.2)
  │                 ├─ (2) +0x2e5  KeSuspendThread       [정적] flags bit0 일 때만 (2.2)
+ │                 │     └─ +0x6b  KiSuspendThread      [정적] (run13)
+ │                 │          ├─ (1) +0x88   KiInsertQueueApc      [정적] 멈춤 APC 걸기
+ │                 │          └─ (2) +0x1fb  KiSignalThreadForApc  [정적]
  │                 │     (+0x3ea ObInsertObjectEx 객체 등록 → +0x499 스레드 락 풀기)
  │                 ├─ (3) +0x807  PspCallProcessNotifyRoutines  [관찰]+[정적] 첫 스레드만
  │                 │               ├─ (1) +0x152  (간접·대상 모름) 등록 목록, Ex 형식   ┐ 칸마다
@@ -594,7 +645,12 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
   - 2.3 의 `[관찰]` "모든 새 스레드가 `PspUserThreadStartup` 에서 출발" 의 **정적 근거**다. 호출이 아니라 주소를 값으로 넘기는 거라 호출 지도에는 안 나온다.
 - `[정적]` 다른 칸: TEB(`MmCreateTeb` 결과), 유저 CONTEXT, 프로세스, `_ETHREAD.StartAddress`. 칸 이름(SystemRoutine, Teb 등)은 알려진 인자 순서에 맞춘 것이라 `[추측]`.
 - `[정적]` 시스템 스레드 길은 `PspSystemThreadStartup`(`+0x949`), 보안 프로세스 조건이면 `PspSecureThreadStartup`(`+0xb98`)을 넣는다 (둘 다 장부에 없음, 디컴파일로 확인). 그러니 "모두 `PspUserThreadStartup`" 은 **유저 스레드** 얘기다.
-- `[공백]` 본문은 안 봤다 (Q6·Q7). `[추측]` 커널 스택에 이 주소를 시작점으로 심어 둔다.
+- `[정적]` (run13) 본문 일부를 봤다. 멈춤에 쓰는 두 가지를 **스레드가 만들어질 때 미리** 준비한다 (2.2).
+  - `+0x152` (ret `+0x157`) `KeInitializeApc`: 스레드 안의 `SchedulerApc`(`스레드+0x288`) — NormalRoutine = `KiSchedulerApc`, 커널 모드.
+  - `+0x163` (ret `+0x168`) `KeInitializeEvent`: `SuspendEvent`(`스레드+0x2e0`) 를 **신호 상태(1)** 로.
+  - `+0xed` `BTS EAX,0xe`: `ApcQueueable`(`+0x74` bit 14) 을 기본으로 켠다.
+- `[정적]` (run13) `+0x301` 에서 `KiInitializeContextThread` 를 부르고, 그 안 `+0x1e1` `LEA` 가 첫 커널 스택 자리에 **`KiStartUserThread`** 주소를 넣는다 (2.3).
+- `[추측]` 시작 정보 묶음 `+0x8` 칸(`PspUserThreadStartup`)이 `KiInitializeContextThread` 를 거쳐 첫 스택에 들어가 `KiStartUserThread` 가 부르는 값이 된다. 사이 전달은 한 줄씩 안 따라갔다 (Q6·Q7).
 
 #### `nt!PsTestProtectedProcessIncompatibility` (정적)
 
@@ -696,39 +752,108 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
 
 ---
 
-### 2.2 부모 쪽 마무리 ~ 첫 스레드 출발 (`[정적]` 일부, 나머지 `[공백]`)
+### 2.2 부모 쪽 마무리 ~ 첫 스레드 출발 (nt 쪽 `[정적]`, 부모 유저 쪽 `[공백]`)
 
 여기서 알고 싶은 건 두 가지다.
 
-- `NtCreateUserProcess`가 돌아간 뒤 cmd.exe(유저 쪽)가 무엇을 더 하는지 → `[공백]`
-- 멈춰 있던 test.exe 첫 스레드가 언제·어떻게 풀려서 돌기 시작하는지 → 커널 코드 쪽만 일부 봤다 (run9, run12)
+- `NtCreateUserProcess`가 돌아간 뒤 cmd.exe(유저 쪽)가 무엇을 더 하는지 → `[공백]` (Q5b)
+- 멈춰 있던 test.exe 첫 스레드가 언제·어떻게 풀려서 돌기 시작하는지 → **nt 쪽 장치는 코드로 봤다** (run9, run12, run13). 마지막 연결 하나는 `[추측]`.
+
+먼저 비유로 큰 그림:
+
+- **멈춰 두기** = 새 직원 책상에 "출근하면 이것부터" 쪽지(멈춤 APC)를 붙이고, 문 앞 신호등(`SuspendEvent`)을 빨간불로 바꿔 두기.
+- 직원은 대기 줄에는 **그대로 선다** (`KeReadyThread`). 출근(첫 실행)하자마자 쪽지를 읽고, 빨간불이면 그 앞에서 기다린다.
+- **풀어 주기** = 부모가 신호등을 초록불로 바꾸고, 기다리던 직원 어깨를 두드려 깨우기.
 
 ```
+(부모 cmd.exe 스레드) 멈춰 두기
 ThreadFlags (NtCreateUserProcess 8번째 인자, bit0 만 허용)
  └─ NtCreateUserProcess +0xdd3  PspMapThreadCreationFlags   → flags (bit0 → bit0 그대로, run12)
      │  +0xdfd  flags |= 0x60 (무조건)
      └─ NtCreateUserProcess +0x101a  PspInsertThread (flags = 4번째 인자가 가리키는 값)
           ├─ (1) +0x5e2  KeStartThread   (늘, 제일 먼저, call +0x5dd)
-          ├─ (2) flags bit0 켜짐 → +0x2e5  KeSuspendThread  (멈춤 표시, call +0x2e0)
-          │       꺼짐 → +0x2db JZ 로 건너뜀
+          ├─ (2) flags bit0 켜짐 → +0x2e5  KeSuspendThread  (call +0x2e0)
+          │       │  꺼짐 → +0x2db JZ 로 건너뜀
+          │       │  +0x60  SuspendCount + 1                              (run13)
+          │       └─ +0x6b  KiSuspendThread                               (run13)
+          │            │  +0x6c  SuspendEvent.SignalState 1 → 0
+          │            ├─ (1) +0x88   KiInsertQueueApc      스레드 안 SchedulerApc 걸기
+          │            └─ (2) +0x1fb  KiSignalThreadForApc  KernelApcPending = 1 (새 스레드 갈래 [추측])
           └─ (5) 끝 +0x5a6  KeReadyThread  (멈췄든 안 멈췄든, 실패 길도 지남, call +0x5a1)
+
+(test.exe 첫 스레드) 서는 곳                                           (run13)
+KiStartUserThread +0x28 → PspUserThreadStartup
+ │  +0x22  IRQL 을 0 으로 내림
+ ═▶ APC 인터럽트                                                       [추측] 배달 시점
+      └─ KiDeliverApc +0x220 → KiSchedulerApc +0xf7 → KeWaitForSingleObject(SuspendEvent, Suspended)
+                                                       ← 여기서 잠듦 [정적]
+
+(부모 cmd.exe 스레드, 나중 시스템 콜) 풀어 주기                       (run13, 부모가 부르는지는 Q5b)
+NtResumeThread
+ └─ +0x9b  PsMultiResumeThread
+      └─ +0x25  KeResumeThread               SuspendCount - 1 (+0x68)
+           └─ +0x87  KiResumeThread          0 이 될 때만. SuspendEvent.SignalState = 1 (+0x20)
+                └─ +0xab  KiTryUnwaitThread  기다리던 스레드 깨우기
 ```
 
-비유하면: 새 직원(첫 스레드)을 뽑아 놓고 "**대기**" 팻말을 걸지 말지를 신청서의 체크 칸 하나(bit0)로 정한다. 팻말을 걸든 안 걸든 **줄에는 세운다** (`KeReadyThread`).
+- 이 절의 필드 이름은 PDB 타입(`_KTHREAD` 등)으로 맞춘 것이라 `[정적]` 이다 (run13). 자주 나오는 것만:
+
+| 자리 (`_KTHREAD`) | 이름 | 쉬운 말 |
+|---|---|---|
+| `+0x284` | `SuspendCount` | 멈춤 횟수 (최대 `0x7f`) |
+| `+0x288` | `SchedulerApc` | 스레드가 처음부터 품고 있는 APC. 멈춤에 쓴다 (`+0x2da` = 걸렸나 표시) |
+| `+0x2e0` | `SuspendEvent` | 멈춘 스레드가 기다리는 신호등. `+0x2e4` SignalState (1 = 초록, 0 = 빨강), `+0x2e8` 기다리는 줄 |
+| `+0x74` bit 14 / bit 19 | `ApcQueueable` / `SuspendSchedulerApcWait` | APC 를 걸 수 있나 / "멈춤 APC 안에서 기다리는 중" |
+| `+0xc1` (`ApcState` `+0x98` 안) | `ApcState.KernelApcPending` | 커널 APC 가 줄 서 있음 |
+
+  - APC(비동기 프로시저 호출) = 다른 스레드에 "다음에 돌 때 이것 좀 해" 하고 맡겨 두는 일감. 그 스레드가 직접 처리한다.
 
 #### `NtCreateUserProcess` 안 — 풀어 주는 호출이 없다
 
 - `[정적]` (run9) `PspInsertThread` 뒤의 호출 17개에는 Resume·Ready·Start 같은 이름이 **없다**. 프로세스 핸들 만들기, 결과 기록, 정리뿐이다.
 - `[정적]` 그러니 첫 스레드를 멈춰 뒀다면, 푸는 건 **`NtCreateUserProcess` 밖**의 일이다.
-- `[공백]` 누가 푸는지. `[추측]` 부모 유저 쪽(`KERNELBASE!CreateProcessInternalW` 등, 이름 확인 필요)이 시스템 콜로 따로 풀어 준다 → 대기열 Q5
+- (해결됨, nt 쪽) 풀어 주는 커널 사슬 → run13 `[정적]` (아래 `nt!NtResumeThread` 절).
+- `[공백]` 부모 유저 쪽이 `NtCreateUserProcess` 뒤에 그 시스템 콜을 **정말 부르는지**, `NtResumeThread` / `NtAlertResumeThread` 중 어느 쪽인지 → 대기열 **Q5b**.
+  - `[추측]` 부모 유저 쪽(`KERNELBASE!CreateProcessInternalW` 등)이 시스템 콜로 따로 풀어 준다.
+  - `[정적]` 이름만: KERNELBASE `_index.tsv` 에 `CreateProcessInternalW`, `ResumeThread` 가 있다 (sast/08 결과서). 본문은 Q5b 에서 본다.
 
 #### `nt!KeSuspendThread` (정적, 조건부)
 
 - `[정적]` (run9) `PspInsertThread+0x2e5`(call `+0x2e0`). **flags bit0** 가 켜졌을 때만 부른다 (`+0x2d4` 검사 → `+0x2db` `JZ`면 건너뜀).
   - 정정 (run12): run9 까지 "`ThreadFlags` bit0" 라고 썼는데, 정확히는 **`PspInsertThread` 4번째 인자(flags)의 bit0** 다. flags 는 `NtCreateUserProcess +0xdd3` `PspMapThreadCreationFlags` 가 `ThreadFlags` 를 옮겨 만든 값이고, bit0 는 그대로 bit0 로 간다 (2.1). 그래서 뜻은 같다: `ThreadFlags` bit0 가 켜져 있으면 여기서 멈춘다.
 - `[정적]` (run12) 흐름에서 자리: `KeStartThread` → 스레드 목록에 달기 → 프로세스 락 풀기 → **여기** → 객체 등록(`ObInsertObjectEx` `+0x3ea`). `KeReadyThread` 보다 한참 앞이다.
+- `[정적]` (run13) 하는 일 (222바이트):
+  1. IRQL 을 2 로 올리고 (`+0x25`) `SuspendEvent` 잠금 (`KiAcquireKobjectLockSafe` ret `+0x4a`).
+  2. 멈춤 횟수가 이미 최대 `0x7f` 면 상태 `0xc000004a` 를 던지고 끝 (`+0xd2` tail → 조각 `FUN_1406f517a`).
+  3. 아니면 **`+0x60` 에서 `SuspendCount + 1` 을 먼저 저장** → **`+0x6b` `KiSuspendThread`** (call `+0x66`).
+  4. `KiSuspendThread` 가 0(실패)을 돌려주면 `+0xd7` 에서 횟수를 되돌린다.
+  5. `KiExitDispatcher` (`+0x8b`) → 이전 횟수 반환.
+  - caller: `PspInsertThread`, `PsSuspendThread` (`callers:`).
 - `[정적]` 부른 직후 스레드의 어떤 비트(`[스레드+0x5a0]` bit0, 이름 모름)가 켜져 있으면 `KeForceResumeThread`(call `+0x9fc`)로 바로 푼다. `[추측]` 에러 때 쓰는 길.
 - `[공백]` test.exe 때 실제로 이 길을 탔는지. `PspInsertThread` 입구에서 flags(`poi(@r9)`) bit0, 또는 `NtCreateUserProcess` 입구 `ThreadFlags` 를 봐야 한다 (Q19).
+
+#### `nt!KiSuspendThread` (정적)
+
+- `[정적]` (run13) `KeSuspendThread+0x6b`(call `+0x66`). 다른 caller: `KiFreezeSingleThread`, `KiAdjustThreadTimer`.
+- `[정적]` **멈춤 = 횟수 올리기(위) + 멈춤 APC 걸기 + `SuspendEvent` 내리기.** 순서:
+  1. 스레드 잠금(`+0x40` bit0) 잡기 (`+0x27`).
+  2. `ApcQueueable` 이 꺼져 있으면 아무것도 안 하고 0 반환 (`+0x4b`). → `KeSuspendThread` 가 횟수를 되돌린다.
+  3. `SuspendEvent.SignalState` 가 이미 0 이면 "이미 멈춤" 으로 보고 APC 를 또 안 걸고 1 반환 (`+0x58` → `+0x5f`).
+  4. 아니면 **`SignalState = 0`** (`+0x6c`). `SchedulerApc` 가 아직 안 걸렸으면 걸렸다고 표시하고 **`KiInsertQueueApc(스레드+0x288)`** (ret `+0x88`).
+  5. 두 갈래:
+     - **가벼운 멈춤** — 스레드가 이미 다른 걸 기다리는 중 등 조건이 모두 맞을 때. 깨워서 APC 를 돌리지 않고, 기다림 블록을 객체 줄에서 떼어 놓고(타이머 있으면 `KiCancelTimer` `+0x26b`) `KiSignalThread` (`+0x1e3`).
+     - **그 밖** — APC 를 방금 걸었으면 **`KiSignalThreadForApc` (ret `+0x1fb`)**.
+- `[추측]` 아직 한 번도 안 달린 새 스레드는 "그 밖" 갈래다 ("이미 기다리는 중" 조건이 안 맞으니까).
+- `[정적]` `KiSignalThreadForApc` 는 대상이 지금 이 CPU 에서 도는 스레드가 아니고 커널 모드 APC 면 먼저 **`KernelApcPending = 1`** 을 쓴다. 상태가 Running·Waiting 이 아니면 **표시만 켜고 끝**이다 (`.c` 읽은 만큼).
+  - `[추측]` 새 스레드의 State 는 0 (Initialized). `KeInitThread` 에서 쓰는 줄을 못 찾았다.
+
+#### 멈춤 APC(`SchedulerApc`)와 `SuspendEvent` (정적)
+
+- `[정적]` (run13) 둘 다 **스레드가 만들어질 때** `KeInitThread` 가 미리 준비한다 (2.1).
+  - `SchedulerApc`: `KeInitThread +0x152` `KeInitializeApc` — NormalRoutine = **`KiSchedulerApc`**, 커널 모드, NormalContext = 그 스레드. KernelRoutine·RundownRoutine 은 아무것도 안 하는 함수 (같은 주소 이름 100개, 후보: `KiSchedulerApcNop`, `KiSchedulerApcRundown`).
+  - `SuspendEvent`: `KeInitThread +0x163` `KeInitializeEvent(…, Notification, TRUE)` — **처음엔 신호 상태(1)**. 그래서 1 = 안 멈춤, 0 = 멈춤.
+- `[정적]` NormalRoutine 이 있는 커널 APC 라서 `KiInsertQueueApc` 는 이걸 **커널 모드 일반 APC 줄 맨 뒤**에 넣는다 (`KiInsertQueueApc +0x28 ~ +0x6e`).
+- `[정적]` `SchedulerApc` 는 멈춤 전용이 아니다. 끝내기(`KeRequestTerminationThread`) 등도 같은 APC 를 건다 (`KiInsertQueueApc` `callers:`).
 
 #### `nt!KeReadyThread` (정적)
 
@@ -736,8 +861,9 @@ ThreadFlags (NtCreateUserProcess 8번째 인자, bit0 만 허용)
 - `[정적]` (run12) **멈춘 스레드에도 불린다.** 멈춤 여부로 갈리는 분기가 없다. 즉 "ready 를 안 하고 둔다" 가 아니라 "멈춤 표시를 먼저 해 두고 ready 한다" 모양이다.
   - 정정 (run12): run9 바퀴에 여기 "실패면 `+0x598`에서 다른 길로 빠짐" 이라고 썼다. 실패 길도 조각에서 `KeRequestTerminationThread` 등을 거친 뒤 `+0x59e` 로 **돌아와서** `KeReadyThread` 를 부른다. 그러니 이 자리는 **모든 길의 끝**이다.
   - `[정적]` (run12) 지도로 보면 커널 안에서 `CALL` 로 `KeReadyThread` 를 부르는 함수는 `PspInsertThread` 하나뿐이다 (함수 포인터 호출은 못 셈).
-- `[공백]` 멈춘 스레드가 이 뒤 **실제로 서는 시점**(`KeSuspendThread` 가 걸어 둔 멈춤이 언제 효력을 내나)은 정적으로 못 정했다. 첫 스레드를 **풀어 주는 쪽**은 여전히 Q5.
-- `[추측]` 스레드를 "CPU 탈 준비 됨" 줄에 세운다 (`KiFastReadyThread`, `KiInSwapSingleProcess` 만 부르는 111바이트 함수, 이름으로 본 것). 멈춤 팻말이 걸려 있으면 줄에 서도 바로 일하진 못한다.
+- (해결됨) 멈춘 스레드가 이 뒤 **실제로 서는 곳** → run13 `[정적]` `KiSchedulerApc +0xf7` (아래 "멈춘 첫 스레드가 서는 곳"). 언제 그 자리에 가는지는 `[추측]`.
+- `[추측]` 스레드를 "CPU 탈 준비 됨" 줄에 세운다 (`KiFastReadyThread`, `KiInSwapSingleProcess` 만 부르는 111바이트 함수, 이름으로 본 것).
+  - (run13 에서 고쳐 씀) 전에는 "멈춤 팻말이 걸려 있으면 줄에 서도 바로 일하진 못한다" 라고 썼다. 코드로 보면 멈춘 스레드도 줄에 서서 **달리기는 시작하고**, 커널 시작 코드 맨 앞에서 멈춤 APC 를 처리하며 잠드는 모양이다 `[추측]` (아래 "맞물림").
 
 #### `nt!KeStartThread` (정적)
 
@@ -746,9 +872,70 @@ ThreadFlags (NtCreateUserProcess 8번째 인자, bit0 만 허용)
 - `[추측]` 본문은 안 뽑았다 (1182바이트). 지도에서 부르는 것이 `KiAcquireProcessLockExclusive`, `KeSelectInitialIdealProcessorForThread`, `KiAdjustProcessIdealProcessorSetsForThreadCreation`, `KiUpdateSharedReadyQueueAffinityThread`, `KiInitializeForegroundBoostThread` 등이라, "어느 CPU 에서 돌지·우선순위 가산" 같은 **스케줄링 준비**로 보인다. 대기 줄에 넣는 호출은 지도에 없다.
 - `[추측]` 그래서 "실행될 수 있는 상태" 가 되는 건 `KeStartThread` 가 아니라 끝의 `KeReadyThread` 쪽이다. 비유하면 `KeStartThread` 는 근무지·근무 시간 정하기, `KeReadyThread` 는 대기 줄에 세우기.
 
+#### 멈춘 첫 스레드가 서는 곳 (test.exe 스레드 안, run13)
+
+이 부분은 **부모가 아니라 test.exe 첫 스레드**가 도는 코드다 (그림 2 의 APC 갈래).
+
+- `[정적]` 고리를 앞에서부터 이으면:
+  1. 부모 쪽 `KeSuspendThread` → `KiSuspendThread` 가 멈춤 APC 를 걸고 `KernelApcPending = 1` 을 켠다 (위). 스레드는 아직 한 번도 안 달렸다.
+  2. 부모 쪽 `KeReadyThread` 가 대기 줄에 세운다 (run12).
+  3. 처음 CPU 에 올라갈 때 `SwapContext` 끝 조각(`frag:FUN_1406b686f+0x292` 근처)에 "다음 스레드에 `KernelApcPending` 이 있고 조건이 맞으면 APC 단계 소프트웨어 인터럽트 요청(`HalRequestSoftwareInterrupt(1)`)" 코드가 있다.
+  4. 첫 커널 코드 `KiStartUserThread` 는 IRQL 을 1 로 올린 채 `PspUserThreadStartup` 을 부른다 (2.3).
+  5. `PspUserThreadStartup +0x22` 가 **IRQL 을 0 으로 내린다** — 함수의 첫 일이다 (2.3).
+  6. APC 인터럽트 → `KiDeliverApc`. `KiDeliverApc` 를 부르는 조각 `FUN_1406b2db3` 이 `callers:` 에 있다 (`KiApcInterrupt` 의 떨어진 조각으로 보임, 이름은 `[추측]`).
+  7. `KiDeliverApc` 는 NormalRoutine 이 `KiSchedulerApc` 인지 비교해서 **직접** 부른다 (call `+0x21b` / ret **`+0x220`**). 그 앞 `+0x1f7` 에서 IRQL 을 내린다.
+  8. `KiSchedulerApc` 는 `SuspendEvent.SignalState` 가 0 이고 끝내라는 요청(`+0x78` bit 15)이 없으면 `SuspendSchedulerApcWait` 를 켜고 **`KeWaitForSingleObject(SuspendEvent, 이유 5 Suspended, Alertable FALSE, Timeout 없음)`** (call `+0xf2` / ret **`+0xf7`**). 돌아오면 `+0xf7` 에서 그 비트를 끈다.
+     - (장부 표시: `KeWaitForMutexObject` — 같은 함수의 공개 이름 둘. PDB 공개 심볼 이름은 `KeWaitForSingleObject` 하나다.)
+- `[정적]` 그래서 **멈춘 스레드가 서는 곳 = `KiSchedulerApc +0xf2` 의 기다림**. 스택은 `KeWaitForSingleObject` ← `KiSchedulerApc+0xf7` ← `KiDeliverApc+0x220` ← … 모양일 것이다.
+- `[추측]` **배달 시점 = `PspUserThreadStartup +0x22` 의 IRQL 내림 직후** (인터럽트 복귀 자리는 `+0x26` 근처). 그러면 `PspDisablePrimaryTokenExchange`·`PspNotifyThreadCreation`·`PspInitializeThunkContext` 보다 **먼저** 잠든다.
+  - 못 정한 것: 3번 조건의 CL 인자가 정말 새 스레드의 `WaitIrql`(`KeInitThread` 가 1 을 넣음)인지, 실제로 그 자리에서 인터럽트가 들어오는지 → 동적 (4.1).
+- `[정적]` **경주(race)도 코드가 처리한다.** 풀어 주기가 먼저 와서 `KiResumeThread +0x20` 이 `SignalState = 1` 을 이미 썼으면, 스레드가 `KiSchedulerApc` 에 와도 `+0x66` 검사에서 기다림을 건너뛴다.
+
+#### `nt!NtResumeThread` (정적)
+
+- `[정적]` (run13) 스레드 하나의 멈춤을 푸는 시스템 콜. 순서:
+  1. 부른 쪽이 유저 모드(`_KTHREAD.PreviousMode` `+0x232` ≠ 0)면, 이전 횟수를 돌려받을 포인터를 한 번 읽고 되써 본다 (`+0x32 ~ +0x4a`).
+  2. 핸들 → 스레드 (`ObpReferenceObjectByHandleWithTag`, ret `+0x82`, 접근 권한 인자 `0x1000`).
+  3. **`PsMultiResumeThread(스레드, &이전횟수, 1)`** (call `+0x96` / ret **`+0x9b`**). 풀 횟수는 상수 1.
+  4. 참조 풀기 (`+0xaa`) → `*이전횟수` 쓰기 (`+0xb4`) → 0 반환.
+- `[정적]` **`PsResumeThread` 는 이 사슬에 없다.** `PsResumeThread`(20바이트)도 `PsMultiResumeThread(…, 1)` 을 부르는 얇은 껍데기(`+0xf`, 꼬리호출 아님)지만 `NtResumeThread` 는 그걸 안 거친다. `PsResumeThread` 의 caller 는 Ghidra 가 못 찾았다 (`[추측]` 드라이버용 내보내기).
+- `[정적]` **`NtAlertResumeThread` 와의 차이**: 접근 권한 인자 `0x2`, 유저가 부르면 시스템 스레드는 `0xc0000022` 로 거절, 그리고 `PsMultiResumeThread` 대신 `KeAlertResumeThread`(ret `+0xb4`) → `KeAlertThread`(`+0x34`) 다음 `KeResumeThread`(`+0x41`). 즉 **"알림(alert) 켜고 풀기"** 이고, 아래 `ProcessFirstResume` 표시·ETW 기록은 **안 한다**.
+  - `[추측]` `0x1000`·`0x2` = SDK 의 `THREAD_RESUME`·`THREAD_SUSPEND_RESUME` (헤더 상식으로 맞춘 것).
+- `[공백]` 부모(cmd.exe)가 둘 중 어느 쪽을 부르는지 → Q5b.
+
+#### `nt!PsMultiResumeThread` (정적)
+
+- `[정적]` (run13) `NtResumeThread+0x9b`. 안에서 **`KeResumeThread(스레드, 횟수)`** (call `+0x20` / ret **`+0x25`**).
+- `[정적]` `KeResumeThread` 가 돌려준 이전 횟수가 0 이 아니고 요청 횟수 이하면 (= 이번에 완전히 풀림):
+  - 프로세스 `_EPROCESS +0x5fc` bit 15 **`Flags3.ProcessFirstResume`** 를 켠다 (`+0x4e` `OR.LOCK`, 이미 켜져 있으면 건너뜀).
+  - bit 20 `EnableThreadSuspendResumeLogging` 이 켜져 있으면 `EtwTiLogSuspendResumeThread` (`+0x6f`).
+- `[공백]` `ProcessFirstResume` 를 **읽는 곳**은 안 봤다. 이름대로면 "이 프로세스의 첫 풀어줌" 표시.
+
+#### `nt!KeResumeThread` (정적)
+
+- `[정적]` (run13) `PsMultiResumeThread+0x25`. 다른 caller: `KeAlertResumeThread`, `PsMultiResumeProcess`.
+- `[정적]` **멈춤 횟수를 깎고, 0 이 되면 `KiResumeThread` 로 깨운다.**
+  1. IRQL 2 로 올림 (`+0x26`) → `SuspendEvent` 잠금 (ret `+0x4f`).
+  2. 이전 `SuspendCount` 를 읽어 둔다 (돌려줄 값). 요청 횟수가 더 크면 이전 횟수로 줄인다.
+  3. `SuspendCount -= 횟수` 저장 (`+0x68`).
+  4. **새 횟수가 0 이고 얼림 표시(`+0x78` bit 14 FreezeCount)가 꺼져 있으면 `KiResumeThread`** (call `+0x82` / ret **`+0x87`**).
+  5. `KiExitDispatcher` (`+0xa5`) → 이전 횟수 반환.
+- `[정적]` 얼린 스레드는 여기서 안 깨운다. 얼림을 푸는 `KiThawSingleThread` 가 `KiResumeThread` 를 따로 부른다 (`callers:`).
+
+#### `nt!KiResumeThread` (정적)
+
+- `[정적]` (run13) `KeResumeThread+0x87`. 깨우는 방식은 **"이벤트 신호 + 기다림 줄 풀기"** 다. "깨움 APC" 같은 건 따로 안 건다.
+  - `+0x20` 에서 `SuspendEvent.SignalState = 1` 을 **직접 쓴다** (`KeSetEvent` 를 안 부름).
+  - `SuspendEvent` 의 기다림 줄을 돌며 블록 종류가 1 이면 **`KiTryUnwaitThread`** (call `+0xa6` / ret **`+0xab`**) 로 그 스레드를 기다림에서 풀어 준비 상태로. **멈춘 스레드를 깨우는 호출이 이것이다.** (종류 2 → `KiInsertQueueInternal` `+0x241`, 4 → `KeInsertQueueDpc` `+0x3e6`)
+- `[정적]` 가벼운 멈춤(위 `KiSuspendThread` 5번)을 되돌리는 갈래도 있다: 떼어 놨던 기다림 블록을 원래 객체 줄에 다시 끼우고, 타이머가 멈췄으면 다시 걸고(`KiInsertTimerTable` `+0x32d` 등), `KiSignalThreadForApc` (`+0xcf`) 또는 `KiSignalThread` (`+0x19e`) 로 민다. 블록 상태 숫자(4, 5, 6)의 이름은 PDB 에 열거형이 없어 `[추측]`.
+
+#### run12 `KeReadyThread` 와 맞물림 (run13, 한 문단)
+
+`[추측]` (각 고리는 위 `[정적]`, 잇는 마지막 연결이 추측) 멈춘 스레드도 `KeReadyThread` 로 대기 줄에 똑같이 선다. "멈춤" 은 줄에서 빼 두는 게 아니라 **멈춤 APC 를 미리 걸고 `SuspendEvent` 를 0 으로 내려 두는 것**이다. 그래서 CPU 가 고르면 달리기 시작하고, `KiStartUserThread` → `PspUserThreadStartup` 에서 IRQL 이 내려가자마자 APC 를 처리해 `KiSchedulerApc` 에서 `SuspendEvent` 를 기다리며 잠든다 (Waiting, 이유 Suspended). 나중에 부모가 `NtResumeThread` 를 부르면 횟수 1 → 0, `KiResumeThread` 가 이벤트를 1 로 올리고 `KiTryUnwaitThread` 로 깨운다. 깬 스레드는 `KiSchedulerApc` → `KiDeliverApc` 로 돌아가 `PspUserThreadStartup` 의 나머지 → 유저 쪽(2.3)으로 간다. 즉 첫 스레드는 "한 번도 안 달림" 이 아니라 **"커널 시작 코드 맨 앞에서 잠든 상태"** 일 가능성이 크다. 전제: test.exe 때 flags bit0 가 실제로 켜져 있어야 한다 (Q19).
+
 ---
 
-### 2.3 커널 `nt` — test.exe 스레드 출발 (run4, run5)
+### 2.3 커널 `nt` — test.exe 스레드 출발 (run4, run5, run13)
 
 ```
 nt!PspUserThreadStartup
@@ -756,6 +943,14 @@ nt!KiStartUserThread+0x28
 nt!KiStartUserThreadReturn
 ntdll!RtlUserThreadStart      ← 유저 스택 쪽에 보이는 자리
 ```
+
+#### `nt!KiStartUserThread`
+
+- `[관찰]` (run4) 콜스택에서 `PspUserThreadStartup` 바로 위가 `nt!KiStartUserThread+0x28` 이다.
+- `[정적]` (run13, 원본 바이트 objdump) `KiStartUserThread` 는 Ghidra 가 함수로 안 잡아서 장부(`ms/decomp`·`ms/disassemble`)에 없다. 결과서가 바이트를 직접 읽었다.
+  - IRQL 을 1 (APC 단계)로 올리고 (`MOV CR8,1`), 저장해 둔 시작 루틴을 CFG 검사 함수(`nt+0x6b77f0`)를 거쳐 `+0x23` 에서 부른다 → 돌아올 자리 **`+0x28`**. 위 `[관찰]` 과 오프셋까지 같다.
+  - `[추측]` CFG 검사 함수는 콜스택에 안 보였으니 넘겨주기만 하는 모양이다.
+- `[정적]` (run13) 새 스레드 첫 커널 스택에 이 함수 주소를 넣는 곳: `KiInitializeContextThread +0x1e1` `LEA` (`KeInitThread +0x301` 이 부름, 2.1).
 
 #### `nt!PspUserThreadStartup`
 
@@ -765,6 +960,8 @@ ntdll!RtlUserThreadStart      ← 유저 스택 쪽에 보이는 자리
 - `[정적]` (run11) 이 함수가 시작점이 되는 곳: 부모 쪽 `PspAllocateThread +0x681` 에서 이 함수 주소를 꺼내 `KeInitThread`(`+0x6f9`)에 넘긴다 (2.1). 호출이 아니라 주소를 값으로 넘기는 것이다.
   - 그래서 위 `[관찰]` "모두 여기서 출발" 과 코드가 맞는다. 단, 시스템 스레드 길은 `PspSystemThreadStartup` 을 넣는다 (유저 스레드만 여기).
 - `[정적]` (run11) Win32 Start Address(`test!mainCRTStartup`)는 `PspAllocateThread` 가 인자 CONTEXT 의 `Rcx` 를 `_ETHREAD.Win32StartAddress` 에 옮겨 적은 값이다 (`+0x64e ~ +0x655`). `CONTEXT.Rip` 는 `_ETHREAD.StartAddress` 로 간다.
+- `[정적]` (run13) **첫 일이 IRQL 을 0 으로 내리는 것이다** (`+0x22` `MOV CR8,RDI`, `RDI=0`. 앞 `+0x1d` 는 `KiIrqlFlags` 가 켜졌을 때만 `KiLowerIrqlProcessIrqlFlags`). 그 뒤에 `PspDisablePrimaryTokenExchange` (`+0x3c`), `PspNotifyThreadCreation` (`+0xa1`), `PspInitializeThunkContext` (`+0xb3`) 가 나온다. 이 셋이 무슨 일인지는 Q6·Q7.
+- `[추측]` (run13) 멈춘 첫 스레드라면 `+0x22` 의 IRQL 내림 직후 멈춤 APC 가 들어와 여기서 잠든다 (2.2 "멈춘 첫 스레드가 서는 곳"). 그래서 위 세 호출은 **풀어 준 뒤에** 돈다.
 - `[추측]` 커널 쪽에서 스레드가 "출근 도장"을 찍고 유저 쪽으로 넘어갈 준비를 하는 곳.
 
 #### `[공백]` 커널 → 유저 전환
@@ -1064,12 +1261,18 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.1 | `MmCreateTeb` 본문: TEB 에 무엇을 쓰나 |
 | 2.1 | `PspInsertProcess +0x1e3` `ObInsertObjectEx` 인자 이름·하는 일 (핸들 안 돌려받는 모양까지만 봄) |
 | 2.2 | (일부 해결) `NtCreateUserProcess` 안엔 첫 스레드를 풀어 주는 호출이 없다, 멈춤 갈림길 = `PspInsertThread` call `+0x2e0` `KeSuspendThread` / 끝 call `+0x5a1` `KeReadyThread` → run9 `[정적]` |
-| 2.2 | 남은 것: `NtCreateUserProcess` 반환 후 부모 쪽 마무리, 첫 스레드를 **누가·언제** 풀어 주는지 (Q5), test.exe 때 flags bit0 (= `ThreadFlags` bit0) 실제 값 |
+| 2.2 | (일부 해결) 첫 스레드를 풀어 주는 **nt 쪽 사슬** `NtResumeThread +0x9b` → `PsMultiResumeThread +0x25` → `KeResumeThread +0x87` → `KiResumeThread +0xab` → `KiTryUnwaitThread` → run13 `[정적]`. `PsResumeThread` 는 사슬에 없음 |
+| 2.2 | 남은 것: `NtCreateUserProcess` 반환 후 부모 쪽 마무리, 부모 유저 쪽이 **정말·언제** 풀어 주는 시스템 콜을 부르는지, `NtResumeThread` / `NtAlertResumeThread` 중 어느 쪽인지 (Q5b), test.exe 때 flags bit0 (= `ThreadFlags` bit0) 실제 값 (Q19) |
 | 2.2 | (해결됨) `KeStartThread`(`+0x5e2`)가 언제 타나 → run12 `[정적]` 흐름상 제일 먼저. `KeReadyThread`는 멈춘 스레드에도 불림 (모든 길의 끝) |
-| 2.2 | 멈춘 스레드가 `KeReadyThread` 뒤 **실제로 서는 시점** (`KeSuspendThread` 안쪽) — 정적으로 못 정함 |
+| 2.2 | (해결됨, 정적) 멈춘 스레드가 `KeReadyThread` 뒤 **실제로 서는 곳** = `KiDeliverApc +0x220` → `KiSchedulerApc +0xf7` 의 `KeWaitForSingleObject(SuspendEvent)`. 멈춤 = 횟수 + 멈춤 APC(`KiSuspendThread +0x88`) + `SuspendEvent` 0 → run13 `[정적]` |
+| 2.2 | 남은 것: 멈춤 APC 가 **언제** 배달되나 — `[추측]` `PspUserThreadStartup +0x22` IRQL 내림 직후 (`SwapContext` 끝 조각의 CL 인자 정체, 실제 인터럽트 자리는 동적) |
+| 2.2 | `KiDeliverApc` 를 부르는 조각 `FUN_1406b2db3` 의 정체 (`[추측]` `KiApcInterrupt` 의 떨어진 조각) |
+| 2.2 | 새 스레드가 `KiSuspendThread` 의 어느 갈래를 타나 (`[추측]` 가벼운 멈춤이 아닌 쪽, `+0x1fb` `KiSignalThreadForApc`), 그때 새 스레드 State 가 0(Initialized)인지 (`KeInitThread` 에서 쓰는 줄 못 찾음) |
+| 2.2 | `PsMultiResumeThread +0x4e` 가 켜는 `_EPROCESS` `Flags3.ProcessFirstResume` 를 **읽는 곳** |
 | 2.3 | 커널 → 유저 전환 방법 (`LdrInitializeThunk`로 오는 방법, `RtlUserThreadStart`와의 관계) |
 | 2.3 | 첫 스레드 CONTEXT 의 `Rip`·`Rcx`를 누가 어떤 값으로 채우나 (`PspAllocateThread`는 받아서 옮기기만 함, run11). 후보 `PspCreateUserContext` (`NtCreateUserProcess +0xd22`, Q7) `[추측]` |
-| 2.3 | `KeInitThread`가 `PspUserThreadStartup` 주소(시작 정보 묶음 `+0x8` 칸)를 어떻게 쓰나 (Q6·Q7) |
+| 2.3 | (일부 해결) `KeInitThread +0x301` → `KiInitializeContextThread +0x1e1` 이 첫 스택에 `KiStartUserThread` 를 넣고, `KiStartUserThread +0x23`(ret `+0x28`)이 시작 루틴을 부른다 → run13 `[정적]` (`KiStartUserThread` 는 원본 바이트) |
+| 2.3 | 남은 것: 시작 정보 묶음 `+0x8` 칸(`PspUserThreadStartup`)이 `KiInitializeContextThread` 를 거쳐 첫 스택의 시작 루틴 자리까지 가는 길 (`[추측]`, Q6·Q7) |
 | 2.5 | KERNELBASE·KERNEL32 시작 함수의 정확한 이름 |
 | 2.5 | kernel32·kernelbase가 메모리에 올라오는 순간 (`LdrpLoadDllInternal+0x284` 앞으로 추정) |
 | 2.5 | 커널이 프로세스를 만들 때 올리는 게 exe·ntdll "뿐"인지 (run10: 둘을 올리는 코드는 `[정적]`, 다른 매핑이 없다는 건 미확인. leap second·ApiSet·silo 뷰도 붙음) |
@@ -1101,6 +1304,9 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 그림 1 nt | `PspInsertThread` → (4) `PspCallThreadNotifyRoutines` | 코드상 모든 스레드, 문턱은 프로세스 알림과 같음 (run12 `[정적]`) | `PspInsertThread+0x4f5` 에서 멈춤. 새 EPROCESS `+0x5fc` bit0, `+0x640` 값 |
 | 그림 1 nt (그림 밖) | `PspInsertThread` 잡·보안 길: `+0x106`, `+0x8ef` `PspAssignProcessToJobList`, `+0x93d` `PspCreateSecureThread` | 코드상 조건부 (run12 `[정적]`) | call 자리 `+0x101`, `+0x8ea`, `+0x938` 이 test.exe 에서 안 걸리는지 |
 | 그림 1 nt | `PspInsertThread` → (5) `KeReadyThread` | 코드상 모든 길의 끝, 멈춘 스레드도 (run9, run12 `[정적]`) | `KeReadyThread` 입구에서 `k`, 돌아올 자리 `PspInsertThread+0x5a6`인지. `+0x5a1` 에서 `dt nt!_KTHREAD @rcx State` |
+| 그림 1 nt | `KeSuspendThread` → `KiSuspendThread` → (1) `KiInsertQueueApc` / (2) `KiSignalThreadForApc` | 코드의 call 자리 (run13 `[정적]`). 새 스레드는 (2) 갈래 `[추측]` | `nt!KiSuspendThread+0x83`·`+0x1f6` 에 서나. 값이 바뀌는 순간: 스레드 `+0x284` 0→1 (`KeSuspendThread +0x60`), `+0x2e4` 1→0 (`KiSuspendThread +0x6c`) |
+| 그림 1 (2) 풀어 주기 | 부모 유저 쪽 ==> 시스템 콜 진입 → `NtResumeThread` | 없음. 부모가 부르는지부터 `[추측]` (Q5b) | cmd.exe `/p` 필터로 `nt!NtResumeThread`·`nt!NtAlertResumeThread` 입구 중 어디에 서나, `k` 로 유저 쪽 caller (KERNELBASE 함수 이름) |
+| 그림 1 (2) 풀어 주기 | `NtResumeThread` → `PsMultiResumeThread` → `KeResumeThread` → `KiResumeThread` → `KiTryUnwaitThread` | 코드의 call 자리 (run13 `[정적]`) | `nt!PsMultiResumeThread` 입구 (`rcx` 의 Process = test.exe) 에서 `k` → `NtResumeThread+0x9b` 인지. `nt!KeResumeThread+0x82` 에서 `dt nt!_KTHREAD @rbx SuspendCount SuspendEvent` (횟수 0). `nt!KiResumeThread+0xa6` 에서 깨우는 대상. 값: `+0x284` 1→0 (`KeResumeThread +0x68`), `+0x2e4` 0→1 (`KiResumeThread +0x20`) |
 | 그림 1 nt | `NtCreateUserProcess` → (11)(12) `PspCreateObjectHandle` / `PspUpdateCreateInfo` | 코드상 성공 길 끝, 값 6 | `NtCreateUserProcess+0x1124`에서 `ecx`=6, 반환값 `rax` |
 | 그림 1 nt | `PspAllocateProcess` → (1) `MmCreateProcessAddressSpace` | 코드의 call 자리 (run10 `[정적]`) | `PspAllocateProcess+0x163c`에서 멈춤 또는 callee 입구에서 `k` |
 | 그림 1 nt | `PspAllocateProcess` → (2) `MmInitializeProcessAddressSpace` | 코드상 두 곳 (`+0x2095` 보통 / `+0x2113` 복제), 플래그 bit `0x4`로 갈림 | callee 입구에서 `k`. 돌아올 자리가 `+0x2095`인지 |
@@ -1114,6 +1320,8 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 그림 1 nt | `_ETHREAD.Win32StartAddress` ← `CONTEXT.Rcx` | `+0x64e ~ +0x655` (run11 `[정적]`) | 입구 `dt nt!_CONTEXT poi(@rsp+0x28) Rip Rcx`, `+0x6f9` 에서 `dt nt!_ETHREAD @rsi StartAddress Win32StartAddress` |
 | 그림 1 nt (그림 밖) | `PspAllocateThread` 먼 덩어리 (Pico·본뜨기 길) | 오프셋 `+0x2ca…` (run11 `[정적]`, .pdata 체인으로 같은 함수) | `nt+0xb0d315` 에 걸어서 안 걸리면 보통 길. `ln nt+0xb0d383`, `ln nt+0xb0d315` 로 표기 확인 |
 | 그림 1 nt | `PspInsertProcess` → (1) `PspLockProcessListExclusive` → 직접 잇기, (2) `ObInsertObjectEx` | 코드의 call 자리 (run11 `[정적]`) | `PspInsertProcess+0x115` 에서 `!process 0 0 test.exe`. `+0x1e3` 앞뒤로 부모 핸들 표(`!handle 0 3 <부모>`) 비교 |
+| 그림 2 nt | `PspUserThreadStartup` ==> APC 인터럽트 (`FUN_1406b2db3`, `KiApcInterrupt` 추정) → `KiDeliverApc` → `KiSchedulerApc` → `KeWaitForSingleObject` | `KiDeliverApc +0x220`, `KiSchedulerApc +0xf7` 는 코드 (run13 `[정적]`). 배달 시점(`+0x22` 직후)·인터럽트 조각 이름·`?` 한 칸은 `[추측]` | `nt!KiSchedulerApc` 입구 (조건 `poi(@rcx+0x220)` = test.exe EPROCESS. 자주 불림) 에서 `dd @rcx+0x2e4 L1` (0 → 곧 기다림, 1 → 이미 풀림), `+0xf2` 에서 `k`: `KiDeliverApc+0x220` 아래가 `PspUserThreadStartup+0x26` 근처인지 |
+| 그림 2 nt (순서) | 풀어 주기 전에 시작 코드가 어디까지 도나 | `PspUserThreadStartup +0x22` IRQL 내림이 첫 일 (run13 `[정적]`) | `nt!PspUserThreadStartup` 입구·`+0x22`·`+0x9c`·`+0xae`, `nt!KiSchedulerApc`, (부모) `nt!NtResumeThread` 가 서는 순서 |
 | 그림 2 (1) kernel32 준비 | `LdrpCallInitRoutine` → KERNELBASE·KERNEL32 시작 함수 | `rcx`가 기호 근처 (정확히 일치 아님) | 실제 진입 함수 이름과 콜스택 |
 | 그림 2 (1) kernel32 준비 | `LdrpInitializeNode` [KERNELBASE] / [KERNEL32] 대응 | 재귀 깊이가 다름 | `LdrpInitializeNode`에서 긴 `k` + 시작 함수 이름 |
 | 그림 2 (2) · (3) | `LdrpCallInitRoutine` → `ImageTlsCallbackCaller` | `rcx` 정확히 일치 | `ImageTlsCallbackCaller`에서 `k` |
@@ -1142,6 +1350,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run10 | (정적) `PspAllocateProcess` 직접 호출 144줄, 주소 공간 → exe → ntdll → PEB 순서, `+0x2314` 오프셋 일치, `MmCreatePeb`가 쓰는 PEB 오프셋 |
 | run11 | (정적) `PspAllocateThread` 직접 호출 34줄 + 장부 밖 10곳, 스레드 객체 → ID → 유저 스택 → TEB(`MmCreateTeb`) → `KeInitThread` 순서, `PspUserThreadStartup` 주소를 시작점으로 넘김, Win32StartAddress ← `CONTEXT.Rcx`. `PspInsertProcess`가 목록에 직접 잇기 |
 | run12 | (정적) `PspInsertThread` 직접 호출 62줄, 흐름 순서 `KeStartThread` → 멈춤 → 객체 등록 → 스레드 락 풀기(run11 락) → 프로세스 알림(첫 스레드만) → 스레드 알림 → 핸들 → `KeReadyThread`(멈춘 스레드도). `PspCallProcessNotifyRoutines` 간접 호출 4곳의 출처, `PsTerminateProcess` 조건. `PspMapThreadCreationFlags` bit0 → bit0 |
+| run13 | (정적) 첫 스레드 멈춰 두기 = `SuspendCount`+1 → `KiSuspendThread` 가 멈춤 APC(`SchedulerApc`, NormalRoutine `KiSchedulerApc`) 걸기 + `SuspendEvent` 0. 서는 곳 `KiDeliverApc +0x220` → `KiSchedulerApc +0xf7` 기다림. 풀어 주는 nt 사슬 `NtResumeThread +0x9b` → `PsMultiResumeThread +0x25` → `KeResumeThread +0x87` → `KiResumeThread +0xab` `KiTryUnwaitThread`. `KiStartUserThread +0x28` 원본 바이트로 run4 와 일치. `NtAlertResumeThread` 차이 |
 | `sample/` 소스 | 의존 관계, 모듈별 TLS 콜백, `/MT` 빌드 |
 
 - run3 ~ run5는 타깃에서 빌드한 test.exe, run6 ~ run8은 디버거 VM에서 빌드해 옮긴 test.exe (같은 소스).
@@ -1155,3 +1364,4 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run10 | `_workspace/sast/04_allocate-process` | 없음 | 정적만 (대기열 Q2) |
 | run11 | `_workspace/sast/06_allocate-thread` | 없음 | 정적만 (대기열 Q3). sast/05 는 run 없는 도구 실험 (Q37) |
 | run12 | `_workspace/sast/07_insert-thread` | 없음 | 정적만 (대기열 Q4) |
+| run13 | `_workspace/sast/08_resume-thread` | 없음 | 정적만 (대기열 Q5a). KERNELBASE analyze 도 이때 걸어 둠 (Q5b 용) |
