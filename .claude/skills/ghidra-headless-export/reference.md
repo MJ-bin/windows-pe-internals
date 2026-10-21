@@ -54,6 +54,33 @@ LdrpCallInitRoutine	+0x41	+0x47	indirect:__guard_dispatch_icall_fptr
   - 예: `PspInsertThread +0xa33 tail FUN_140b0d692` 의 조각 안 `KeForceResumeThread` 등 (sast/03).
 - `_calls.tsv` 는 export 할 때마다 **덧붙여 쌓인다** (`sort -u` 로 같은 줄만 합침). 스크립트를 바꾼 뒤엔 옛 줄이 남으니, 그 모듈의 `_calls.tsv` 를 지우고 필요한 함수를 다시 export 한다.
 
+## 지도 (`run_ghidra.sh map`, `CallGraphMap.java`)
+
+`ms/disassemble/<모듈>/_map/<뿌리>_*` — 뿌리에서 정적 호출 관계를 따라간 **색인**. 디컴파일 없음.
+
+### `_edges.tsv`
+```
+# depth	caller	call_off	ret_off	kind	callee	note
+1	NtCreateUserProcess	+0xc31	+0xc36	call	PspAllocateProcess
+```
+- `kind`: `call` / `tail` (꼬리호출) / `indirect` / `indirect-cfg` / `cfg-check` / `external`. 오프셋 표기(`frag:`, `tail`)와 별칭 경고는 `_calls.tsv` 와 같은 규칙.
+- `note` 의 `(seen)` = 이미 지도에 있는 함수라 다시 펼치지 않음.
+
+### `_nodes.tsv`
+```
+# name	rva	size	depth	callers_total	status	reason
+PspAllocateProcess	0xa02568	10186	1	3	expanded
+```
+- `depth` = 뿌리에서 처음 닿은 단계 (넓이 우선이라 **가장 짧은 길** 기준. 실행 순서가 아니다).
+- `callers_total` = 프로그램 전체에서 이 함수를 부르는 함수 수 (CALL 참조만, 함수 포인터는 못 셈).
+- `status`: `expanded` (펼침) / `helper` (공용 도구: caller 가 기준 이상이라 안 펼침 — **진짜 끊김 아님, 지도를 줄이려는 선택**) / `syscall` (SYSCALL 이 있어 커널로 넘어감) / `depth` (최대 깊이).
+- 끊긴 끝(간접·외부 등)도 `name` 칸에 `kind:label` 로 한 줄씩.
+
+### 읽을 때 주의
+- 정적 지도는 **"부를 수도 있는 것"**이다. 갈림길에서 안 타는 호출이 섞여 있고, 순서는 실행 순서가 아니다.
+- 호출이 아닌 길(새 스레드 출발, `NtContinue` 로 실행이 넘어감, 함수 주소를 값으로 넘겨 나중에 부름)은 지도에 없다. 예: `RtlUserThreadStart`, `ImageTlsCallbackCaller` 는 `LdrInitializeThunk` 지도에 없다 (sast/05).
+- 공용 도구 기준을 너무 낮추면 대표 함수가 잘린다 (기준 10 이면 `IopCreateFile` 이 잘림, sast/05). 기본 20.
+
 ## 결과서 양식: `_workspace/sast/NN_키워드_result.md`
 
 ```markdown

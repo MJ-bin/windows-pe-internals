@@ -9,6 +9,10 @@
 #   run_ghidra.sh export <바이너리이름> '<정규식>' [depth]    예) run_ghidra.sh export ntdll.dll '^Ldrp(LoadDll|MapDll)' 1
 #       - 이미 분석된 프로젝트에서 이름이 맞는 함수(+depth 단계 callee)를 디컴파일/디스어셈블한다.
 #
+#   run_ghidra.sh map <바이너리이름> <뿌리 함수> [최대깊이=10] [공용도구기준=20]   예) run_ghidra.sh map ntoskrnl.exe NtCreateUserProcess
+#       - 디컴파일 없이 뿌리에서 호출 관계만 따라가 "지도"(색인)를 만든다 (CallGraphMap.java, 몇 초).
+#       - 출력: ms/disassemble/<모듈>/_map/<뿌리>_{edges.tsv,nodes.tsv,summary.txt}
+#
 # 환경변수:
 #   GHIDRA_HOME  기본값: ~/tools/ghidra_11.3.2_PUBLIC_20250415/ghidra_11.3.2_PUBLIC
 #   MAXMEM       기본값: 8G   (analyzeHeadless 기본 2G로는 ntoskrnl 분석이 모자란다)
@@ -21,7 +25,7 @@ GHIDRA_HOME="${GHIDRA_HOME:-$HOME/tools/ghidra_11.3.2_PUBLIC_20250415/ghidra_11.
 MAXMEM="${MAXMEM:-8G}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-cmd="${1:?사용법: run_ghidra.sh analyze|export <바이너리이름> ...}"
+cmd="${1:?사용법: run_ghidra.sh analyze|export|map <바이너리이름> ...}"
 bin="${2:?바이너리 이름이 필요함 (예: ntdll.dll)}"
 module="$(printf '%s' "${bin%.*}" | tr '[:upper:]' '[:lower:]')"
 
@@ -78,8 +82,22 @@ export)
 	CALLS="$ROOT/ms/disassemble/$module/_calls.tsv"
 	[ -f "$CALLS" ] && sort -u -o "$CALLS" "$CALLS"
 	;;
+map)
+	root="${3:?뿌리 함수 이름이 필요함 (예: NtCreateUserProcess)}"
+	depth="${4:-10}"
+	th="${5:-20}"
+	OUT="$ROOT/ms/disassemble/$module/_map"
+	mkdir -p "$OUT"
+	echo "[+] map $module  root=$root depth=$depth helper>=$th"
+	headless "$PROJ_DIR" "$module" \
+		-process "$(basename "$BIN_PATH")" -noanalysis -readOnly \
+		-scriptPath "$HERE" \
+		-postScript CallGraphMap.java "$OUT" "$root" "$depth" "$th" \
+		-log "$LOG"
+	echo "[+] 지도: $OUT/${root}_edges.tsv, ${root}_nodes.tsv, ${root}_summary.txt"
+	;;
 *)
-	echo "[!] 알 수 없는 명령: $cmd (analyze|export)" >&2; exit 1 ;;
+	echo "[!] 알 수 없는 명령: $cmd (analyze|export|map)" >&2; exit 1 ;;
 esac
 # Ghidra 는 안쪽 스크립트(SetPdb 등)가 죽어도 정상 종료한다. 로그에서 직접 찾아 실패로 알린다.
 # (로그를 덮어쓰면 LOG_START 보다 짧아진다 → 그땐 처음부터 본다)

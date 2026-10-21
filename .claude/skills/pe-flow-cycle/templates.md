@@ -22,6 +22,10 @@
 | ntdll | `^LdrpLoadDllInternal$` | 1 | +0x284 앞 호출 목록 |
 | ntdll | `^LdrpMapDll` | 0 | 이름 후보 (정확한 이름은 _index.tsv로 확인) |
 
+## 지도에서 본 것 (`ms/disassemble/<모듈>/_map/`)
+- 대상 함수의 깊이·caller 수·상태 (`_nodes.tsv`), 직접 부르는 함수 개수와 눈에 띄는 것 (`_edges.tsv`)
+- 예) `PspAllocateThread` 깊이 1, caller 2곳, expanded / 직접 호출 N줄, 그중 `MmCreateTeb` 있음
+
 ## 이미 아는 것
 - `[관찰]` LdrpLoadDllInternal +0x284 → LdrpPrepareModuleForExecution (run7)
 - `[추측]` (flow.md에 추측으로 둔 것. 정적으로 맞는지 틀린지 볼 것)

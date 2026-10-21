@@ -107,7 +107,8 @@ allowed-tools: Read Write Edit Glob Grep Bash Agent AskUserQuestion SendMessage
    - 실행 중 디버거·VM 질문 → 6번.
    - "커밋해줘" → 9번. "새 스프린트" → `runs/NN+1_sprint/` 폴더를 만들고 알린다 (flow.md 복사는 flow-writer가 한다).
 3. **정적 요청** (기본은 정적 먼저)
-   - [templates.md](templates.md)의 "정적 요청서" 양식으로 `_workspace/sast/NN_키워드.md`를 쓴다. 질문은 **예/아니오나 이름으로 답할 수 있게** 좁힌다.
+   - 쓰기 전에 지도(`ms/disassemble/<모듈>/_map/`)에서 대상 함수의 깊이·caller·직접 호출을 본다. 지도가 없거나 스크립트가 바뀌었으면 decompiler 에게 `run_ghidra.sh map` 부터 하게 한다.
+   - [templates.md](templates.md)의 "정적 요청서" 양식으로 `_workspace/sast/NN_키워드.md`를 쓴다. 질문은 **예/아니오나 이름으로 답할 수 있게** 좁힌다. 지도에서 본 것은 "지도에서 본 것" 절에 옮긴다.
    - `decompiler` 를 부른다. 프롬프트엔 요청서 경로만 준다 (요청서에 다 있어야 한다).
    - 결과서 `_workspace/sast/NN_키워드_result.md`를 읽고 사용자에게 짧게 알린다.
 4. **동적이 필요한가** — 아래 중 하나라도 해당하면 동적이 필요하다. 필요 없으면 8번.
