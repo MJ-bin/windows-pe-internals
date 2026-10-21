@@ -32,11 +32,11 @@
 | Q22 | 2.5 `LdrpInitializeNode` [KERNELBASE]/[KERNEL32] 대응 (긴 `k`) | 3 | 동적 | 처음 (4.1 (1)) | 대기 |
 | Q23 | 2.6 dll1·dll2가 메모리에 올라오는 순간 | 3 | 동적 | 처음 (4장 2.6) | 대기 |
 | Q24 | 2.7 `LdrpInitializeGraphRecurse` 재귀 단계 ↔ 모듈 대응 (`k 8` 이상) | 3 | 동적 | 처음 (4.1 (2)) | 대기 |
-| Q25 | 2.7 `LdrpCallInitRoutine` → `ImageTlsCallbackCaller` (`k`), 그 안쪽 | 3 | 동적 | 처음 (4.1 (2)(3), 4장 2.7) | 대기 |
+| Q25 | 2.7 `LdrpCallInitRoutine` → `ImageTlsCallbackCaller` (`k`), 그 안쪽 | 3 | 동적 | 처음 (4.1 (2)(3), 4장 2.7); sast/05 지도 (`ImageTlsCallbackCaller` 는 호출 참조 0, 데이터 참조뿐 — `LdrpCallTlsInitializers+0x18f` 에서 주소만 꺼냄 → 정적 호출 지도로는 못 닿음) | 대기 |
 | Q26 | 2.8 `ImageTlsCallbackCaller` → `Dll2Tls`/`Dll1Tls` (`k`) | 3 | 동적 | 처음 (4.1 (2), 4장 2.8) | 대기 |
 | Q27 | 2.8 `LdrpCallInitRoutine` → `_DllMainCRTStartup` → `DllMain` (`k`) | 3 | 동적 | 처음 (4.1 (2)) | 대기 |
 | Q28 | 2.9 `ImageTlsCallbackCaller` → `test!ExeTls` (`k`) | 3 | 동적 | 처음 (4.1 (3)) | 대기 |
-| Q29 | 2.10 `LdrInitializeThunk` → `NtContinue` → `RtlUserThreadStart` (`k`) | 3 | 동적 | 처음 (4.1 로더 끝) | 대기 |
+| Q29 | 2.10 `LdrInitializeThunk` → `NtContinue` → `RtlUserThreadStart` (`k`) | 3 | 동적 | 처음 (4.1 로더 끝); sast/05 지도 (`RtlUserThreadStart` 는 CALL/JMP 참조 0 — `NtContinue` 의 SYSCALL 에서 정적 길이 끊김) | 대기 |
 | Q30 | 2.10 `RtlUserThreadStart` → `BaseThreadInitThunk` → `mainCRTStartup` (`k`) | 3 | 동적 | 처음 (4.1 로더 끝) | 대기 |
 | Q31 | 2.10 `mainCRTStartup` → `LoadLibraryExW` ×3 → `main` (`k`) | 3 | 동적 | 처음 (4.1 로더 끝, 4장 2.10) | 대기 |
 | Q32 | 2.2 `nt!PspMapThreadCreationFlags` 본문 (ThreadFlags → 최종 플래그 bit0 가 그대로 가나) | 1 | 정적 (ntoskrnl) | sast/03 결과 (정적 후보) | 대기 |
@@ -44,6 +44,7 @@
 | Q34 | 2.1 `NtCreateUserProcess` 실행 길: 간접 호출 2곳(`+0x5b2`, `+0x11bb`) 대상, `PspCreateUserContext` 길 vs `PspGetContextThreadInternal` 길, 이미지 섹션 재시도, 반환값 | 3 | 동적 | sast/03 동적 3~6, run9 flow.md 4.1 | 대기 |
 | Q35 | 2.1 `PspAllocateProcess` 실행 길: `MmInitializeProcessAddressSpace` `+0x2095`(보통) vs `+0x2113`(복제) 중 탄 쪽, 간접 호출 2곳(`+0x121a` @0xf04d28, `+0x17c4` @0xf04d20) 대상, `PspWow64PickBestNtdll` `+0xffb` 타는지, `+0x2314`·`+0x239c` 에서 새 PEB `+0x10`·`+0x20` 값 | 3 | 동적 | sast/04 동적 확인 | 대기 |
 | Q36 | 2.1 `nt!PspCopyAndFixupParameters`(PEB `+0x20` 프로세스 매개변수를 누가 쓰나), `nt!PspPrepareSystemDllInitBlock`(ntdll 로 넘기는 시작 정보) | 1 | 정적 (ntoskrnl) | sast/04 결과 (다음 정적 후보) | 대기 |
+| Q37 | 지도 크기 재기 (실험): 정적 호출 관계를 뿌리에서 끝까지 따라가 깊이별 함수 수를 재고, 끊기는 노드에 끊긴 이유를 적는다. 뿌리 = 커널 `nt!NtCreateUserProcess`, 유저 `ntdll!LdrInitializeThunk` | - | 정적 (ntoskrnl, ntdll) | 사용자 제안 (2026-10-21) | 끝 (run 없음, 도구 실험 — 결과서 sast/05) — 사용자 결정으로 Q3 앞에서 처리 |
 
 상태: `대기` / `진행 중` / `끝 (runN)` / `합침 → Qn` / `보류 (사용자 결정, 날짜)`
 
@@ -68,3 +69,7 @@
 - 2026-10-19: Q2 끝 (run10, sast/04). 새 할 일 Q35(동적)·Q36(정적) 맨 아래 추가 (기존 항목과 겹침 없음). 그림 1 정적 상자 8개 (요청 5~7 보다 1개 많음, MmMapViewOfSectionEx 두 번 = 상자 둘이라 그대로 둠)
 - 2026-10-19: 사용자 "너무 빠르다" → 속도 규칙·해설 담당·별칭 표 제안. 사용자: 중복 이름은 추천대로, 해설에서 "스스로 확인 질문"은 뺌, 나머지 동의
 - 2026-10-21: 하네스 묶음 H (바퀴 사이 멈춤, 주제 하나씩) `e568e3d`, I (explainer·run-explainer, runN-키워드-해설.md) `a09703d`, J (pdb_aliases.py 별칭 표, P19) `bdedf48`. ms/sym/*.aliases.tsv 생성 (커밋 안 함). 다음: run9·run10 해설서 채워 넣기, Q3 는 사용자 "다음" 뒤
+- 2026-10-21: 사용자 "바탕 개념 절은 너무 기초적" → 하네스 묶음 K (해설서 양식에서 바탕 개념 절 제거, 채팅 설명 순서도) `a0f4164`. run9·run10 해설은 그대로
+- 2026-10-21: 사용자 질문 "정적 전체 지도를 먼저 뽑는 게 빠를까?" → 비교 설명 후 사용자 결정: Q3 전에 지도 크기 재기 실험 (Q37). 뿌리 nt!NtCreateUserProcess / ntdll!LdrInitializeThunk, 끊기는 노드엔 이유. 도구는 하네스 밖 실험용 스크립트 (쓸 만하면 그때 하네스 검토)
+- 2026-10-21: Q37 끝 (sast/05). 결론 — 정적 전체 지도는 커널 끝까지 11688개라 읽을 목록으론 못 씀, 흐름도 함수는 커널 깊이 5·ntdll 깊이 7 안쪽, 공용 도구(caller≥20)로 잘린 흐름도 함수 없음. 사용자: "지도는 색인, 분석은 지금처럼" → 하네스 묶음 L (CallGraphMap.java + run_ghidra.sh map) 검토 OK, 시험 통과
+- 하네스 후보 (나중에 검토): CallGraphMap/ExportFunctions 의 `cfgSource()` 가 외부 주소 참조를 `@0xfffffffe…` 로 찍음 (커널 2곳, ntdll 7곳)
