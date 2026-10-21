@@ -60,7 +60,7 @@ docs(02_sprint): run9 kernel32 매핑 시점 추가 (LdrpLoadDllInternal)
    ```
    - 새 파일(`??`)은 내용을 `Read`로 확인한다.
 2. **묶기**: 목적이 다른 변경은 커밋을 나눈다. 순서: `chore`(요청서·로그) → `docs`/`fix`(runs) → `feat`/`fix`(harness).
-   - 한 바퀴(요청서 + 로그 + run 문서 + flow.md)는 보통 2개: `chore(workspace|logs)` 1개 + `docs(NN_sprint)` 1개.
+   - 한 바퀴(요청서 + 로그 + run 문서 + 해설서 + flow.md)는 보통 2개: `chore(workspace|logs)` 1개 + `docs(NN_sprint)` 1개. 해설서 `runN-키워드-해설.md` 는 run 문서와 같은 `docs(NN_sprint)` 커밋에 넣는다.
    - **하네스(`.claude/`, `CLAUDE.md`) 변경은 다른 파일과 절대 같은 커밋에 넣지 않는다.** 오케스트레이터가 "묶음"을 여러 개 주면 묶음 하나 = 커밋 하나 (나중에 `git revert` 로 하나씩 되돌릴 수 있게).
 3. **스테이징**: 파일을 **경로로 하나씩** `git add <경로>`. `git add -A`, `git add .` 금지.
 4. **파일 검사**:

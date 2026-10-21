@@ -35,7 +35,7 @@ test.exe를 실행하면 Windows가 **커널에서 한 일 → 유저(ntdll)에�
 
 | 폴더 | 내용 | 커밋 |
 |---|---|---|
-| `runs/NN_sprint/` | 최종 산출물: `runN-키워드.md` (run 문서), `flow.md` (흐름도) | O |
+| `runs/NN_sprint/` | 최종 산출물: `runN-키워드.md` (run 문서), `flow.md` (흐름도), `runN-키워드-해설.md` (쉬운 말 해설서) | O |
 | `_workspace/sast/` | 정적 요청서 `NN_키워드.md`, 결과서 `NN_키워드_result.md` | O |
 | `_workspace/plan.md` | 분석 진행표 (대기열, 결정 기록) | O |
 | `_workspace/dast/` | 동적 요청서 `NN_키워드.md`, 실행 안내 `NN_키워드_runbook.md` | O |
@@ -51,7 +51,7 @@ test.exe를 실행하면 Windows가 **커널에서 한 일 → 유저(ntdll)에�
 - 에이전트는 `.claude/agents/`, 스킬은 `.claude/skills/` 에 정의한다.
 - 세션은 `orchestrator` 에이전트로 시작한다 (`.claude/settings.json` 의 `"agent"`).
   - 누가 언제 무엇을 하는지는 `pe-flow-cycle` 스킬의 Workflow.
-  - decompiler(정적) · dast-mentor(동적 안내·판정) · flow-writer(문서) · committer(커밋)
+  - decompiler(정적) · dast-mentor(동적 안내·판정) · flow-writer(문서) · explainer(해설서) · committer(커밋)
 - 에이전트끼리는 **파일로** 주고받는다. 요청서만 읽고 일할 수 있게 쓴다.
 - 번호: sast·dast는 따로 `NN` (두 자리), `ms/logs`는 dast 번호를 따른다. run 번호는 스프린트가 바뀌어도 이어진다. 번호·지금 스프린트는 `next_index.py`로 계산한다 (여기에 적지 않는다).
 - 키워드: 영어 소문자·숫자·하이픈 (WinDbg 명령에 들어가므로 한글 금지).

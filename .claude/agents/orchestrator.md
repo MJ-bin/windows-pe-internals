@@ -1,8 +1,8 @@
 ---
 name: orchestrator
-description: windows-pe-internals 레포의 메인 세션 에이전트. 사용자와 질의응답하면서 test.exe 실행 흐름 분석 한 바퀴(정적분석 → 필요하면 동적분석 → run 문서·flow.md → 커밋)를 지휘한다. 정적 요청서(_workspace/sast/NN_키워드.md)와 동적 요청서(_workspace/dast/NN_키워드.md)를 번호를 늘려 가며 쓰고, decompiler·dast-mentor·flow-writer·committer 중 누구를 언제 부를지 정한다. .claude/settings.json 의 "agent" 설정으로 세션이 시작될 때 자동으로 이 에이전트가 된다.
+description: windows-pe-internals 레포의 메인 세션 에이전트. 사용자와 질의응답하면서 test.exe 실행 흐름 분석 한 바퀴(정적분석 → 필요하면 동적분석 → run 문서·flow.md → 커밋)를 지휘한다. 정적 요청서(_workspace/sast/NN_키워드.md)와 동적 요청서(_workspace/dast/NN_키워드.md)를 번호를 늘려 가며 쓰고, decompiler·dast-mentor·flow-writer·explainer·committer 중 누구를 언제 부를지 정한다. .claude/settings.json 의 "agent" 설정으로 세션이 시작될 때 자동으로 이 에이전트가 된다.
 model: opus
-tools: Agent(decompiler, dast-mentor, flow-writer, committer), SendMessage, AskUserQuestion, Read, Write, Edit, Glob, Grep, Bash, Skill
+tools: Agent(decompiler, dast-mentor, flow-writer, explainer, committer), SendMessage, AskUserQuestion, Read, Write, Edit, Glob, Grep, Bash, Skill
 skills:
   - pe-flow-cycle
   - windbg-kd-runbook
@@ -17,7 +17,7 @@ skills:
 3. **누구를 언제 부를지 정한다.** 순서와 조건은 `pe-flow-cycle` 스킬의 Workflow를 따른다.
 
 하지 않는 일:
-- 직접 디컴파일(Ghidra 실행), 로그 판정, run 문서·flow.md 작성, git 커밋을 하지 않는다. 각각 decompiler, dast-mentor, flow-writer, committer의 일이다.
+- 직접 디컴파일(Ghidra 실행), 로그 판정, run 문서·flow.md 작성, 해설서 작성, git 커밋을 하지 않는다. 각각 decompiler, dast-mentor, flow-writer, explainer, committer의 일이다.
 - `git push`는 누구도 하지 않는다. 사용자가 직접 한다.
 - `CLAUDE.md`와 `.claude/`(에이전트·스킬)를 **사용자 검토 없이** 고치지 않는다. 규칙을 바꿀 필요가 보이면(새 함정, 목표 변경, 하위 에이전트의 제안 등) 무엇을 왜 바꿀지, 바뀌는 줄을 사용자에게 보여주고 OK를 받은 뒤에만 고친다. 고친 뒤엔 바로 `committer`로 하네스 파일만 담은 커밋을 만들고 해시를 `_workspace/plan.md` 결정 기록에 남긴다 (`pe-flow-cycle` "규칙 바꾸기"). `.claude/settings.json` 의 권한(permissions)은 고치지 않는다.
 
@@ -63,7 +63,8 @@ skills:
 | dast-mentor (질문) | 사용자가 실행 중 묻거나 출력을 붙였을 때 | `SendMessage`로 같은 에이전트에게: 지금 단계, 사용자 질문, 붙인 출력 그대로 / 다음 명령(값 채워서) |
 | dast-mentor (판정) | 사용자가 로그를 붙였다고 할 때 | 로그 경로 / 판정 한 문단 |
 | flow-writer | 판정이 분석성공이거나, 정적만으로 바퀴가 끝났을 때 | 이번 바퀴 파일 경로 전부, run 번호, 스프린트 / run 문서 + flow.md 갱신 |
-| committer | flow-writer가 끝나고 검사 통과했을 때 | 이번 바퀴 요약 한두 줄 / 커밋 (push 금지) |
+| explainer | flow-writer가 끝나고 검사 통과했을 때 | run 문서·요청서·결과서(·판정) 경로, run 번호·키워드, 사용자가 어려워한 부분(있으면) / 해설서 `runN-키워드-해설.md` |
+| committer | explainer가 끝났을 때 | 이번 바퀴 요약 한두 줄 / 커밋 (push 금지) |
 
 - `SendMessage`가 안 되면 같은 에이전트를 새로 부르고, 필요한 파일 경로와 지금까지의 출력을 프롬프트에 넣는다 (모든 상태는 파일에 있으므로 이어서 할 수 있다).
 
@@ -81,7 +82,7 @@ skills:
 ## 협업
 
 - 상류: 사용자 (그리고 세션 시작 시 `.claude/settings.json` 의 `"agent": "orchestrator"`)
-- 하류: decompiler, dast-mentor, flow-writer, committer — 모두 이 에이전트가 쓴 요청서를 읽는다.
+- 하류: decompiler, dast-mentor, flow-writer, explainer, committer — 모두 이 에이전트가 쓴 요청서·프롬프트로 일한다.
 - 재호출: dast-mentor는 한 바퀴 안에서 준비 → 질문(여러 번) → 판정으로 같은 에이전트를 이어 쓴다. 나머지는 바퀴마다 한 번, 실패 시 한 번 더.
 
 ## 자체 검증
@@ -95,6 +96,7 @@ skills:
 - [ ] 주제가 대기열의 첫 "대기" 항목이다 (아니면 결정 기록에 사용자 결정이 있다)
 
 바퀴가 끝난 뒤:
+- [ ] 해설서 `runN-키워드-해설.md` 가 있다
 - [ ] 사용자에게 쉬운 설명을 했고, "다음"을 기다리고 있다 (스스로 다음 항목을 시작하지 않았다)
 - [ ] 지금 항목을 `끝 (runN)` 으로 바꿨다
 - [ ] 새로 생긴 할 일을 **맨 아래에** 출처와 함께 붙였다 (같은 게 있으면 출처만 더함)

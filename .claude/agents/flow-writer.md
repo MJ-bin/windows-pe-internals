@@ -37,7 +37,7 @@ skills:
   - `_workspace/dast/NN_키워드.md`, `_workspace/dast/NN_키워드_runbook.md`
   - (선택) `ms/logs/NN_키워드.txt`, `ms/logs/NN_키워드_result.md`
   - run 번호(`next_index.py next run`), 스프린트 폴더
-  - 기존 `runs/*/run*.md`, `runs/NN_sprint/flow.md` (없으면 전 스프린트 것)
+  - 기존 `runs/*/run*.md`, `runs/NN_sprint/flow.md` (없으면 전 스프린트 것). 단 해설서 `run*-해설.md` 는 근거가 아니라 읽지 않는다
 - 출력:
   - `runs/NN_sprint/runN-키워드.md`
   - `runs/NN_sprint/flow.md` (없으면 전 스프린트 것을 복사해서 시작)

@@ -25,6 +25,7 @@ allowed-tools: Read Write Edit Glob Grep Bash Agent AskUserQuestion SendMessage
 | `ms/logs/NN_키워드_result.md` (판정 한 문단) | dast-mentor | orchestrator, flow-writer |
 | `runs/NN_sprint/runN-키워드.md` | flow-writer | 사람 |
 | `runs/NN_sprint/flow.md` | flow-writer | 사람, 모든 에이전트 |
+| `runs/NN_sprint/runN-키워드-해설.md` (해설서) | explainer | 사람 (근거로 쓰지 않는다) |
 | git 커밋 | committer | 사용자 (push는 사용자가 직접) |
 | `_workspace/plan.md` (분석 진행표) | orchestrator | orchestrator, 사용자 |
 
@@ -137,11 +138,15 @@ allowed-tools: Read Write Edit Glob Grep Bash Agent AskUserQuestion SendMessage
    - 돌아온 보고에서 `check_mermaid.sh` 통과 여부를 확인한다. 실패로 돌아오면 그 내용 그대로 한 번 더 부른다 (최대 1번 더).
    - 사용자에게: 새 run 문서 경로, flow.md에서 바뀐 절, 새로 생긴/채워진 공백.
    - 진행표를 고친다: 지금 항목 `끝 (runN)`, 결과서·판정·run 문서의 "아직 확인 필요"에서 나온 새 할 일은 **맨 아래에** 출처와 함께 추가 (같은 게 있으면 출처만 더함). 단계의 처음 항목이 다 끝났으면 사용자에게 알린다.
+8-1. **해설**
+   - `explainer` 를 부른다. 프롬프트에 줄 것: run 문서 경로, 이번 바퀴 요청서·결과서(·판정) 경로, run 번호·키워드, 사용자가 이전에 어려워한 부분(있으면).
+   - 해설서 `runs/NN_sprint/runN-키워드-해설.md` 를 읽는다. 10번에서 사용자에게 설명할 때 이 글을 바탕으로 한다.
+   - 해설서는 **근거 문서가 아니다.** 다른 에이전트에게 사실의 근거로 주지 않는다.
 9. **커밋**
    - `committer` 를 부른다. 프롬프트에 이번 바퀴 요약(어떤 run, 무엇을 찾았나)을 한두 줄 준다.
    - 돌아온 커밋 해시·메시지를 사용자에게 알리고 **push는 직접 해 달라**고 말한다.
 10. **멈추기** — 바퀴 하나가 끝났다.
-   - 사용자에게 이번 바퀴를 쉬운 말로 설명한다: 바탕 개념 → 찾은 것 → 왜 중요한가 → 아직 모르는 것.
+   - 사용자에게 이번 바퀴를 쉬운 말로 설명한다: 바탕 개념 → 찾은 것 → 왜 중요한가 → 아직 모르는 것. 해설서(8-1)를 바탕으로 하고, 경로를 알려 준다.
    - **다음 항목을 스스로 시작하지 않는다.** 사용자가 "다음"이라고 하면 2번으로 간다.
    - 하네스 제안·대기열 질문이 쌓였으면 설명과 같은 메시지에 섞지 말고, 사용자가 설명을 다 본 뒤 하나씩 꺼낸다.
 
