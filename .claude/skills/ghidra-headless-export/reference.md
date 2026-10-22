@@ -63,6 +63,14 @@ LdrpCallInitRoutine	+0x41	+0x47	indirect:__guard_dispatch_icall_fptr
   - Ghidra 디컴파일(`.c`) 맨 위 `// callees:` 줄은 Ghidra 기준이라 여전히 이 호출들을 빠뜨릴 수 있다. 호출 목록은 `_calls.tsv` 를 믿는다.
 - `_calls.tsv` 는 export 할 때마다 **덧붙여 쌓인다** (`sort -u` 로 같은 줄만 합침). 스크립트를 바꾼 뒤엔 옛 줄이 남으니, 그 모듈의 `_calls.tsv` 를 지우고 필요한 함수를 다시 export 한다.
 
+## `.c`(디컴파일) 읽을 때 주의 (묶음 N3, 2026-10-22)
+
+- **흐름은 `.asm` 으로 확인한다.** `.c` 는 Ghidra 가 다시 짠 글이라 아래처럼 틀어질 수 있다.
+- 자기 조각(`FUN_`)으로 가는 점프가 `.c` 에선 `FUN_xxx(); return;` 처럼 **호출하고 끝나는 모양**으로 보일 수 있다. 실제로는 조각을 거쳐 본체로 돌아오기도 한다 (예: `MmCreatePeb +0x6b4`, sast/04). `.asm` 의 `FRAGJMP` 와 조각 끝의 `JMP` 를 본다.
+- `*(… + -8) = 0x140…` 처럼 **스택에 주소를 쓰는 줄**은 대개 call 의 돌아올 주소(함수 시작 + ret_off)를 Ghidra 가 스택 쓰기로 그린 것이다 (예: `PspAllocateProcess.c`, sast/04). 진짜 변수 저장으로 읽지 않는다.
+- 스택 자리를 잘못 읽어 인자·지역 변수가 엉킨 곳도 있었다 (sast/07). 인자 위치가 중요하면 `.asm` 에서 레지스터·`[RSP+..]` 로 다시 센다.
+- 맨 위 `// callees:` 줄은 Ghidra 기준이라 주인 없는 덩어리 안 호출이 빠질 수 있다. 호출 목록은 `_calls.tsv` 를 믿는다.
+
 ## 지도 (`run_ghidra.sh map`, `CallGraphMap.java`)
 
 `ms/disassemble/<모듈>/_map/<뿌리>_*` — 뿌리에서 정적 호출 관계를 따라간 **색인**. 디컴파일 없음.

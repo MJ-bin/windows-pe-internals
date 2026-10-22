@@ -7,7 +7,7 @@ runbook을 만들 때 이번 계획에 해당하는 것만 골라 넣는다. 번
 | P1 | `.logopen`을 Break 전에 입력 | 명령이 안 먹거나 로그 앞부분이 빔 | **Break 먼저**, 그다음 `.logopen` | 셋업 |
 | P2 | 명령에 한글 | 글자 깨짐 | 명령·`.echo` 문구 모두 영어 | run1~3 |
 | P3 | 끝 표시를 공용 출구(`@$ra` = `nt!KiSystemServiceCopyEnd+0x28`)에 | 다른 스레드가 먼저 밟아 기록이 일찍 끝남 (run1 빈 로그) | 끝은 `test!main` 멈춤점 또는 손 Break | run1 |
-| P4 | 필터 없는 커널 멈춤점 | svchost·EdgeUpdate 등으로 계속 멈춤, test.exe 실행할 틈이 없음 | `bp /p <EPROCESS>`. 지나가는 곳은 `.echo ...; g` | run2 |
+| P4 | 필터 없는 커널 멈춤점 | svchost·EdgeUpdate 등으로 계속 멈춤, test.exe 실행할 틈이 없음 | `bp /p <EPROCESS>`. 지나가는 곳은 `.echo ...; g`. **특히 조심할 함수 `[정적]`, 관찰 전**: `nt!PspMapSystemDll` (caller 4곳 — 부팅 때 `PspInitPhase3`·`PsLocateSystemDlls` 쪽에서도 불림. 새 프로세스만 보려면 `nt!PsMapSystemDlls` 입구나 `nt!MiMapProcessExecutable+0xdc`, sast/04), `nt!KiSchedulerApc`·`nt!KeResumeThread`·`nt!KeReadyThread` (스레드마다 아주 자주 불림 — 조건 필수, sast/08) | run2 (예: sast/04·08) |
 | P5 | 프로세스를 이름으로 고름 | cmd.exe가 둘 (하나는 부모 svchost) | **EPROCESS 주소**로 건다. `!process 0 0 cmd.exe`에서 사용자가 연 cmd를 고른다 | run2 |
 | P6 | `/t` 필터 | 걸렀는지 확인 못 함 | `/t`는 안 쓴다. `/p`만 | run1 |
 | P7 | `ba`에 `/p` | `Syntax error` + 주소 0, 꺼진(`d`) 찌꺼기 멈춤점 | `ba e1 <addr> ".if (@$proc == <EPROC>) {...; g} .else {gc}"`. 실패했으면 `bl` 보고 그 번호 `bc` | run4 |
