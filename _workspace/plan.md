@@ -86,3 +86,6 @@
 - 하네스 후보 (나중에 검토): (1) `_index.tsv` 는 Ghidra 가 고른 이름 하나만 담는다 — PDB 이름 `KeWaitForSingleObject` 가 내보내기 이름 `KeWaitForMutexObject` 로 잡혀 `_index.tsv` 로 못 찾음 (sast/08). (2) ExportFunctions 가 Ghidra 함수의 떨어진 두 번째 범위를 머리 표시 없이 큰 `+0x..` 로 찍음 (`KiSchedulerApc +0x4106d8`, sast/08)
 - 2026-10-21: Q5a 끝 (run13, sast/08). Q19 에 출처 추가, Q40(정적) 맨 아래 추가. KernelBase analyze 끝 (함수 6448, SetPdb OK) — Q5b 준비 됨
 - 하네스 후보 (나중에 검토): (3) windbg-kd-runbook pitfalls — `nt!KiSchedulerApc`·`nt!KeResumeThread` 는 아주 자주 불리니 test.exe 조건 필수 (flow-writer 제안, run13)
+- 2026-10-22: 사용자 "Q5b 전에 하네스 후보 먼저, N2 → N1 → N3 순서". 하네스 묶음 N2 (pdb_aliases.py --where, 이름 확인 규칙) 커밋 `f528f34`
+- 2026-10-22: 하네스 묶음 N1 (장부 숫자 순 정렬 sort_calls.py, 조각 JMP frag, 떨어진 범위 머리, CFG 출처 stack[…]/import:) 커밋 `18687ae`. ④ 는 처음 '외부 주소'로 잘못 진단 → 시험에서 스택 칸으로 밝혀져 사용자 승인 후 고침
+- 2026-10-22: 하네스 묶음 N3 (reference.md `.c` 읽을 때 주의, pitfalls P4 예) 사용자 OK — 커밋 해시는 아래 줄에. 이로써 쌓였던 하네스 후보 7개(G1~G4, sast/08 (1)(2), run13 (3), Q37 외부 주소) 정리 끝
