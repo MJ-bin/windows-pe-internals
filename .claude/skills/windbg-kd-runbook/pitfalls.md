@@ -7,7 +7,7 @@ runbook을 만들 때 이번 계획에 해당하는 것만 골라 넣는다. 번
 | P1 | `.logopen`을 Break 전에 입력 | 명령이 안 먹거나 로그 앞부분이 빔 | **Break 먼저**, 그다음 `.logopen` | 셋업 |
 | P2 | 명령에 한글 | 글자 깨짐 | 명령·`.echo` 문구 모두 영어 | run1~3 |
 | P3 | 끝 표시를 공용 출구(`@$ra` = `nt!KiSystemServiceCopyEnd+0x28`)에 | 다른 스레드가 먼저 밟아 기록이 일찍 끝남 (run1 빈 로그) | 끝은 `test!main` 멈춤점 또는 손 Break | run1 |
-| P4 | 필터 없는 커널 멈춤점 | svchost·EdgeUpdate 등으로 계속 멈춤, test.exe 실행할 틈이 없음 | `bp /p <EPROCESS>`. 지나가는 곳은 `.echo ...; g`. **특히 조심할 함수 `[정적]`, 관찰 전**: `nt!PspMapSystemDll` (caller 4곳 — 부팅 때 `PspInitPhase3`·`PsLocateSystemDlls` 쪽에서도 불림. 새 프로세스만 보려면 `nt!PsMapSystemDlls` 입구나 `nt!MiMapProcessExecutable+0xdc`, sast/04), `nt!KiSchedulerApc`·`nt!KeResumeThread`·`nt!KeReadyThread` (스레드마다 아주 자주 불림 — 조건 필수, sast/08) | run2 (예: sast/04·08) |
+| P4 | 필터 없는 커널 멈춤점 | svchost·EdgeUpdate 등으로 계속 멈춤, test.exe 실행할 틈이 없음 | `bp /p <EPROCESS>`. 지나가는 곳은 `.echo ...; g`. **특히 조심할 함수 `[정적]`, 관찰 전**: `nt!PspMapSystemDll` (caller 4곳 — 부팅 때 `PspInitPhase3`·`PsLocateSystemDlls` 쪽에서도 불림. 새 프로세스만 보려면 `nt!PsMapSystemDlls` 입구나 `nt!MiMapProcessExecutable+0xdc`, sast/04), `nt!KiSchedulerApc`·`nt!KeResumeThread`·`nt!KeReadyThread` (스레드마다 아주 자주 불림 — 조건 필수, sast/08), `nt!PspInitializeThunkContext` (모든 프로세스의 모든 유저 스레드가 출발할 때 거침, sast/11) | run2 (예: sast/04·08) |
 | P5 | 프로세스를 이름으로 고름 | cmd.exe가 둘 (하나는 부모 svchost) | **EPROCESS 주소**로 건다. `!process 0 0 cmd.exe`에서 사용자가 연 cmd를 고른다 | run2 |
 | P6 | `/t` 필터 | 걸렀는지 확인 못 함 | `/t`는 안 쓴다. `/p`만 | run1 |
 | P7 | `ba`에 `/p` | `Syntax error` + 주소 0, 꺼진(`d`) 찌꺼기 멈춤점 | `ba e1 <addr> ".if (@$proc == <EPROC>) {...; g} .else {gc}"`. 실패했으면 `bl` 보고 그 번호 `bc` | run4 |
@@ -23,6 +23,7 @@ runbook을 만들 때 이번 계획에 해당하는 것만 골라 넣는다. 번
 | P17 | ntdll 소프트웨어 멈춤점을 남겨 둠 | 다른 프로세스에서도 ntdll 코드가 같은 페이지라 계속 트랩 → 느려짐 [추측] | 끝나면 `bc *` | run7 |
 | P18 | test.exe 끝난 뒤 Break | `lm m test`가 빈칸 | 모듈 정보는 test.exe가 살아 있을 때(멈춤점 안에서) 본다 | run5 |
 | P19 | **별칭 무리** 함수에 이름으로 `bp` (한 주소에 함수 이름이 여러 개 — 링커가 같은 코드를 합친 ICF) | 그 주소를 쓰는 **다른 함수들의 호출에도** 멈춤. 콜스택·`ln` 에 이름이 하나만(엉뚱한 것) 보일 수 있음 `[추측]` | runbook 만들 때 `pdb_aliases.py --lookup <모듈> <이름>` 으로 확인. 무리면 그 함수 입구 대신 **caller 의 call 자리**(`caller+call_off`)에 걸거나, 입구에 `.if (poi(@rsp) == <caller+ret_off 주소>) {...} .else {gc}` 조건. 로그의 이름이 무리면 판정 문단에 "별칭 무리"라고 적는다 | sast/03 (정적, 관찰 전) |
+| P20 | 커널 → 유저로 넘어가는 `IRETQ` 줄 자체에 멈춤점 (`nt!KxStartUserThread+0x3e1`, `nt!KiKernelExit+0xa5`) | 바로 앞에서 `SWAPGS`(GS 가 유저 값)·CR3 전환을 이미 해서 디버거가 이상하게 굴 수 있음 `[추측]`, 관찰 전 | 유저로 들어가기 직전 값은 `nt!KiStartUserThread+0x28` 에서 `dq @rbp+0xe8 L5` (Rip·CS·EFlags·Rsp·SS) 로 읽는다. 유저 쪽 첫 자리는 `ntdll!LdrInitializeThunk` 입구에서 | sast/10·run15 (정적, 관찰 전) |
 
 ## 값 읽는 법 (자주 씀)
 
@@ -30,3 +31,4 @@ runbook을 만들 때 이번 계획에 해당하는 것만 골라 넣는다. 번
 - `DllMain`·TLS 콜백: `r rdx` = 이유 (1 프로세스 시작, 2 스레드 시작, 3 스레드 끝, 0 프로세스 끝)
 - 콜스택 오프셋 `caller+0x..` = call 다음 명령 위치 = 정적 결과 `_calls.tsv`의 `ret_off`
 - `ub <caller+off> L1` = 그 자리의 call 명령 한 줄 (BEFORE-GRAPH 오프셋 `+0x1bb6`을 이렇게 얻었다)
+- 이름표만 함수 이름인 곳: `nt!KiStartUserThread` 는 Ghidra 함수 `KxStartUserThread +0x60` 의 이름표다. 그래서 `KxStartUserThread +x` 주소는 WinDbg 에 `KiStartUserThread+(x−0x60)` 로 보일 것이다 `[추측]` (예: Kx `+0x88` = `KiStartUserThread+0x28`, run4 관찰과 같은 주소, sast/10). 정적 결과의 Kx 오프셋을 멈춤점에 쓸 땐 이렇게 바꾼다.

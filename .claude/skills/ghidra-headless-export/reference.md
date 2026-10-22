@@ -70,6 +70,7 @@ LdrpCallInitRoutine	+0x41	+0x47	indirect:__guard_dispatch_icall_fptr
 - `*(… + -8) = 0x140…` 처럼 **스택에 주소를 쓰는 줄**은 대개 call 의 돌아올 주소(함수 시작 + ret_off)를 Ghidra 가 스택 쓰기로 그린 것이다 (예: `PspAllocateProcess.c`, sast/04). 진짜 변수 저장으로 읽지 않는다.
 - 스택 자리를 잘못 읽어 인자·지역 변수가 엉킨 곳도 있었다 (sast/07). 인자 위치가 중요하면 `.asm` 에서 레지스터·`[RSP+..]` 로 다시 센다.
 - 맨 위 `// callees:` 줄은 Ghidra 기준이라 주인 없는 덩어리 안 호출이 빠질 수 있다. 호출 목록은 `_calls.tsv` 를 믿는다.
+- **`.c` 에 아예 안 나오는 명령**: `MOV CR8,…`(IRQL 바꾸기), `SWAPGS`(커널·유저 GS 바꾸기), `IRETQ`/`SYSRETQ`(유저로 넘어가기), `CLI`/`STI`. 커널 ↔ 유저 경계나 IRQL 이 중요한 함수(예: `KxStartUserThread`, `KiKernelExit`, sast/10)는 반드시 `.asm` 으로 본다 (묶음 O3).
 
 ## 지도 (`run_ghidra.sh map`, `CallGraphMap.java`)
 
