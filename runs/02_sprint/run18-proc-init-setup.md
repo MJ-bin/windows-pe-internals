@@ -1,5 +1,7 @@
 # 2026-10-22 run18 — `LdrpInitializeProcess` 앞쪽(`+0x0 ~ +0x12dd`): PEB.Ldr → IFEO → 프로세스 힙 → `\KnownDlls` → ntdll 모듈 항목. 이 구간은 아무것도 메모리에 올리지 않는다 (정적)
 
+> **정정 (run19)**: 묶음 10 의 "exe 폴더 잘라 두기(`[RSP+0x130]`)" 는 틀렸다. `ImagePathName` 의 마지막 `\` **뒤** (= 파일 이름 부분) 를 잘라 두는 것이고, 뒤쪽 `+0x1408` 이 exe 항목 `BaseDllName`(test.exe) 에 넣는다. 입구 `RCX` 의 "로더 문맥" 은 정확히는 CONTEXT 레코드 (첫 스레드의 맡긴 문맥, `+0x18b4`) 다. → `run19-proc-init-modules.md` "정정"
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음).

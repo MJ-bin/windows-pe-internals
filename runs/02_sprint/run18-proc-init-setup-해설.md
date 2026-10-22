@@ -2,6 +2,8 @@
 
 > 이 글은 [run18 문서](run18-proc-init-setup.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **정정 (run19)**: 2.4 의 "exe 폴더(`[RSP+0x130]`)" 는 틀렸다. exe **파일 이름 부분**(`BaseDllName`, test.exe)이다. 4절의 "`RCX`(로더 문맥)" 은 정확히는 **CONTEXT 레코드**(사물함에 맡긴 원래 메모)다. 본문은 그대로 두었다 → [run19 해설 2.1](run19-proc-init-modules-해설.md#21-run18-정정-하나--exe-폴더가-아니라-exe-파일-이름) · [2.2](run19-proc-init-modules-해설.md#22-run18-정정-둘--입구-rcx-는-context-레코드)
 
 - 대기열: **Q9a** — 2.4 `ntdll!LdrpInitializeProcess` 앞쪽 `+0x0 ~ +0x12dd` callee, 입구에서 RCX·RDX 쓰는 곳 (`_workspace/plan.md`)
   - 원래는 Q9 한 줄이었다. 함수가 너무 커서 **그 자리에서 둘로 나눴다** (Q9a 앞쪽 / Q9b 뒤쪽). 이유는 2.1.
