@@ -5,11 +5,11 @@
 - 타깃: Windows 11 24H2, **26100.9457**
   - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1`
   - kernelbase.pdb: `72CCE506944DE0267C172AD64287F9BD1` (run14)
-  - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19)
+  - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20)
 - 디버거: WinDbg 커널 디버깅 (KDNET)
 - 부모: `cmd.exe`에서 `test.exe` 실행
 - 근거 로그: `runs/01_sprint/` run3 ~ run8 (디버거)
-- 정적 근거: `runs/02_sprint/` run9 ~ run19 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16 ntoskrnl, run14 KernelBase, run17 ~ run19 ntdll. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀)
+- 정적 근거: `runs/02_sprint/` run9 ~ run20 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16 ntoskrnl, run14 KernelBase, run17 ~ run20 ntdll. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀)
   - Ghidra 가 함수로 안 잡은 곳은 원본 바이트(`objdump`)로, 구조체 칸 이름은 PDB 타입 레코드(`llvm-pdbutil`)로 읽었다. 그런 곳은 글에 그렇다고 밝혔다.
   - 전역 변수 이름(`PsNtdllExports` 등)은 PDB 공개 심볼 + PE 구역표로 맞췄다 (run16).
   - 디버거 표시 이름과 PDB 이름이 다를 수 있다: 콜스택 `LdrpInitialize+0x16c` 의 주인은 PDB 이름 `_LdrpInitialize` (run17). 글에선 PDB 이름을 쓰고 표시 이름을 괄호로 붙인다.
@@ -66,6 +66,11 @@
 - 앞쪽은 DLL 을 하나도 메모리에 올리지 않는다. 관찰된 `(1)`~`(3)` 상자는 모두 뒤쪽이다.
 - 뒤쪽에서 `(1)` 과 `(2)` 사이에 `(정적)` 상자 셋을 넣었다 (run19): 병렬 로딩 켜기 → exe import 올리고 연결 → 실행 준비. dll1·dll2 가 올라오는 가장 유력한 자리다 (실행으로는 아직 안 봄).
 - 간접 호출 둘(kernel32 스레드 시작 thunk, `PEB.PostProcessInitRoutine`)은 대상이 실행 때 정해져서 회색 상자다.
+
+그림 2 의 `(1) kernel32 준비` 상자에 **코드 순서 상자를 넣었다** (run20 `[정적]`, 2.5).
+- 관찰된 두 `LdrLoadDll` 이 각각 `KERNEL32.DLL`, `KERNELBASE.dll` 을 이름으로 올린다 (원본 바이트로 이름 확인).
+- 그 사이에 "이미 있나" 확인, `BaseThreadInitThunk` 찾기(→ `Kernel32ThreadInitThunkFunction` 칸), `LdrpCodeAuthzInitialize`, `KernelbasePostInit` 찾기를 `(정적)` 상자로 넣었다.
+- 마지막 `KernelbasePostInit` 간접 호출은 회색 상자다 (이름으로 찾은 주소, 값은 실행 때).
 
 > 왜 2장인가: 서로 화살표로 이어지지 않은 덩어리는 머메이드가 위아래 순서를 마음대로 정한다 (실험해보니 ③ → ② → ① 거꾸로 나왔다). 두 스레드 사이엔 호출 관계가 없어서 화살표로 이을 수 없으니, 그림을 나누고 **문서 순서로 시간 순서**를 보인다.
 
@@ -243,7 +248,7 @@ flowchart LR
     class cb1,cb2,cb3,cb4 unkg
 ```
 
-### 그림 2 — test.exe 메인 스레드 (run4 ~ run8, run13, run14 메모, run15, run16, run17, run18, run19)
+### 그림 2 — test.exe 메인 스레드 (run4 ~ run8, run13, run14 메모, run15, run16, run17, run18, run19, run20)
 
 ```mermaid
 flowchart LR
@@ -311,7 +316,8 @@ flowchart LR
             subgraph PH1["(1) kernel32 준비"]
                 direction LR
                 k1["ntdll!LdrpInitializeKernel32Functions"]
-                k2["ntdll!LdrLoadDll"]
+                ka["ntdll!LdrpFindLoadedDllInternal<br/>(정적: 플래그 0x20, 이름 KERNEL32.DLL 이<br/>이미 목록에 있나. 찾으면 다음 LdrLoadDll 건너뜀)"]:::ntg
+                k2["ntdll!LdrLoadDll<br/>(정적: 이름 KERNEL32.DLL, 못 찾았을 때만)"]
                 k3["ntdll!LdrpLoadDll"]
                 k4["ntdll!LdrpLoadDllInternal"]
                 k5["ntdll!LdrpPrepareModuleForExecution"]
@@ -322,8 +328,11 @@ flowchart LR
                 k10["ntdll!LdrpCallInitRoutine"]
                 k11["ntdll!LdrpInitializeNode<br/>[KERNEL32 추정]"]
                 k12["ntdll!LdrpCallInitRoutine"]
-                k13["ntdll!LdrLoadDll"]
+                kb["ntdll!LdrGetProcedureAddressForCaller<br/>(정적: kernel32 에서 BaseThreadInitThunk 찾기<br/>→ 전역 Kernel32ThreadInitThunkFunction)"]:::ntg
+                k13["ntdll!LdrLoadDll<br/>(정적: 이름 KERNELBASE.dll. 이미 올라온 것 다시 찾기 추정)"]
                 k14["ntdll!LdrpLoadDll"]
+                kc["ntdll!LdrpCodeAuthzInitialize<br/>(정적: 레지스트리 값에 따라 안에서<br/>LdrLoadDll ADVAPI32.DLL 가능)"]:::ntg
+                kd["ntdll!LdrGetProcedureAddressForCaller<br/>(정적: kernelbase 에서 KernelbasePostInit 찾기<br/>→ 지역 칸 RSP+0x58)"]:::ntg
             end
 
             subgraph PH12["(1)~(2) 사이 — exe import 올리기·연결 (정적)"]
@@ -395,7 +404,8 @@ flowchart LR
         end
         subgraph T2CB["모듈 모름 — 간접 호출 (대상은 실행 때)"]
             direction LR
-            z1["Kernel32ThreadInitThunkFunction 칸의 함수<br/>(정적: 인자 1,0,0. 칸은 LdrpInitializeKernel32Functions 가 채움.<br/>BaseThreadInitThunk 추정)"]:::unkg
+            z1["Kernel32ThreadInitThunkFunction 칸의 함수<br/>(정적: 인자 1,0,0. 칸 = kernel32 에서 이름<br/>BaseThreadInitThunk 로 찾은 주소. 실제 값은 실행 때)"]:::unkg
+            z3["RSP+0x58 칸의 함수<br/>(정적: kernelbase 에서 이름 KernelbasePostInit 로<br/>찾은 주소. CFG 검사 거침, 인자 안 실음)"]:::unkg
             z2["PEB.PostProcessInitRoutine 칸의 함수<br/>(정적: 값이 있을 때만)"]:::unkg
         end
     end
@@ -439,7 +449,8 @@ flowchart LR
     %% LdrpInitializeProcess (1) kernel32 준비
     c4 -->|"(7) +0x19a2"| k1
     k1 -.-> c4
-    k1 -->|"(1) +0xc0"| k2
+    k1 -->|"(1) +0xa4"| ka
+    k1 -->|"(2) +0xc0"| k2
     k2 -.-> k1
     k2 -->|+0x170| k3
     k3 -->|+0x100| k4
@@ -455,8 +466,12 @@ flowchart LR
     k6 -->|"(2) +0x6a"| k11
     k11 -->|+0x19c| k12
     k12 -->|"?"| d2
-    k1 -->|"(2) +0x156"| k13
+    k1 -->|"(3) +0xff"| kb
+    k1 -->|"(4) +0x156"| k13
     k13 -->|+0x170| k14
+    k1 -->|"(5) +0x165"| kc
+    k1 -->|"(6) +0x19b"| kd
+    k1 -->|"(7) +0x1af"| z3
 
     %% LdrpInitializeProcess (1)~(2) 사이 (정적), 간접 호출 (정적)
     c4 -->|"(8) +0x1a47"| j1
@@ -1483,7 +1498,7 @@ LdrpInitializeProcess (0x8c404)          ← RCX = CONTEXT 레코드 → [RSP+0x
 - `[정적]` **병렬 로딩** → 3장 "ntdll 일꾼 2개". 스레드 풀을 만드는 첫 자리는 `+0x1a47 LdrpEnableParallelLoading` (callee 이름 `TpAllocPoolInternal` 등).
 - `[정적]` **간접 호출 4곳**:
   - `+0x17fe` (`CALL RAX`, 2바이트라 ret 이 `+0x17fe`): `g_LdrpWow64LdrpInitialize`, WOW64 일 때만, 인자 CONTEXT. 탄 뒤엔 `+0x1801 JMP +0x1d1b` 로 TLS·shim·`PostProcessInitRoutine` 을 건너뛴다.
-  - `+0x1b5e`: 전역 **`Kernel32ThreadInitThunkFunction`** — 값을 채우는 곳은 `LdrpInitializeKernel32Functions +0xe4`, 읽는 곳은 여기와 **`RtlUserThreadStart +0x7`** (`refs`). 새 스레드가 시작할 때 부르는 그 함수를 프로세스 초기화 때 `(1,0,0)` 으로 한 번 부른다. 대상은 `KERNEL32!BaseThreadInitThunk` `[추측]` (동적 Q48).
+  - `+0x1b5e`: 전역 **`Kernel32ThreadInitThunkFunction`** — 값을 채우는 곳은 `LdrpInitializeKernel32Functions +0xe4`(칸 주소를 실음) → ret `+0xff` 호출, 읽는 곳은 여기(읽기 `+0x1b45`)와 **`RtlUserThreadStart +0x7`** (`refs`). 새 스레드가 시작할 때 부르는 그 함수를 프로세스 초기화 때 `(1,0,0)` 으로 한 번 부른다. 대상은 `KERNEL32!BaseThreadInitThunk` `[추측]` (동적 Q48). (run20 `[정적]`) 칸 값은 kernel32 에서 **이름 `BaseThreadInitThunk`** 로 찾은 주소다 (2.5). 실제 주소 값만 동적.
   - `+0x1ce4`: 전역 `g_pfnSE_InstallAfterInit` 을 `KUSER_SHARED_DATA.Cookie` 로 푼 값. `g_ShimsEnabled` 일 때만 (shim 엔진).
   - `+0x1d1b`: **`PEB.PostProcessInitRoutine`**(PEB+0x230, PDB) — 0 이 아닐 때만. 값을 누가 넣는지는 이 함수 안에 없다 (동적 Q48).
 - `[정적]` **`LdrInitState` 쓰기 3곳**: `+0x1a4c` = 1 (병렬 로딩 켠 직후), `+0x1b1e` = 2 (실행 준비 성공 뒤), `+0x17dd` = 3 (WOW64 길만). 네이티브 길의 3 은 돌아간 뒤 `_LdrpInitialize +0x205`. 뜻(1 = import 올리는 중, 2 = 올림 끝, 3 = 초기화 끝)은 `[추측: 공개 문서]`.
@@ -1496,21 +1511,27 @@ LdrpInitializeProcess (0x8c404)          ← RCX = CONTEXT 레코드 → [RSP+0x
 
 ---
 
-### 2.5 `ntdll` → `KERNELBASE` / `KERNEL32` 준비 (run7, run8, run19)
+### 2.5 `ntdll` → `KERNELBASE` / `KERNEL32` 준비 (run7, run8, run19, run20)
 
 먼저 두 단어를 나눈다. 이 구간에서 **관찰한 건 전부 "켜기"** 다.
 
 | | 뜻 | 비유 (이사) | 이번 빌드에서 |
 |---|---|---|---|
-| **올리기 (로드)** | DLL 파일을 프로세스 메모리에 올리고, 서로 쓰는 함수 주소를 이어 줌 | 짐 들이기, 전기·수도 연결 | `[공백]` 아직 못 봄 |
+| **올리기 (로드)** | DLL 파일을 프로세스 메모리에 올리고, 서로 쓰는 함수 주소를 이어 줌 | 짐 들이기, 전기·수도 연결 | `[공백]` 아직 못 봄. 올리라고 부르는 호출과 DLL 이름만 `[정적]` (run20) |
 | **켜기 (초기화)** | 올라온 DLL의 TLS 콜백·시작 함수(DllMain 등)를 불러 줌 | 가전제품 전원 켜기 | `[관찰]` 아래 콜스택 |
+
+관찰한 콜스택 (run7) 에 코드 순서(run20 `[정적]`)를 끼워 넣은 트리다. `[관찰]` 이 안 붙은 줄은 정적만. 라벨은 ret 자리.
 
 ```
 LdrpInitializeProcess
- └─ (1) +0x19a2  LdrpInitializeKernel32Functions
-      ├─ (1) +0xc0   LdrLoadDll
+ └─ +0x19a2  LdrpInitializeKernel32Functions (0xb8024)       [관찰] run7. RCX = 출력 칸 (입구 +0x6c 에서 0)
+      ├─ (1) +0x86   LdrpAppendUnicodeStringToFilenameBuffer  버퍼에 "KERNEL32.DLL"            [정적]
+      ├─ (2) +0xa4   LdrpFindLoadedDllInternal (플래그 0x20)  이름만으로 이미 있나            [정적]
+      │      찾음 → +0x1ff: 베이스 = 항목+0x30. ProcessParameters.Flags 0x20000000 켜졌으면 (4)~(6) 건너뜀
+      ├─ (3) +0xc0   LdrLoadDll(0x4001, 0, "KERNEL32.DLL")     못 찾았을 때만                  [관찰] run7 + [정적]
       │     └─ +0x170  LdrpLoadDll
-      │          └─ +0x100  LdrpLoadDllInternal
+      │          ├─ +0xc2   LdrpPreprocessDllName                                              [정적]
+      │          └─ +0x100  LdrpLoadDllInternal (R9D = 4, 상태 칸 = LdrpLoadDll 의 [RSP+0x50])
       │               └─ +0x284  LdrpPrepareModuleForExecution
       │                    └─ +0xef   LdrpInitializeGraphRecurse
       │                         ├─ (1) +0x96  LdrpInitializeGraphRecurse (재귀)
@@ -1519,22 +1540,51 @@ LdrpInitializeProcess
       │                         │          └─ (2) +0x19c  LdrpCallInitRoutine → ? KERNELBASE 시작 함수
       │                         └─ (2) +0x6a  LdrpInitializeNode [KERNEL32 추정]
       │                              └─ +0x19c  LdrpCallInitRoutine → ? KERNEL32 시작 함수
-      └─ (2) +0x156  LdrLoadDll
-            └─ +0x170  LdrpLoadDll
+      │      결과 0xc0000135 면 (4)~(6) 건너뜀, 그 밖의 음수면 로그 후 끝
+      ├─ (4) +0xff   LdrGetProcedureAddressForCaller  "BaseThreadInitThunk" → 전역 Kernel32ThreadInitThunkFunction   [정적]
+      ├─ (5) +0x130  LdrGetProcedureAddressForCaller  "TermsrvGetWindowsDirectoryW" → 출력 칸 (결과 안 봄)       [정적]
+      ├─ (6) +0x135  LdrpSnapKernelBaseExtensions     음수면 로그 없이 끝                                       [정적]
+      ├─ (7) +0x156  LdrLoadDll(0x4001, 0, "KERNELBASE.dll")                                                   [관찰] run7 + [정적]
+      │     └─ +0x170  LdrpLoadDll
+      ├─ (8) +0x165  LdrpCodeAuthzInitialize          레지스트리 값에 따라 안에서 LdrLoadDll("ADVAPI32.DLL")     [정적]
+      ├─ (9) +0x19b  LdrGetProcedureAddressForCaller  "KernelbasePostInit" → 지역 [RSP+0x58]                    [정적]
+      └─ (10) +0x1af (간접, CFG 검사 거침) [RSP+0x58] = KernelbasePostInit, 인자 안 실음                        [정적]
 ```
 
 #### `ntdll!LdrpInitializeKernel32Functions`
 
 - `[관찰]` `LdrpInitializeProcess`가 부르고, 이 함수가 **`LdrLoadDll`을 직접 두 번** 부른다 (`+0xc0`, `+0x156`).
+  - `[정적]` (run20) **두 호출의 DLL 이름**: 첫째 `+0xc0` = **`KERNEL32.DLL`** (전역 `LdrpKernel32DllName`), 둘째 `+0x156` = **`KERNELBASE.dll`** (전역 `LdrpKernelbaseDllName`). 이름은 원본 바이트로 읽었다. 둘 다 `RCX=0x4001`(플래그 방식, 남은 `0x4000` 은 `LOAD_LIBRARY_SEARCH_SYSTEM32_NO_FORWARDER` 값과 같음 `[추측: 공개 문서]`), `RDX=0`.
+- `[정적]` (run20) **순서**: 이름 버퍼 만들기 → **이미 있나 확인** → (없으면) KERNEL32 올리기 → kernel32 에서 함수 둘 찾기 → `LdrpSnapKernelBaseExtensions` → KERNELBASE 올리기 → `LdrpCodeAuthzInitialize` → kernelbase 에서 `KernelbasePostInit` 찾아 부르기. 위 트리 (1) ~ (10).
+  - "이미 있나" (`+0xa4`): `LdrpFindLoadedDllInternal` 에 플래그 `0x20` → 안에서 `LdrpFindLoadedDllByName` 만 부른다. 즉 **이름만으로 모듈 목록(해시 표 `LdrpHashTable`)을 뒤지는 확인**. 찾으면 첫째 `LdrLoadDll` 을 건너뛴다 (`+0xa6 JNS`).
+  - 찾은 길에서 `PEB.ProcessParameters.Flags` 의 `0x20000000` 비트가 켜져 있으면 kernel32 쪽 (4)~(6) 도 건너뛴다. 이 비트 이름은 PDB 로 못 찾았다 `[추측: 특수 모드의 예외 길]`.
+  - `0xc0000135` (`STATUS_DLL_NOT_FOUND` 값) 는 두 곳(첫째 `LdrLoadDll`, `LdrpCodeAuthzInitialize`)에서 일부러 실패로 안 친다 `[추측: kernel32 가 없는 프로세스용 길]`.
+  - 실패로 끝나는 길 7곳: 로그 남기고 6곳 (KERNEL32·KERNELBASE 적재, `BaseThreadInitThunk`·`KernelbasePostInit` 찾기, CodeAuthz, `KernelbasePostInit` 호출), 로그 없이 1곳 (`LdrpSnapKernelBaseExtensions`). 어느 쪽이든 상태를 돌려주고, 호출자 `+0x19a2` 가 음수면 에러 끝으로 간다.
 - `[추측]` exe가 무엇을 import하든 상관없이, ntdll이 kernel32를 **스스로** 불러온다.
   - `[정적]` (run19) 부르는 조건은 exe 헤더의 `Subsystem` 이 2(GUI) 또는 3(콘솔)일 때뿐이다 (`LdrpInitializeProcess +0x1980 ~ +0x1993`). import 목록은 안 본다. 그러니 "exe import 와 상관없이" 는 코드로 맞다. test.exe(콘솔) 값 3 은 동적 (Q46).
+  - `[정적]` (run20) 이 함수 안에도 exe import 표를 읽는 호출이 없고, 올리는 DLL 이름은 **고정 전역 두 개**다. → 이 `[추측]` 은 **코드로 지지된다.** 실행으로 맞춰 보는 건 Q49.
 - `[정적]` (run19) 부르는 때: exe 모듈 항목(`+0x135e`)·TLS 준비(`+0x18d0`)·import 리다이렉션(`+0x1963`) **뒤**, 병렬 로딩 켜기(`+0x1a47`) **앞** (`LdrInitState` = 0). 그래서 kernel32·kernelbase 는 일꾼 없이 이 스레드가 올릴 것 `[추측]`.
 - `[정적]` (run19) 이 함수는 전역 **`Kernel32ThreadInitThunkFunction`** 칸을 채운다 (`+0xe4` 가 칸 주소를 넘김, `refs`). 그 칸을 `LdrpInitializeProcess +0x1b5e` 가 `(1,0,0)` 으로 한 번 부르고, 새 스레드마다 `RtlUserThreadStart +0x7` 이 읽는다 (2.10). 다른 출력 칸 `[RSP+0x188]` 은 `+0x1b77 LdrpInitializePerUserWindowsDirectory` 로 간다.
+  - `[정적]` (run20) `+0xe4` 는 **(4) `+0xff` `LdrGetProcedureAddressForCaller` 의 결과 칸**을 싣는 줄이다. 찾는 이름은 **`BaseThreadInitThunk`**, 찾는 곳은 방금 올린 kernel32 베이스. 그래서 칸 값 = **kernel32 에서 이름 `BaseThreadInitThunk` 로 찾은 주소**. 내보내기가 다른 DLL 로 넘기는 항목(forwarder)이면 그 대상 주소일 수 있다 `[추측]`. 실제 값은 동적 (Q48).
+  - `[정적]` (run20) 출력 칸 `[RSP+0x188]` 에 들어가는 것 = kernel32 의 **`TermsrvGetWindowsDirectoryW`** 주소 ((5) `+0x130`, 실패하면 0 그대로).
+  - `[정적]` (run20) 함수 이름 셋 (원본 바이트): kernel32 `BaseThreadInitThunk`·`TermsrvGetWindowsDirectoryW`, kernelbase `KernelbasePostInit`. 세 찾기 모두 여섯째 인자로 "부른 곳" = 이 함수의 돌아갈 주소(`LdrpInitializeProcess +0x19a2`)를 넘긴다.
+- `[정적]` (run20) **마지막 일 = `KernelbasePostInit` 간접 호출** (`+0x1aa` call, ret `+0x1af`). 대상은 (9) 가 채운 지역 칸 `[RSP+0x58]`, CFG 검사 thunk 를 거친다. 부르기 직전 인자를 따로 안 싣는다 `[추측: 인자 없는 함수]`.
+- `[정적]` (run20) **`LdrpCodeAuthzInitialize`** (ret `+0x165`) 는 KERNELBASE 적재가 성공하면 늘 부른다. 안 앞쪽만 훑으면: `LdrpIsSecureProcess` 거나 `Subsystem` 이 2·3 이 아니면 바로 0. 아니면 레지스트리 키 셋을 읽어 **값에 따라 `LdrLoadDll(0, 0, "ADVAPI32.DLL", …)`** 후 `SaferiIsDllAllowed` 를 찾아 전역에 넣는다. → kernel32 준비 중 **ADVAPI32 가 올라올 수 있는 길**이 코드에 있다. 실제로 타는지는 동적 (Q49).
+- `[정적]` (run20) run18 이 준비한 전역 8개(`LdrpKnownDllDirectoryHandle`, `LdrpKnownDllPath`, `LdrpSystem32`, `RtlpSystem32Dirs`, `LdrpHashTable`, `LdrpHeap`, `LdrpSystemDllBase`, `LdrpAppHeaders`)는 이 함수·`LdrLoadDll`·`LdrpLoadDll` 이 **직접 안 읽는다**. 한두 단계 아래에서 읽는다 (`refs`, 읽는 함수 표는 run20). 이번 길에 바로 닿는 건 `+0xa4` 아래의 `LdrpHashTable`, `GetProc` 아래의 `LdrpSystemDllBase`·`LdrpHeap`.
 
 #### `LdrLoadDll` 안쪽 (첫 번째 호출)
 
 - `[관찰]` run7 콜스택으로 한 단계씩 이어진다: `LdrLoadDll+0x170` → `LdrpLoadDll+0x100` → `LdrpLoadDllInternal+0x284` → `LdrpPrepareModuleForExecution+0xef` → `LdrpInitializeGraphRecurse`.
   - `LdrpLoadDll+0x100`은 이름이 아니라 **돌아올 주소**(`00007ffd9627fac0`)를 `LdrpLoadDll` 시작 주소(`00007ffd9627f9c0`)에서 빼서 얻었다.
+  - `[정적]` (run20) 이 사슬의 ret 자리 `LdrLoadDll +0x170`, `LdrpLoadDll +0x100` 이 `_calls.tsv` 와 같다.
+- `[정적]` (run20) **`LdrLoadDll` 이 `LdrpLoadDll` 앞에서 하는 일** (kernel32 준비 때 = `RCX=0x4001`, `RDX=0`):
+  - 첫째 인자의 낮은 비트가 1 이면 "플래그"로 읽는다. 비트를 지운 `0x4000` 을 플래그 칸에 두고, **검색 경로 칸은 0 그대로** 넘긴다. 경로를 정하는 일은 더 안쪽 몫이다.
+  - `RDX`(`DllCharacteristics`) 가 있으면 그 비트를 로더 플래그로 바꿔 옮기는데, kernel32 준비 땐 `RDX=0` 이라 플래그 0.
+  - 앞에서 바로 돌려보내는 갈래 3개(정책 비트, 로더 일꾼 스레드 `SameTebFlags 0x2000` 등)는 kernel32 준비 때 안 탄다.
+  - 뒤에서: 성공일 때만 베이스(`항목+0x30`)를 결과 칸에 쓰고 `+0x1a3 LdrpDereferenceModule`. "경로 해제" 바이트가 켜졌을 때만 `+0x18e RtlReleasePath` (켜는 곳은 더 안쪽 `[추측]`, Q11).
+  - `LoadLibraryExW`(Q31) 도 **같은 본문**을 탄다. 다른 길로 가는지는 넘기는 인자에 달렸고, 그 인자는 KERNELBASE 코드라 아직 모른다 `[확인 필요]`.
+- `[정적]` (run20) **`LdrpLoadDll` 이 `LdrpLoadDllInternal` 에 넘기는 것** (9개): 전처리된 이름(`+0xc2 LdrpPreprocessDllName` 결과), `LdrLoadDll` 의 경로 구조체, 플래그, **`4`** (`_LDR_DLL_LOAD_REASON` 의 `LoadReasonDynamicLoad` 값과 같음 `[추측: 자리 뜻]`), 항목 칸, **상태 칸**. `LdrpLoadDll` 은 `LdrpLoadDllInternal` 의 반환값이 아니라 상태 칸 값을 돌려준다.
+  - ETW 로그 두 번은 로더 추적(`PEB.TracingFlags` 비트 `0x4`)이 켜졌을 때만 `[정적]`. test.exe 는 지나갈 것 `[추측]`.
 - `[관찰]` 첫 번째 시작 함수(KERNELBASE 쪽)는 `LdrpInitializeGraphRecurse`가 `+0x96`에서 **자기 자신을 한 번 더 부른 뒤**(재귀) `+0x6a`의 `LdrpInitializeNode`에서 불렸다. 두 번째(KERNEL32 쪽)는 재귀 없이 `+0x6a`에서 바로 불렸다.
 - `[추측]` 더 깊이 들어간 쪽이 KERNELBASE, 바깥쪽이 KERNEL32. KERNEL32가 KERNELBASE에 기대니까 KERNELBASE를 **먼저 켠다** (2.7과 같은 원리).
   - 이 재귀는 **"누구를 먼저 켤지"** 정하는 것이다. 이때 DLL을 메모리에 올리는 게 아니다. 재귀가 시작될 땐 이미 다 올라와 있었을 것이다. `[추측]`
@@ -1543,11 +1593,13 @@ LdrpInitializeProcess
 
 - `[관찰]` `LdrpLoadDllInternal`은 `+0x284`에서 "켜기" 쪽(`LdrpPrepareModuleForExecution`)을 부른다.
 - `[추측]` 그 **앞부분**에서 kernel32를 올리고, kernel32가 import하는 kernelbase도 따라 올리고, 주소 연결까지 끝낸다.
+  - `[정적]` (run20) KERNELBASE 를 **이름으로** 올리라는 호출(`+0x156`)은 kernel32 쪽 함수 찾기 둘 **뒤**에 있다. 그런데 run7 은 KERNELBASE·KERNEL32 시작 함수를 둘 다 첫째 `LdrLoadDll`(`KERNEL32.DLL`) 안에서 봤다 `[관찰]`. 그러니 kernelbase 는 첫째 호출 안에서 kernel32 의 import 로 따라 올라오고, 둘째 `LdrLoadDll("KERNELBASE.dll")` 은 이미 올라온 것을 다시 찾는 호출일 것 `[추측]` (정적 Q11, 동적 Q20).
 - `[추측]` 이렇게 올리면서 **"누가 누구에게 기대는지" 정보(의존 관계 그래프)도 같이 만든다.** 켜기 단계의 `LdrpInitializeGraphRecurse`는 이렇게 만들어진 그래프를 따라간다.
 - `[추측]` `LdrpInitializeProcess`가 시작될 때는 test.exe와 ntdll만 올라와 있고, kernel32·kernelbase는 아직 없다. (커널이 프로세스를 만들 때 올려 주는 건 exe와 ntdll뿐이라고 알려져 있다)
   - `[정적]` (run10) 커널 쪽에서 exe와 ntdll을 **올리는 코드는 있다** (2.1): exe = `MiMapProcessExecutable +0xb8`, ntdll = `PspMapSystemDll +0x11d`, 둘 다 `MmMapViewOfSectionEx`.
   - `[정적]` (run18) 유저 쪽 `LdrpInitializeProcess` **앞쪽**(`+0x0 ~ +0x12dd`)의 직접 호출과 그 한 단계 아래에는 올리는 호출이 없다 (2.4). `[추측]` 그러니 kernel32 는 뒤쪽(`+0x19a2` 쪽, Q9b)에서 올라온다.
   - `[정적]` (run19) 뒤쪽에서 `+0x19a2` 보다 **앞**에 있는 올리기 후보는 `LdrpLoadWow64`(`+0x17c6`, WOW64 만), `LdrpCorInitialize`(`+0x1852`, .NET 만), `LdrpInitializeImportRedirection`(`+0x1963`, 조건 없음 — callee 이름에 `LdrpLoadDll` 이 있지만 실제로 올리는지는 안 봄) 셋뿐이다. test.exe 조건이면 kernel32 를 처음 올리는 건 `+0x19a2` 안 `LdrLoadDll` 일 것 `[추측]` (run7 `[관찰]` 과 맞음). 핫패치가 켜진 프로세스는 이 함수 **앞** `LdrpInitializeInternal +0xc2 LdrpLoadPatchedNtdll` 에서 이미지를 하나 더 올릴 수 있다 `[추측]` (run17).
+  - `[정적]` (run20) **kernel32 가 이미 있는지 보는 코드가 따로 있다** (`LdrpInitializeKernel32Functions +0xa4`, 이름으로 `LdrpHashTable` 을 뒤짐). 그 표에 항목을 끼우는 `LdrpInsertDataTableEntry` 의 호출자는 ntdll 항목·exe 항목·AppVerifier 묶음 안(검증기 꺼지면 안 탐)·`LdrpMapDllWithSectionHandle +0x141`(DLL 매핑 뒤) 4곳이고, 앞 셋 말고는 `+0x199d` 전에 불릴 길이 없다 (run18·run19). 그래서 **`+0x199d` 에 닿을 때 표엔 ntdll·exe (검증기가 켜졌으면 그쪽) 뿐** → "kernel32·kernelbase 는 아직 없다" 는 **유저 쪽 코드로 지지된다.** test.exe 에선 `+0xa4` 가 "못 찾음" 이고 `+0xc0` 을 탈 것 (run7 이 `+0xc0` 을 실제로 봄 `[관찰]`). 반환값 자체는 동적 (Q49).
   - `[추측]` 그래도 "**그 둘뿐**"은 아직 추측이다. 다른 매핑이 없다는 건 확인 안 했다. 같은 단계에 leap second 섹션(`MmCreatePeb +0x132`), ApiSet 뷰, silo 공유 데이터 뷰(`PspSetupUserProcessAddressSpace +0x255`, `+0x263`)도 새 프로세스에 붙는다 `[정적]`. 이것들은 DLL 은 아니다.
 - 확인 방법: 메모리에 올릴 때 커널에 부탁하는 창구(`nt!NtMapViewOfSection` 계열, 이름 확인 필요)에 멈춤점 + `k`. 그래프를 만드는 함수는 디컴파일로 이름부터 찾는다.
 
@@ -1559,6 +1611,7 @@ LdrpInitializeProcess
 - `[관찰]` 두 번 모두 첫 번째 `LdrLoadDll`(`+0xc0`)과 두 번째 `LdrLoadDll`(`+0x156`) 사이에 일어났다 (run7 순서).
 - `[관찰]` 그 직전 `LdrpCallTlsInitializers`는 불렸지만, `LdrpCallInitRoutine`으로 TLS 콜백을 부르는 건 이어지지 않았다.
 - `[추측]` `LdrpCallInitRoutine`이 이 주소로 **실제로 들어갔다**는 것 (그림의 `?`). 주소가 기호와 "정확히 일치"하지도 않아서 어느 함수인지도 확인 필요.
+- `[정적]` (run20) 시작 함수와 별개로, 켜기가 끝난 뒤 ntdll 이 **이름으로 찾아 쓰는** 함수가 셋 있다: kernel32 `BaseThreadInitThunk`·`TermsrvGetWindowsDirectoryW`, kernelbase `KernelbasePostInit` (마지막 것은 바로 부름). 시작 함수 이름 확인(정적 Q13)에서 같이 본다.
 
 ---
 
@@ -1700,7 +1753,7 @@ LdrpInitializeProcess+0x1c99
 
 ---
 
-### 2.10 `test.exe` — 진입점에서 `main`까지 (run5, run7, run16, run19)
+### 2.10 `test.exe` — 진입점에서 `main`까지 (run5, run7, run16, run19, run20)
 
 - `[관찰]` 메인 스레드의 시작 주소 = `test!mainCRTStartup`.
   - `[정적]` (run11) 이 값은 커널 `PspAllocateThread` 가 첫 스레드 CONTEXT 의 `Rcx` 를 옮겨 적은 것이다 (2.1). `[추측]` 그래서 `mainCRTStartup` 주소는 `RtlUserThreadStart` 에 넘기는 첫 인자 자리(`rcx`)로 간다.
@@ -1711,6 +1764,7 @@ LdrpInitializeProcess+0x1c99
 - `[추측]` 로더 일이 끝나면 `ntdll!NtContinue`로 실행이 `ntdll!RtlUserThreadStart`로 넘어가고, `RtlUserThreadStart` → `KERNEL32!BaseThreadInitThunk` → `test!mainCRTStartup` 순서로 불린다.
   - 근거: Worker 스레드 종료 때 콜스택에 `RtlUserThreadStart+0x2c` → `BaseThreadInitThunk+0x20`이 보였다. 메인 스레드에선 직접 보지 않았다.
   - `[정적]` (run19, `refs` 만) `RtlUserThreadStart +0x7` 은 전역 `Kernel32ThreadInitThunkFunction` 을 읽는다. 그 칸은 `LdrpInitializeKernel32Functions +0xe4` 가 채운다 (2.5). 같은 칸을 `LdrpInitializeProcess +0x1b5e` 도 `(1,0,0)` 으로 한 번 부른다 (2.4). `[추측]` 그 칸의 값이 `KERNEL32!BaseThreadInitThunk` 이고, `RtlUserThreadStart` 가 그걸 부른다 (`RtlUserThreadStart` 본문은 안 봄 — 정적 Q17, 값은 동적 Q48·Q30).
+    - `[정적]` (run20) **칸을 채우는 곳 = `LdrpInitializeKernel32Functions` ret `+0xff` `LdrGetProcedureAddressForCaller(kernel32 베이스, "BaseThreadInitThunk", …)`** (`+0xe4` 는 그 결과 칸 주소를 싣는 줄). 이름 문자열은 원본 바이트로 확인. 그러니 "칸의 값 = kernel32 에서 `BaseThreadInitThunk` 라는 이름으로 찾은 주소" 까지는 코드로 맞다. 남은 `[추측]`: 그 주소가 정말 `KERNEL32!BaseThreadInitThunk` 본체인지 (forwarder 면 다른 곳), `RtlUserThreadStart` 가 그 값을 부르는지 (동적 Q48 `ln`, 정적 Q17).
   - (run16) 앞부분이 `[정적]` 으로 바뀌었다: `LdrInitializeThunk +0x18` → `NtContinue(맡긴 문맥)`, 맡긴 문맥 `Rip` = `RtlUserThreadStart`. **남은 `[추측]`**: 커널 `NtContinue` 가 그 `Rip` 로 보내는 부분 (`[공백]`, Q17 정적·Q29 동적), 그 뒤 `BaseThreadInitThunk` → `mainCRTStartup` (Q18·Q30).
 - `[소스]` `test.c`에는 `main`만 있고 `mainCRTStartup`은 없다. `/MT` 빌드로 CRT가 test.exe 안에 넣어준 함수다.
 - `[추측]` `mainCRTStartup`은 CRT 준비(`LoadLibraryExW` 3번 포함)를 하고 `main`을 부른다. `mainCRTStartup` 실행 자체에는 멈춤점을 걸지 않았다.
@@ -1830,16 +1884,20 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.4 | 이름·뜻 못 정한 것 (run18): `NtGlobalFlag` 비트 `0x2`·`0x1000`·`0x800000` 이름 (`[추측]` 로더 스냅·사용자 스택 추적 DB·예외 로그), `LdrSystemDllInitBlock+0xa0` 의 무결성 설정 비트 두 개, `[LdrpNtdllHotPatchContext+8]` 의 뜻 (`[추측]` 패치 ntdll 올리기 결과 상태), 강제 종료 `+0x784`·`+0xb22` 정렬 검사가 평소 안 타는지 |
 | 2.4 | (해결됨) run18 의 앞쪽 `[RSP+0x130]` "exe 폴더 잘라 두기" 는 틀렸음 → run19 `[정적]`: 마지막 `\` **뒤** = 파일 이름 부분, 뒤쪽 `+0x1408` 이 exe 항목 `BaseDllName`(test.exe) 에 넣음. 실행 값 확인은 Q46 |
 | 2.4 | 뒤쪽 실행 값 (run19 `[정적]` 갈림 조건의 실제 값): `AvrfAppVerifierMode` = 0 (`+0x1568`, AppVerifier 묶음 건너뜀), `Subsystem` = 3 (`+0x1980`), `BeingDebugged` (`+0x1b35`, 커널 디버거만 붙었을 때), `+0x1bb6` 의 `rcx` = exe 항목 `DdagNode`, exe `TlsIndex` ≠ 0 (`+0x1c31`), exe 항목 칸 (`+0x1455` 뒤 `BaseDllName`·`FullDllName`·`DllBase`·`Flags`), 재배치 `+0x1430` 를 건너뛰나 (`+0x1424`), 정상 반환 `+0x1e2d` `rax` = 0. `UseWOW64`(`+0x1766`) 는 Q44 — 동적 (Q46) |
-| 2.4 · 2.9 | 뒤쪽 간접 호출 대상: `+0x1b59` `Kernel32ThreadInitThunkFunction(1,0,0)` 의 실제 함수 (`[추측]` `KERNEL32!BaseThreadInitThunk`), `+0x1d16` `PEB.PostProcessInitRoutine` 값 (0 이면 안 부름, 누가 넣는지 이 함수 안에 없음), `+0x1cdf` shim (`g_ShimsEnabled` 0 이면 안 탐) — 동적 (Q48) |
+| 2.4 · 2.9 | 뒤쪽 간접 호출 대상: `+0x1b59` `Kernel32ThreadInitThunkFunction(1,0,0)` 의 실제 함수 (`[추측]` `KERNEL32!BaseThreadInitThunk`. (일부 해결) run20 `[정적]`: 칸 값 = kernel32 에서 이름 `BaseThreadInitThunk` 로 찾은 주소, `LdrpInitializeKernel32Functions` ret `+0xff` 가 채움. 남은 건 실제 주소 `ln`), `+0x1d16` `PEB.PostProcessInitRoutine` 값 (0 이면 안 부름, 누가 넣는지 이 함수 안에 없음), `+0x1cdf` shim (`g_ShimsEnabled` 0 이면 안 탐) — 동적 (Q48) |
 | 2.4 | 이름·뜻 못 정한 것 (run19): AppVerifier 묶음(`+0x1577 ~ +0x16a4`)이 복제하는 항목의 정체 (`[추측]` verifier 공급자 모듈), `LdrInitState` 1·2·3 의 뜻 (`[추측: 공개 문서]`), `+0x1391` 이 같은 줄을 `R12`=2 번 반복하는 이유 (`[추측]` 앞쪽 값을 반복 횟수로 재사용), `NtGlobalFlag & 0x100` 이름 (`[추측]` `FLG_APPLICATION_VERIFIER`), CPU 기능 비트·기능 번호 41 이름, `$fin$0` 가 TLS 콜백 예외 정리인지 (`[추측: 이름·오프셋]`) |
 | 2.4 · 2.7 | (해결됨) 그림 2·2.4·2.7 의 `LdrpInitializeProcess` → `LdrpInitializeGraphRecurse` 라벨 `+0x1bb6` 은 call 자리였음 → run18: ret **`+0x1bbb`** (run7 콜스택 `[관찰]` + `_calls.tsv` `[정적]`)로 정정 |
 | 3 | ntdll 일꾼이 처음 생기는 때: 코드상 가장 이른 자리는 `LdrpInitializeProcess +0x1a42 LdrpEnableParallelLoading` (스레드 풀, run19 `[정적]`). 풀을 만들 때 바로인지, `+0x1aa4` 안 `LdrpQueueWork` 로 일감이 올라올 때인지, 몇 개인지 (`ProcessParameters.LoaderThreads` 값) — 동적 (Q47) |
 | 3 | ntdll 일꾼 2개·`test!Worker` 의 TEB `SameTebFlags` 값 (`SkipLoaderInit` `0x4000` / `LoaderWorker` `0x2000`) — 일꾼이 로더 일을 건너뛰는 게 이 비트 때문인지 (`[추측]`, run17) |
 | 2.4 · 2.10 | 커널 `NtContinue` 가 맡긴 문맥의 `Rip`(`RtlUserThreadStart`)로 보내는 부분 — `[공백]`. 이름만 본 후보 `KiContinuePreviousModeUser +0x422`, `KiContinueEx +0x1e0` → `KeContextToKframes` (run16 원본 바이트 훑기) (정적 Q17, 동적 Q29) |
-| 2.5 | KERNELBASE·KERNEL32 시작 함수의 정확한 이름 |
-| 2.5 | kernel32·kernelbase가 메모리에 올라오는 순간 (`LdrpLoadDllInternal+0x284` 앞으로 추정). run19 `[정적]`: `LdrpInitializeProcess` 뒤쪽에서 `+0x19a2` 앞의 올리기 후보는 WOW64·.NET 전용 둘과 `+0x1963 LdrpInitializeImportRedirection`(조건 없음, 올리는지 모름) 뿐 → test.exe 면 `+0x19a2` 안일 것 `[추측]` (정적 Q10·Q11) |
-| 2.5 | 커널이 프로세스를 만들 때 올리는 게 exe·ntdll "뿐"인지 (run10: 둘을 올리는 코드는 `[정적]`, 다른 매핑이 없다는 건 미확인. leap second·ApiSet·silo 뷰도 붙음). (일부) run18 `[정적]`: 유저 쪽 `LdrpInitializeProcess` 앞쪽은 아무것도 올리지 않음 |
+| 2.5 | KERNELBASE·KERNEL32 시작 함수의 정확한 이름 (정적 Q13). run20 `[정적]`: ntdll 이 이름으로 찾는 함수 셋 — kernel32 `BaseThreadInitThunk`·`TermsrvGetWindowsDirectoryW`, kernelbase `KernelbasePostInit` |
+| 2.5 | kernel32·kernelbase가 메모리에 올라오는 순간 (`LdrpLoadDllInternal+0x284` 앞으로 추정). run19 `[정적]`: `LdrpInitializeProcess` 뒤쪽에서 `+0x19a2` 앞의 올리기 후보는 WOW64·.NET 전용 둘과 `+0x1963 LdrpInitializeImportRedirection`(조건 없음, 올리는지 모름) 뿐 → test.exe 면 `+0x19a2` 안일 것 `[추측]` (정적 Q10·Q11). (일부 해결) run20 `[정적]`: `+0x19a2` 안의 두 `LdrLoadDll` 이름 = `KERNEL32.DLL`(ret `+0xc0`, 이미 있나 확인 `+0xa4` 가 못 찾았을 때만) / `KERNELBASE.dll`(ret `+0x156`). kernelbase 는 첫째 안에서 kernel32 import 로 올라오고 둘째는 다시 찾기일 것 `[추측]`. 남은 것: `LdrpLoadDllInternal` 안 올리기 쪽 (정적 Q11, 동적 Q20) |
+| 2.5 | 커널이 프로세스를 만들 때 올리는 게 exe·ntdll "뿐"인지 (run10: 둘을 올리는 코드는 `[정적]`, 다른 매핑이 없다는 건 미확인. leap second·ApiSet·silo 뷰도 붙음). (일부) run18 `[정적]`: 유저 쪽 `LdrpInitializeProcess` 앞쪽은 아무것도 올리지 않음. (일부) run20 `[정적]`: `LdrpHashTable` 에 끼우는 4곳 중 `+0x199d` 전에 닿는 건 ntdll·exe (와 AppVerifier) 뿐 → "시작 때 kernel32·kernelbase 는 없다" 는 유저 쪽 코드로 지지됨. 커널 쪽 "뿐" 은 그대로 미확인 |
 | 2.5 · 2.6 | 올리면서 의존 관계 그래프를 만드는 함수와 시점. run19 `[정적]` 후보 (callee 이름만): `+0x1aa4 LdrpMapAndSnapDependency` (`LdrpLoadDependentModuleInternal`·`LdrpSnapModule`), `+0x1aed LdrpPrepareModuleForExecution` (`LdrpCondenseGraph`·`LdrpNotifyLoadOfGraph`). 로드 문맥 `[RSP+0x2b0]` ↔ 항목 `LoadContext`(+0xb0) ↔ `LdrpFreeLoadContextOfNode`, DDAG `State` 9 → 2 (`+0x1508`, `+0x1a60`) — 정적 Q11·Q12 |
+| 2.5 | (해결됨, 정적) `LdrpInitializeKernel32Functions` 가 무엇을 어떤 순서로 하나, 두 `LdrLoadDll` 이 어느 DLL 을 올리나, `Kernel32ThreadInitThunkFunction`·출력 칸에 무엇을 넣나 → run20 `[정적]`: 이름 버퍼 → `+0xa4` 이미 있나 → `+0xc0` `KERNEL32.DLL` → `+0xff` `BaseThreadInitThunk` (→ 칸) → `+0x130` `TermsrvGetWindowsDirectoryW` (→ 출력 칸) → `+0x135` Snap → `+0x156` `KERNELBASE.dll` → `+0x165` CodeAuthz → `+0x19b` `KernelbasePostInit` 찾기 → `+0x1af` 간접 호출. 실패 길 7곳 |
+| 2.5 | `LdrpInitializeKernel32Functions` 실행 값 (run20 `[정적]` 갈림의 실제 값): `+0xa4` 가 "못 찾음" 인가, 두 `LdrLoadDll` 결과·베이스, `+0x130` 출력 칸 = `TermsrvGetWindowsDirectoryW` 인가, `+0x1aa` 직전 `rax` = `KERNELBASE!KernelbasePostInit` 인가, **`LdrpCodeAuthzInitialize` 안에서 `LdrLoadDll("ADVAPI32.DLL")` 이 불리나** (레지스트리 값에 달림) — 동적 (Q49) |
+| 2.5 | 이름·뜻 못 정한 것 (run20): `PEB.ProcessParameters.Flags` `0x20000000` 비트 (이미 있을 때 kernel32 쪽을 건너뜀), `LdrLoadDll` 첫 인자 `0x4000` 의 이름 (`[추측]` `LOAD_LIBRARY_SEARCH_SYSTEM32_NO_FORWARDER`), `LdrpLoadDllInternal` 넷째 인자 `4` 가 "적재 이유" 인지, `LdrpSnapKernelBaseExtensions`·`KernelbasePostInit` 이 하는 일, `LdrLoadDll` "경로 해제" 바이트 `[RSP+0xbc]` 를 켜는 곳 (정적 Q11) |
+| 2.5 · 2.10 | `LoadLibraryExW` 가 `LdrLoadDll` 에 싣는 인자 (`RCX` 경로/플래그, `RDX` `DllCharacteristics`). 같은 본문이고 인자로만 갈린다는 건 run20 `[정적]` — 동적 Q31 또는 kernelbase 정적 |
 | 2.6 | dll1·dll2가 메모리에 올라오는 순간. (일부, 정적) → run19 `[정적]`: 자리는 `+0x17c1 ~ +0x1aed` (2.6 `[추측]` "`+0x12de` 뒤 `+0x1bb6` 앞" 맞음), 후보 1순위 `+0x1aa4 LdrpMapAndSnapDependency` (첫 인자 = 로드 문맥). 남은 것: 실제로 그 호출에서 올라오는지, 이 스레드인지 일꾼인지 — 정적 Q14, 동적 Q23 |
 | 2.7 | `LdrpInitializeGraphRecurse` 를 부르는 두 자리 `LdrpInitializeProcess +0x1bb6` 과 `LdrpPrepareModuleForExecution +0xea` 의 역할 나눔 (dll1·dll2 의 `LdrpInitializeNode` 는 run7 콜스택상 `+0x1bbb` 아래 `[관찰]`). `LdrpProcessInitContextRecord`(CONTEXT, `+0x1b83` 켬 / `+0x1bec` 끔)를 `LdrpInitializeNode +0x17a` 가 무엇에 쓰나 — 정적 Q15, 동적 Q24 |
 | 2.9 | exe 항목 `TlsIndex`(+0x6e) 를 누가 쓰나 (`[추측]` `+0x18cb LdrpInitializeTls`). TLS 호출 조건 `+0x1c31` 은 run19 `[정적]` — 정적 Q16 |
@@ -1899,7 +1957,10 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 그림 2 (0) 프로세스 준비 | `LdrpInitializeProcess` → (1) `LdrpInitializeExecutionOptions` / (2) `LdrpInitializeProcessHeap` / (3) `NtOpenDirectoryObject` (`\KnownDlls`) / (4) `LdrpInitializeNtdllDataTableEntry` / (5) 같은 함수 둘째 호출 (조건부) | 코드의 call 자리·흐름 순서 (run18 `[정적]`, 앞쪽 94곳 중 묶음 대표 4개 + 조건부 둘째 호출). 관찰 `(7)`·`(12)`·`(13)` (`+0x19a2`·`+0x1bbb`·`+0x1c99`, run19 에서 번호 다시 매김) 보다 앞. 나머지 대표(`LdrInitializePerThreadRng`·`LdrpInitializeNlsInfo`·`RtlInsertInvertedFunctionTable`·`RtlNormalizeProcessParams`·`FastPebLock`·`TpInitializePackage`)는 글(2.4)에만 | 주소로: `ntdll+0x8c935`(`+0x531`)·`ntdll+0x8ce4f`(`+0xa4b`)·`ntdll+0x8d1bc`(`+0xdb8`)·`ntdll+0x8d5a1`(`+0x119d`) 에 멈춤 + `k` (돌아올 자리 `LdrpInitializeProcess+0x536`·`+0xa50`·`+0xdbd`·`+0x11a2`), 서는 순서가 이대로이고 모두 `+0x19a2` 보다 앞인지. `ntdll+0x8d66e`(`+0x126a`, (5)) 에 서는지 — 핫패치가 꺼졌으면 안 서야 함 `[추측]`. test.exe 일 때만 |
 | 그림 2 (0) 프로세스 준비 | `LdrpInitializeProcess` → (6) `LdrpAllocateModuleEntry` (exe 모듈 항목) | 코드의 call 자리, 조건 없음, 저장 `+0x1374 LdrpImageEntry` (run19 `[정적]`). 뒤쪽 첫 묶음이라 `(7)` kernel32 준비보다 앞. 이어지는 `LdrpInsertDataTableEntry`·`LdrpInsertModuleToIndex`·`LdrpProcessMappedModule` 는 글(2.4)에만 | `ntdll+0x8d75d`(call `+0x1359`) 에 멈춤 + `k` (돌아올 자리 `LdrpInitializeProcess+0x135e`), ret `ntdll+0x8d762` 에서 `r rax`. `ntdll+0x8d859`(`+0x1455`) 에서 `dt ntdll!_LDR_DATA_TABLE_ENTRY poi(ntdll+0x1d2828) BaseDllName FullDllName DllBase Flags` (Q46) |
 | 그림 2 (1)~(2) 사이 | `LdrpInitializeProcess` → (8) `LdrpEnableParallelLoading` / (9) `LdrpMapAndSnapDependency` / (10) `LdrpPrepareModuleForExecution` | 코드의 call 자리·흐름 순서 (run19 `[정적]`). (9) 는 IL-only 가 아닐 때, (10) 은 (9) 뒤 상태가 음수가 아닐 때. 하는 일은 callee 이름으로만 `[추측]`. 사이의 `LdrpThreadTokenSetMainThreadToken`(`+0x1a8e`)·`LdrpDrainWorkQueue(1)`(`+0x1ab1`)·`LdrInitState` 1/2 는 글(2.4·2.6)에만 | 주소로: `ntdll+0x8de46`(`+0x1a42`, `r ecx`)·`ntdll+0x8dea8`(`+0x1aa4`, `r rcx`)·`ntdll+0x8def1`(`+0x1aed`, `r rcx` = `poi(ntdll+0x1d2828)`) 에 멈춤 + `k`, 모두 `+0x19a2` 뒤 `+0x1bb6` 앞에 서는지. 각 자리에서 `lm m dll*` 와 스레드 수 (Q23·Q47) |
-| 그림 2 회색 상자 | `LdrpInitializeProcess` → (11) `Kernel32ThreadInitThunkFunction` 칸의 함수 / (14) `PEB.PostProcessInitRoutine` 칸의 함수 | 주소를 꺼내는 곳만 앎 (run19 `[정적]`, CFG 간접 호출). (11) 은 칸 값이 0 이 아닐 때 `(1,0,0)`, (14) 는 값이 있을 때만. 칸을 채우는 곳: (11) `LdrpInitializeKernel32Functions +0xe4`, (14) 이 함수 안에 없음 | `ntdll+0x8df5d`(`+0x1b59`) 에서 `ln @rax` (`[추측]` `KERNEL32!BaseThreadInitThunk`), `ntdll+0x8e10e`(`+0x1d0a`) 에서 `dq @rdi+0x230 L1` (0 이면 (14) 안 탐) (Q48) |
+| 그림 2 회색 상자 | `LdrpInitializeProcess` → (11) `Kernel32ThreadInitThunkFunction` 칸의 함수 / (14) `PEB.PostProcessInitRoutine` 칸의 함수 | 주소를 꺼내는 곳만 앎 (run19 `[정적]`, CFG 간접 호출). (11) 은 칸 값이 0 이 아닐 때 `(1,0,0)`, (14) 는 값이 있을 때만. 칸을 채우는 곳: (11) `LdrpInitializeKernel32Functions +0xe4`, (14) 이 함수 안에 없음. run20 `[정적]`: (11) 칸 값 = kernel32 에서 이름 `BaseThreadInitThunk` 로 찾은 주소 (`LdrpInitializeKernel32Functions` ret `+0xff`) | `ntdll+0x8df5d`(`+0x1b59`) 에서 `ln @rax` (`[추측]` `KERNEL32!BaseThreadInitThunk`), `ntdll+0x8e10e`(`+0x1d0a`) 에서 `dq @rdi+0x230 L1` (0 이면 (14) 안 탐) (Q48) |
+| 그림 2 (1) kernel32 준비 | `LdrpInitializeKernel32Functions` → (1) `LdrpFindLoadedDllInternal` / (3) `LdrGetProcedureAddressForCaller` (`BaseThreadInitThunk`) / (5) `LdrpCodeAuthzInitialize` / (6) `LdrGetProcedureAddressForCaller` (`KernelbasePostInit`) | 코드의 call 자리·흐름 순서 (run20 `[정적]`). (1) 이 찾으면 (2) 를 건너뜀, (3) 은 (2) 가 `0xc0000135` 면 건너뜀. 그림 밖 (글 2.5 에만): ret `+0x86` 이름 버퍼, ret `+0x130` `TermsrvGetWindowsDirectoryW` 찾기, ret `+0x135` `LdrpSnapKernelBaseExtensions` | ret 자리 `ntdll+0xb80c8`(`+0xa4`)·`0xb8123`(`+0xff`)·`0xb8189`(`+0x165`)·`0xb81bf`(`+0x19b`) 에서 `r eax`, `+0xff` 뒤 `dq ntdll+0x1d2760 L1` → `ln` (Q49·Q48) |
+| 그림 2 (1) kernel32 준비 | `LdrpInitializeKernel32Functions` → (2) `LdrLoadDll` 의 이름 `KERNEL32.DLL` / (4) `LdrLoadDll` 의 이름 `KERNELBASE.dll` | 호출 자체는 run7 `[관찰]`, 이름은 원본 바이트 `[정적]` (run20) | `LdrLoadDll` 입구 `ntdll+0x3cbf0` 에서 `dS @r8` (ADVAPI32 가 끼는지도) (Q49) |
+| 그림 2 회색 상자 | `LdrpInitializeKernel32Functions` → (7) `[RSP+0x58]` 칸의 함수 | 칸 = (6) 이 kernelbase 에서 이름 `KernelbasePostInit` 로 찾은 주소, CFG 검사 거친 간접 호출 (run20 `[정적]`). 인자 안 실음 | call 자리 `ntdll+0xb81ce`(`+0x1aa`) 에서 `ln @rax` (Q49) |
 | 그림 2 (1) kernel32 준비 | `LdrpCallInitRoutine` → KERNELBASE·KERNEL32 시작 함수 | `rcx`가 기호 근처 (정확히 일치 아님) | 실제 진입 함수 이름과 콜스택 |
 | 그림 2 (1) kernel32 준비 | `LdrpInitializeNode` [KERNELBASE] / [KERNEL32] 대응 | 재귀 깊이가 다름 | `LdrpInitializeNode`에서 긴 `k` + 시작 함수 이름 |
 | 그림 2 (2) · (3) | `LdrpCallInitRoutine` → `ImageTlsCallbackCaller` | `rcx` 정확히 일치 | `ImageTlsCallbackCaller`에서 `k` |
@@ -1935,6 +1996,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run17 | (정적, ntdll) 로더 입구 이름 사슬: `LdrInitializeThunk +0xe` → `LdrpInitialize`(0xe1448, 잡일 3개) → `+0x3c` 꼬리 JMP → `LdrpInitializeInternal` (핫패치 준비 `+0x98`·`+0xdf`) → `+0x5a` `_LdrpInitialize`(0x8bf8c, 콜스택 표시 `LdrpInitialize`). 첫 스레드 판정 = `+0x3a` 전역 `LdrpProcessInitialized` CMPXCHG (0/1/2) → `+0x16c` `LdrpInitializeProcess` / `+0xa7` `LdrpInitializeThread`, 끝나면 `LdrpInitializationComplete` `+0x252`. 커널 `RDX` 는 `LdrpInitializeProcess` 둘째 인자로. `LdrpDoDebuggerBreak` 는 복제 프로세스 길만. 단계 2 첫 항목 |
 | run18 | (정적, ntdll) `LdrpInitializeProcess` 앞쪽 `+0x0 ~ +0x12dd` (호출 94곳, 10묶음): `+0x1c1` PEB.Ldr = 전역 `PebLdr` (빈 목록 3개) → `+0x536` IFEO → `+0x587` 핫패치 끄기·`+0x5f2` `UseWOW64` → `+0xa50` 프로세스 힙 → `+0xb88` 스레드 풀·환경 블록 → `+0xdbd` `\KnownDlls` → `+0x11a2` ntdll 모듈 항목 → 초기화 순서 목록. `RDX` = ntdll 시작 주소로 씀, `RCX` 앞쪽 안 씀. 앞쪽은 아무것도 올리지 않음, `BeingDebugged` 안 읽음. 라벨 `+0x1bb6` → `+0x1bbb` 정정. 뒤쪽은 Q9b |
 | run19 | (정적, ntdll) `LdrpInitializeProcess` 뒤쪽 `+0x12de ~ 끝` (호출 75곳, 10묶음): `+0x135e` exe 모듈 항목 (→ `LdrpImageEntry`, 조건 없음) → (AppVerifier·WOW64·.NET 갈림) → `+0x18d0` TLS 준비 → `+0x19a2` kernel32 (Subsystem 2/3) → `+0x1a47` 병렬 로딩 켜기(스레드 풀) → `+0x1aa9` `LdrpMapAndSnapDependency`·`+0x1af2` 실행 준비 (import 올리기 후보 1순위) → `+0x1b5e` kernel32 thunk `(1,0,0)` → `+0x1bbb` 그래프 초기화 (첫 인자 exe `DdagNode`, 세 자리 중 조건 없는 하나) → `+0x1c99` exe TLS (`TlsIndex ≠ 0`) → `+0x1d1b` `PostProcessInitRoutine` → `+0x1e2d` 반환. 입구 `RCX` = CONTEXT 레코드. `BeingDebugged` 네이티브 길은 `+0x1b3b`, `KUSER+0x330` 은 쿠키. run18 `[RSP+0x130]` 정정 (`BaseDllName`) |
+| run20 | (정적, ntdll) `LdrpInitializeKernel32Functions` (호출 15곳): `+0xa4` 이름으로 이미 있나 (`LdrpHashTable`) → `+0xc0` `LdrLoadDll(0x4001, 0, "KERNEL32.DLL")` (못 찾았을 때만) → `+0xff` `BaseThreadInitThunk` 찾기 → 전역 `Kernel32ThreadInitThunkFunction` → `+0x130` `TermsrvGetWindowsDirectoryW` → 출력 칸 → `+0x135` `LdrpSnapKernelBaseExtensions` → `+0x156` `LdrLoadDll("KERNELBASE.dll")` → `+0x165` `LdrpCodeAuthzInitialize` (레지스트리 값에 따라 ADVAPI32) → `+0x19b` `KernelbasePostInit` 찾기 → `+0x1af` 간접 호출. `LdrLoadDll` 플래그 방식 인자·경로 0, `LdrpLoadDll` → `LdrpLoadDllInternal` 인자 9개 (넷째 4, 상태 칸). run18 전역 8개는 세 함수가 직접 안 읽음. 2.5 `[추측]` 두 개(import 와 무관, 시작 때 kernel32 없음)가 코드로 지지됨 |
 | `sample/` 소스 | 의존 관계, 모듈별 TLS 콜백, `/MT` 빌드 |
 
 - run3 ~ run5는 타깃에서 빌드한 test.exe, run6 ~ run8은 디버거 VM에서 빌드해 옮긴 test.exe (같은 소스).
@@ -1955,3 +2017,4 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run17 | `_workspace/sast/12_ldr-init-entry` | 없음 | 정적만 (대기열 Q8, 단계 2 첫 항목). 동적 확인은 Q43 |
 | run18 | `_workspace/sast/13_proc-init-setup` | 없음 | 정적만 (대기열 Q9a, Q9 앞쪽 `+0x0 ~ +0x12dd`). 요청서 "95곳" 은 실제 94곳 (뒤쪽 75곳). 동적 확인은 Q44, 정적 새 후보 Q45 (`LdrpInitializeNtdllDataTableEntry`) |
 | run19 | `_workspace/sast/14_proc-init-modules` | 없음 | 정적만 (대기열 Q9b, Q9 뒤쪽 `+0x12de ~ 끝`, 75곳). 결과서 동적 제안 → Q46 (뒤쪽 실행 값, 제안 Q46+Q47 합침), Q23 (dll1·dll2 올라오는 호출, 제안 Q48) + Q24, Q47 (일꾼 스레드, 제안 Q49), Q48 (간접 호출 대상, 제안 Q50). `UseWOW64` 는 Q44 |
+| run20 | `_workspace/sast/15_kernel32-load` | 없음 | 정적만 (대기열 Q10, 세 함수 15·11·9곳). 동적 확인은 Q49 (이 함수 실행 값, ADVAPI32 포함), `Kernel32ThreadInitThunkFunction` 값은 Q48, kernelbase 가 올라오는 순간은 Q20. 정적 연결점 → Q11 (`LdrpLoadDllInternal` 인자·전역 읽는 함수), Q13 (시작 함수 이름) |
