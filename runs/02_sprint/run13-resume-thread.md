@@ -1,5 +1,7 @@
 # 2026-10-21 run13 — 첫 스레드를 멈춰 두는 장치(멈춤 APC + `SuspendEvent`)와 풀어 주는 nt 쪽 사슬 `NtResumeThread` → `PsMultiResumeThread` → `KeResumeThread` → `KiResumeThread` (정적)
 
+> **정정 (run15)**: `KiStartUserThread` 는 이름표만 함수가 아니고 코드는 Ghidra 함수 `KxStartUserThread` 안 `+0x60` 에 있다 (여기 적은 `+0x23`/`+0x28` = `KxStartUserThread +0x83`/`+0x88`, 내용은 같음). `SwapContext` APC 요청 조건의 "CL 인자" 는 `.asm` 으로 보면 스택 `[RSP+0x28]` 바이트이고, 새 스레드에선 `KiInitializeContextThread +0x26f` 가 넣은 1 이다. → `run15-user-thread-startup.md` "정정"
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음).
