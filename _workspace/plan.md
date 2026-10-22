@@ -1,7 +1,7 @@
 # 분석 진행표
 
-- 마지막 갱신: 2026-10-22 (run16 뒤, 단계 1 끝)
-- 다음 항목: (사용자 결정) 하네스 후보 묶음 O1·O2·O3 (+(12)~(15)), 그다음 Q8 (단계 2 시작)
+- 마지막 갱신: 2026-10-22 (run17 뒤, 단계 2 시작)
+- 다음 항목: Q9 (단계 2)
 - 근거: `runs/01_sprint/flow.md` 그림 1·2, 2장, 4장·4.1 표
 
 ## 대기열 (위에서부터 처리, 새 항목은 맨 아래에)
@@ -16,7 +16,7 @@
 | Q5b | 2.2 부모 쪽에서 첫 스레드를 풀어 주는 곳: `KERNELBASE!CreateProcessInternalW` 가 `NtCreateUserProcess` 뒤에 `NtResumeThread` 를 부르나 (이름 확인 필요) | 1 | 정적 (kernelbase) | 처음 (4장 2.2); Q5 를 그 자리에서 나눔 (2026-10-21) | 끝 (run14) |
 | Q6 | 2.3 `nt!KiStartUserThread`, `nt!PspUserThreadStartup` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 2); ntoskrnl analyze (2026-10-19): `_index.tsv` 에 `KiStartUserThread` 없음, `KxStartUserThread` 있음 (PDB엔 `KiStartUserThread`·`KiStartUserThreadReturn` 이름 있음) → 이름 대응 확인 | 끝 (run15) |
 | Q7 | 2.3 유저 첫 위치가 `ntdll!LdrInitializeThunk`로 정해지는 곳, `RtlUserThreadStart`와의 관계 | 1 | 정적 (ntoskrnl) | 처음 (4장 2.3); sast/03 결과 (`PspCreateUserContext` 91바이트 — `NtCreateUserProcess +0xd22` 에서 부름, 첫 스레드 유저 시작 문맥 후보); sast/06 결과 (`PspAllocateThread` 는 CONTEXT.Rip→StartAddress, Rcx→Win32StartAddress 로 옮겨 적기만 함, `PspUserThreadStartup` 주소는 `+0x681` 에서 `KeInitThread` 로 → CONTEXT 를 누가 채우나); sast/10·run15 (유저 첫 RIP = `_KTRAP_FRAME.Rip`(+0x168), 트랩 프레임 = InitialStack-0x190, 처음 `KxContextToKframes` 가 채우고 `PspUserThreadStartup +0xb3 PspInitializeThunkContext` 가 다시 정함 → 이 함수 본문) | 끝 (run16) |
-| Q8 | 2.4 `ntdll!LdrInitializeThunk`, `LdrpInitializeInternal`, `LdrpInitialize` callee | 2 | 정적 (ntdll) | 처음 (그림 2); sast/02 결과 (`+0x16c` 의 caller 이름이 `_LdrpInitialize`, `LdrpInitialize` 는 꼬리호출(JMP)로 `LdrpInitializeInternal` 에 넘김 → flow.md 2.4 이름 정정 필요) | 대기 |
+| Q8 | 2.4 `ntdll!LdrInitializeThunk`, `LdrpInitializeInternal`, `LdrpInitialize` callee | 2 | 정적 (ntdll) | 처음 (그림 2); sast/02 결과 (`+0x16c` 의 caller 이름이 `_LdrpInitialize`, `LdrpInitialize` 는 꼬리호출(JMP)로 `LdrpInitializeInternal` 에 넘김 → flow.md 2.4 이름 정정 필요) | 끝 (run17) |
 | Q9 | 2.4 `ntdll!LdrpInitializeProcess` callee (크면 그 자리에서 Q9a/Q9b로 나눔) | 2 | 정적 (ntdll) | 처음 (그림 2) | 대기 |
 | Q10 | 2.5 `LdrpInitializeKernel32Functions`, `LdrLoadDll`, `LdrpLoadDll` callee | 2 | 정적 (ntdll) | 처음 (그림 2) | 대기 |
 | Q11 | 2.5 `LdrpLoadDllInternal` (`+0x284` 앞 = 올리기 쪽), `LdrpPrepareModuleForExecution` callee | 2 | 정적 (ntdll) | 처음 (그림 2, 4장 2.5) | 대기 |
@@ -51,6 +51,7 @@
 | Q40 | 2.2·2.3 작은 정적 확인 둘: `EPROCESS.Flags3.ProcessFirstResume`(`+0x5fc` bit15, `PsMultiResumeThread` 가 켬)를 읽는 곳, 조각 `FUN_1406b2db3` 의 정체(`KiApcInterrupt` 추정) | 1 | 정적 (ntoskrnl) | sast/08·run13 4장 | 대기 |
 | Q41 | 2.2 부모 유저 쪽 남은 정적 확인 (작음): `kernel32!CreateProcessW` → `KERNELBASE!CreateProcessW` 연결, ApiNumber `0x1001d` 정체 (`CsrClientCallServer` 는 ntdll — import 표로 확인 2026-10-22), ntdll `NtCreateUserProcess`·`NtResumeThread` 스텁이 바로 시스템 콜을 하나, KERNELBASE 가 켜는 ProcessFlags bit9(`0x200`)를 커널이 어떻게 쓰나 | 1 | 정적 (kernel32, ntdll, ntoskrnl) | sast/09·run14 4장 | 대기 |
 | Q42 | 2.3 커널 → 유저 전환 실제 길: `KiKvaShadow`·`KiIrqlFlags` 값(유저로 가는 `IRETQ` 가 `KxStartUserThread` 조각 쪽인지 `KiKernelExit +0xa5` 인지), 멈춤 APC 가 `PspUserThreadStartup+0x26` 에서 들어오나, `+0xae`/`+0xb3` 앞뒤 트랩 프레임 `Rip`/`Rsp`, `KiStartUserThread+0x28` 에서 `dq @rbp+0xe8 L5`(유저 진입 직전 Rip·CS·EFlags·Rsp·SS), `KiInitiateUserApc` 타나, ThreadInserted/Terminated/Minimal 값, 트랩 프레임 위치 `RBP-0x80 = InitialStack-0x190` 확인, `KyStartUserThread` 템플릿이 정말 안 도나 | 3 | 동적 | sast/10 동적 확인 (Q7 결과와 같이 보면 좋음); sast/11 (`PspUserThreadStartup +0xae` 앞뒤 트랩 프레임 Rip/Rcx/Rdx/Rsp, `PspInitializeThunkContext +0x16d`/`+0x2d6`/`+0x2db`/`+0x2f5`(KiCheckForKernelApcDelivery 불리나), `ntdll!LdrInitializeThunk` 입구 RCX·RDX·`dt _CONTEXT @rcx`, `+0x13` 에서 @rbx, `dq nt!PsNtdllExports L3`, `poi(PspSystemDlls)+0x20` vs `lm m ntdll`, InstrumentationCallback·CET 비트) | 대기 |
+| Q43 | 2.4 로더 입구 실행 값 (주소로 멈춤 — 이름 겹침): `ln ntdll+0x8c0f8`·`x ntdll!*LdrpInitialize` 로 WinDbg 가 `_LdrpInitialize` 를 무슨 이름으로 보이나, `ntdll+0xe1448`/`+0xe1484` 에서 RCX·RDX 같은가와 `SecurityCookieInitialized`(`+0x1d23ce`)·`SpecialMachineFramesInitialized`(`+0x1d23d0`), `LdrpInitializeInternal` 입구 `TEB+0x17ee`·`LdrpHotPatchInitialized`(`+0x1d2928`), `LdrpInitializeHotPatching +0x45` eax 와 `LdrpIsHotPatchingEnabled`(`+0x1d26f0`) — `LdrpLoadPatchedNtdll` 타나, `_LdrpInitialize +0x43`(`ntdll+0x8bfcf`) eax (첫 스레드 0 / Worker 2), `ntdll+0xe142e` 도착이 `LdrpInitializeProcess` 끝난 뒤인가 | 3 | 동적 | sast/12·run17 | 대기 |
 
 상태: `대기` / `진행 중` / `끝 (runN)` / `합침 → Qn` / `보류 (사용자 결정, 날짜)`
 
@@ -101,3 +102,12 @@
 - 하네스 후보 (단계 1 끝 묶음에 추가, sast/11): (12) .asm 전역 변수 참조에 PDB 공개 이름 주석 (`; PsNtdllExports+0x8`) (13) "이 전역을 누가 읽고 쓰나" 찾는 도구 (`run_ghidra.sh refs`) — `PsNtdllExports` 쓰기는 INIT 표 포인터를 거쳐 코드 참조로 안 나옴 (14) `indirect:cfg:?` 를 레지스터+오프셋 표기로. (sast/11 의 "읽지 않은 틈" 은 (5) 와 같음)
 - 2026-10-22: Q7 끝 (run16, sast/11). **단계 1(nt 지도) 처음 항목 Q1~Q7 모두 끝** (run9~run16). 남은 단계 1 쪽 정적 후보: Q32·Q33·Q36·Q40·Q41 (맨 아래에 붙은 것). 사용자 결정대로 다음은 하네스 후보 묶음
 - 하네스 후보 (단계 1 끝 묶음에 추가, run16 flow-writer): (15) pitfalls P4 예에 `PspInitializeThunkContext` (모든 프로세스의 모든 유저 스레드가 거침)
+- 2026-10-22: 하네스 후보 12개를 O3 → O2 → O1 순서로 (사용자 OK). 묶음 O3 (.c 에 안 나오는 명령, P4 예, P20, Kx 이름 환산) 커밋 `a9dd0b0`
+- 2026-10-22: 다음 flow-writer 때 정정 (O2 refs 시험에서 발견): flow.md 2곳·run16 해설 1곳의 `NtCreateThreadEx +0x1c1`, `PspWow64InitThread +0x73` → 명령 시작은 `+0x1bf`, `+0x71` (objdump 확인)
+- 2026-10-22: 하네스 묶음 O2 (예외 정리 함수 seh:, refs 명령 RefsTo.java, --where 품은 함수, sort_calls seh) 커밋 `b3a16c7`
+- 2026-10-22: 묶음 O1 시험 실패 (⑥ 가짜 호출 규칙이 진짜 호출을 지움 — LdrInitializeThunk +0x9 등, ntdll 지도 붕괴; ⑫ 커널 GS 상대 접근에 TEB 이름; ⑤ 거짓 틈 9개). 커밋 전이라 하네스·장부·지도를 되돌림. 사용자 결정 (가): 통과한 ⑦⑭ 만 O1a 로 먼저, ⑤⑥⑫ 는 기준을 새로 짜서 O1b 로 다시 검토
+- 2026-10-22: 하네스 묶음 O1a (⑦ 조각 오프셋 `(= 함수 +0x..)`, ⑭ cfg 출처 `[레지스터+오프셋]` — `MOV RAX,[메모리]` 꼴만, JMP·RET 앞에서 멈춤) 커밋 `db4607b`. 1차 시험의 거짓 라벨(⑭ JMP 넘음·XOR·레지스터 꼴)을 고쳐 재시험 통과 (사용자 OK). 알려진 한계 `MiValidateSectionCreate +0x1f050f` (Jcc 로만 들어오는 갈래)는 사용자 결정으로 reference.md 에 적고 그대로 둠
+- 2026-10-22: 하네스 묶음 O1b 커밋 `c5bd70c` (사용자 OK). ⑥ FAKECALL = 목적지 첫 명령 ADD RSP,8 (RSB 채우기 사다리, 장부에서 KxStartUserThread +0x229·SwapContext +0x213 빠짐), ⑤ .asm 끝 읽지 않은 틈 목록 (29개 원본 바이트 일치, 사다리 N칸 표시), ⑫ 전역 변수 PDB 이름 주석 (메모리 피연산자·IMPORTED 이름·0x100 안, GS:/FS:·??_C@ 제외). 시험 3번 (1차: ⑤ 틈 2개 놓침·⑫ 엉뚱한 이름 → 고침, 2차 통과, 3차 ??_C@ 제외 확인). 이로써 단계 1 끝 하네스 후보(O1·O2·O3) 모두 처리
+- 2026-10-22: Q8 끝 (run17, sast/12 정적만). 동적 확인거리는 Q43 으로 맨 뒤에
+- 하네스 후보 (나중에 검토, sast/12): (16) 평범한 `CALL RAX` 도 바로 앞 `MOV RAX,[mem]` 에서 이름을 찾아 `indirect:<이름>` 으로 (지금은 `indirect:?`, 예: `_LdrpInitialize +0x9a` = `g_LdrpWow64LdrpInitialize`)
+- 하네스 후보 (나중에 검토, run17 flow-writer): (17) windbg-kd-runbook pitfalls — `LdrpInitialize` 이름이 0xe1448 과 0x8bf8c(`_LdrpInitialize`, 콜스택 표시 이름) 에 걸치니 `bp ntdll!LdrpInitialize` 대신 `ntdll+rva` 로 건다
