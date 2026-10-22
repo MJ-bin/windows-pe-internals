@@ -25,6 +25,10 @@
 //      call_off/ret_off = seh:<이름>+0x.. : 예외 정리 함수(<함수>$fin$N, <함수>$filt$N) 안의 호출. 호출로 안 닿고
 //                        예외 때 운영체제가 부르는 형제 함수라 자동으로 같이 읽는다 (.asm "; --- 예외 정리 함수 ..."). 묶음 O2.
 //      .asm 만 (묶음 O1a): 조각 줄 끝 "(= <함수> +0x..)" 환산. 장부: cfg 출처를 이름으로 못 찾으면 cfg:[레지스터+오프셋]
+//      .asm 만 (묶음 O1b): 전역 변수 읽기·쓰기 줄 끝 "; <PDB 이름>+0x.." (메모리 피연산자, PDB 이름만, 앞쪽 0x100 안, GS:/FS: 제외),
+//                        맨 끝 "; --- 읽지 않은 틈" 목록 (점프로 안 닿은 함수 안 코드)
+//      FAKECALL        : 목적지 첫 명령이 ADD RSP,8 인 CALL — 돌아올 주소를 바로 버림. 함수 호출 아님 [추측].
+//                        장부에 안 넣는다 (.asm 에 "; FAKECALL" 만). 묶음 O1b.
 //      주인 없는 덩어리 : 함수가 JMP/Jcc 로 넘어가는 곳이 **어느 함수에도 안 속한 코드**면 (Ghidra 가 함수 범위에 못 넣은 것)
 //                        거기서부터 흐름(다음 명령, 점프)을 따라가 그 함수 몫으로 읽는다. 오프셋은 본래 함수 시작 기준(+0x..),
 //                        .asm 에 "; --- 주인 없는 덩어리 ..." 머리와 함께 붙는다 (sast/06, 2026-10-21).
@@ -59,6 +63,7 @@ import ghidra.program.model.listing.InstructionIterator;
 import ghidra.program.model.symbol.Reference;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.symbol.Symbol;
+import ghidra.program.model.symbol.SymbolIterator;
 
 public class ExportFunctions extends GhidraScript {
 
@@ -132,6 +137,190 @@ public class ExportFunctions extends GhidraScript {
 			}
 		}
 		return "indirect:?";
+	}
+
+	// ⑫ 전역 변수 자리에 가장 가까운 앞쪽 PDB 이름(IMPORTED) (+칸). 0x100 이상 떨어지면 다른 변수일 수 있어 안 붙인다 (묶음 O1b)
+	private String globalName(Address to) {
+		if (!to.isMemoryAddress() || to.getOffset() < 0x10000
+				|| currentProgram.getFunctionManager().getFunctionContaining(to) != null) {
+			return null;
+		}
+		SymbolIterator it = currentProgram.getSymbolTable().getSymbolIterator(to, false);
+		while (it.hasNext()) {
+			Symbol s = it.next();
+			long d = to.getOffset() - s.getAddress().getOffset();
+			if (d < 0) {
+				continue;
+			}
+			if (d >= 0x100) {
+				return null;
+			}
+			String nm = s.getName();
+			if (s.getSource() == SourceType.IMPORTED && nm.startsWith("??_C@")) {
+				return null; // 문자열 상수(PDB 이름 ??_C@…) — 변수가 아니고 못 읽음. 더 앞 이름으로 넘어가지 않는다
+			}
+			if (s.getSource() == SourceType.IMPORTED && !nm.startsWith("Ordinal_") && !nm.startsWith("s_")
+					&& !nm.startsWith("u_") && !nm.startsWith("caseD_") && !nm.startsWith("switchD_") && !nm.startsWith("LAB_")) {
+				return d == 0 ? nm : nm + "+0x" + Long.toHexString(d);
+			}
+		}
+		return null;
+	}
+
+	private String dataNote(Instruction ins) {
+		StringBuilder b = new StringBuilder();
+		for (int i = 0; i < ins.getNumOperands(); i++) {
+			if (ins.getDefaultOperandRepresentation(i).contains("S:[")) {
+				return ""; // GS:/FS: 세그먼트 칸이 있는 명령 — 커널 GS 는 TEB 가 아니다. 칸 이름은 PDB 타입으로
+			}
+		}
+		for (Reference r : ins.getReferencesFrom()) {
+			if (!r.getReferenceType().isData() && !r.getReferenceType().isRead() && !r.getReferenceType().isWrite()) {
+				continue;
+			}
+			int oi = r.getOperandIndex();
+			if (oi < 0 || oi >= ins.getNumOperands() || !ins.getDefaultOperandRepresentation(oi).contains("[")) {
+				continue; // 메모리 피연산자([..])에서 나온 참조만. 레지스터 값 따라가기 참조는 안 적는다
+			}
+			String n = globalName(r.getToAddress());
+			if (n != null && b.indexOf(n) < 0) {
+				b.append(b.length() == 0 ? "    ; " : ", ").append(n);
+			}
+		}
+		return b.toString();
+	}
+
+	// ⑥ 가짜 호출: 목적지 첫 명령이 ADD RSP,8 (48 83 C4 08) — 돌아올 주소를 바로 버림 (묶음 O1b)
+	private boolean isFakeCall(Instruction ins) {
+		Address[] fl = ins.getFlows();
+		if (fl == null || fl.length != 1 || !fl[0].isMemoryAddress()) {
+			return false;
+		}
+		byte[] b = new byte[4];
+		try {
+			currentProgram.getMemory().getBytes(fl[0], b);
+		}
+		catch (Exception e) {
+			return false;
+		}
+		return b[0] == 0x48 && (b[1] & 0xff) == 0x83 && (b[2] & 0xff) == 0xC4 && b[3] == 0x08;
+	}
+
+	// ⑤ 채움 바이트뿐인가: INT3(CC), NOP(90), 00, 여러 바이트 NOP(66 90, [66..] [2E] 0F 1F /0 + 0 들) (묶음 O1b)
+	private boolean isPadding(Address a, long n) {
+		byte[] b = new byte[(int) n];
+		try {
+			currentProgram.getMemory().getBytes(a, b);
+		}
+		catch (Exception e) {
+			return false;
+		}
+		int i = 0;
+		while (i < b.length) {
+			int x = b[i] & 0xff;
+			if (x == 0xCC || x == 0x90 || x == 0x00) {
+				i++;
+				continue;
+			}
+			int j = i;
+			while (j < b.length && ((b[j] & 0xff) == 0x66 || (b[j] & 0xff) == 0x2E)) {
+				j++;
+			}
+			if (j > i && j < b.length && (b[j] & 0xff) == 0x90) {
+				i = j + 1;
+				continue;
+			}
+			if (j + 2 >= b.length || (b[j] & 0xff) != 0x0F || (b[j + 1] & 0xff) != 0x1F) {
+				return false;
+			}
+			int extra;
+			switch (b[j + 2] & 0xff) {
+				case 0x00: extra = 0; break;
+				case 0x40: extra = 1; break;
+				case 0x44: extra = 2; break;
+				case 0x80: extra = 4; break;
+				case 0x84: extra = 5; break;
+				default: return false;
+			}
+			int end = j + 3 + extra;
+			if (end > b.length) {
+				return false;
+			}
+			for (int k = j + 3; k < end; k++) {
+				if (b[k] != 0) {
+					return false;
+				}
+			}
+			i = end;
+		}
+		return true;
+	}
+
+	// ⑤ RSB 채우기 사다리: ADD RSP,8; CALL rel32 (48 83 C4 08 E8 ..) 9바이트 쌍이 3번 이상만으로 된 구간이면 칸 수, 아니면 0
+	private int rsbLadder(Address a, long n) {
+		if (n % 9 != 0 || n / 9 < 3) {
+			return 0;
+		}
+		byte[] b = new byte[(int) n];
+		try {
+			currentProgram.getMemory().getBytes(a, b);
+		}
+		catch (Exception e) {
+			return 0;
+		}
+		for (int i = 0; i < b.length; i += 9) {
+			if (b[i] != 0x48 || (b[i + 1] & 0xff) != 0x83 || (b[i + 2] & 0xff) != 0xC4 || b[i + 3] != 0x08
+					|| (b[i + 4] & 0xff) != 0xE8) {
+				return 0;
+			}
+		}
+		return (int) (n / 9);
+	}
+
+	// ⑤ 읽지 않은 틈: .asm 에 나온 곳(본체·조각·덩어리·예외 정리 함수) 범위들 사이(0x1000 이하)에서 안 나온 곳.
+	// 다 읽은 뒤 한 번에 계산한다. 이름 있는 다른 함수 자리와 채움 바이트는 뺀다 (묶음 O1b)
+	private void printGaps(PrintWriter w, Function f, AddressSetView printed, long start, FunctionManager fm) {
+		AddressSet holes = new AddressSet();
+		Address prevEnd = null;
+		for (AddressRange rng : printed.getAddressRanges()) {
+			if (prevEnd != null) {
+				long d = rng.getMinAddress().subtract(prevEnd);
+				if (d > 1 && d <= 0x1000) {
+					holes.addRange(prevEnd.add(1), rng.getMinAddress().subtract(1));
+				}
+			}
+			prevEnd = rng.getMaxAddress();
+		}
+		holes = holes.subtract(printed);
+		if (holes.isEmpty()) {
+			return;
+		}
+		java.util.Iterator<Function> gi = fm.getFunctionsOverlapping(holes);
+		AddressSet named = new AddressSet();
+		while (gi.hasNext()) {
+			Function g = gi.next();
+			if (g != f && !g.getName().startsWith("FUN_")) {
+				named.add(g.getBody());
+			}
+		}
+		holes = holes.subtract(named);
+		List<String> out = new ArrayList<>();
+		for (AddressRange r : holes.getAddressRanges()) {
+			if (isPadding(r.getMinAddress(), r.getLength())) {
+				continue;
+			}
+			int rungs = rsbLadder(r.getMinAddress(), r.getLength());
+			out.add(String.format(";   %s~%s  (%d바이트)%s", off(r.getMinAddress().getOffset() - start),
+				off(r.getMaxAddress().getOffset() - start), r.getLength(),
+				rungs > 0 ? "  RSB 채우기 사다리 " + rungs + "칸 (ADD RSP,8; CALL 반복 — 읽을 것 없음 [추측])" : ""));
+		}
+		if (!out.isEmpty()) {
+			w.println();
+			w.println("; --- 읽지 않은 틈 (점프로 안 닿음 — 예외 착지점, Ghidra 가 못 읽는 명령(HRESET 등) 등. 원본 바이트로 볼 것. 오프셋은 본래 함수 시작 기준) ---");
+			for (String s : out) {
+				w.println(s);
+			}
+		}
 	}
 
 	private static boolean isCfgDispatch(String n) {
@@ -238,6 +427,7 @@ public class ExportFunctions extends GhidraScript {
 				String.format("%-9s %s  %s", at, ins.getAddress(), ins.toString()));
 			String mn = ins.getMnemonicString().toUpperCase();
 			boolean toFrag = false;
+			String dn = ins.getFlowType().isCall() ? "" : dataNote(ins); // ⑫
 			if (mn.startsWith("J")) {
 				for (Address fl : ins.getFlows()) {
 					if (owner.getBody().contains(fl) || region.contains(fl)) {
@@ -258,6 +448,10 @@ public class ExportFunctions extends GhidraScript {
 			if (ins.getFlowType().isCall()) {
 				if (mn.startsWith("INT")) {
 					line.append("    ; TRAP");
+				}
+				else if (!mn.startsWith("J") && isFakeCall(ins)) {
+					// ⑥ 장부에 안 넣는다 (묶음 O1b)
+					line.append("    ; FAKECALL (목적지 첫 명령 ADD RSP,8 — 돌아올 주소를 바로 버림. 함수 호출 아님 [추측])");
 				}
 				else if (mn.startsWith("J") && toFrag) {
 					String tgt = calleeName(ins, fm);
@@ -280,6 +474,7 @@ public class ExportFunctions extends GhidraScript {
 					calls.printf("%s\t%s\t%s\t%s%n", ownerName, at, ret, tgt);
 				}
 			}
+			line.append(dn);
 			if (prefix.startsWith("frag:")) {
 				// ⑦ 조각 오프셋을 본래 함수 기준으로도 (묶음 O1a)
 				line.append("    (= ").append(ownerName).append(" ").append(off(ins.getAddress().getOffset() - owner.getEntryPoint().getOffset())).append(")");
@@ -443,6 +638,16 @@ public class ExportFunctions extends GhidraScript {
 						walkBody(name, f, g.getBody(), g.getEntryPoint().getOffset(), "seh:" + g.getName(), w, calls, fm,
 							new LinkedHashSet<>(), new LinkedHashSet<>());
 					}
+					// ⑤ .asm 에 나온 곳을 다 모아 틈을 계산 (묶음 O1b)
+					AddressSet printed = new AddressSet(f.getBody());
+					for (int q = 0; q < fi; q++) {
+						printed.add(todo.get(q).getBody());
+					}
+					printed.add(orphanDone);
+					for (Function g : seh.getOrDefault(name, new ArrayList<>())) {
+						printed.add(g.getBody());
+					}
+					printGaps(w, f, printed, entry, fm);
 				}
 			}
 		}

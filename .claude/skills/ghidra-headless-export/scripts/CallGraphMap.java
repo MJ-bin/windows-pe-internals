@@ -22,6 +22,7 @@
 // 예외 정리 형제 함수(<이름>$fin$N/$filt$N)는 본래 함수 몫으로 읽는다 (오프셋 seh:<이름>+0x.., 묶음 O2)
 // 그대로 따라가는 것: 직접 CALL, 꼬리호출(JMP → 이름 있는 함수, kind=tail), 떨어진 조각(JMP/Jcc → FUN_, 본래 함수에 합침),
 //   주인 없는 덩어리(JMP/Jcc → 어느 함수에도 안 속한 코드, 본래 함수에 합침, 오프셋은 본래 함수 기준 — sast/06)
+// 빼는 것: 가짜 호출 (목적지 첫 명령이 ADD RSP,8 — 돌아올 주소를 바로 버림, 함수 호출 아님 [추측]. 묶음 O1b)
 // 표시만: alias (대상 주소에 다른 PDB 이름이 N개 — 이름을 믿지 말 것)
 //@category PE-Internals
 import java.io.File;
@@ -63,6 +64,22 @@ public class CallGraphMap extends GhidraScript {
 	private final Map<String, List<Function>> seh = new HashMap<>(); // <이름> -> <이름>$fin$N/$filt$N (묶음 O2)
 	private final Map<Function, Boolean> syscallCache = new HashMap<>();
 	private final Map<Function, Integer> callerCache = new HashMap<>();
+
+	// ⑥ 가짜 호출: 목적지 첫 명령이 ADD RSP,8 (48 83 C4 08) (묶음 O1b)
+	private boolean isFakeCall(Instruction ins) {
+		Address[] fl = ins.getFlows();
+		if (fl == null || fl.length != 1 || !fl[0].isMemoryAddress()) {
+			return false;
+		}
+		byte[] b = new byte[4];
+		try {
+			currentProgram.getMemory().getBytes(fl[0], b);
+		}
+		catch (Exception e) {
+			return false;
+		}
+		return b[0] == 0x48 && (b[1] & 0xff) == 0x83 && (b[2] & 0xff) == 0xC4 && b[3] == 0x08;
+	}
 
 	private static String off(long v) {
 		return (v < 0 ? "-0x" : "+0x") + Long.toHexString(Math.abs(v));
@@ -299,6 +316,9 @@ public class CallGraphMap extends GhidraScript {
 					}
 				}
 				if (!ins.getFlowType().isCall() || mn.startsWith("INT") || inner) {
+					continue;
+				}
+				if (!mn.startsWith("J") && isFakeCall(ins)) { // ⑥ 묶음 O1b
 					continue;
 				}
 				Edge e = new Edge();
