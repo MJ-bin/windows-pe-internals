@@ -90,7 +90,8 @@ public class CallGraphMap extends GhidraScript {
 		Instruction p = call;
 		for (int i = 0; i < 10; i++) {
 			p = currentProgram.getListing().getInstructionBefore(p.getAddress());
-			if (p == null || !region.contains(p.getAddress()) || p.getFlowType().isCall()) {
+			// JMP·RET 등 앞에서 멈춘다 (묶음 O1a)
+			if (p == null || !region.contains(p.getAddress()) || p.getFlowType().isCall() || !p.hasFallthrough()) {
 				break;
 			}
 			boolean rax = false;
@@ -103,7 +104,7 @@ public class CallGraphMap extends GhidraScript {
 				continue;
 			}
 			for (Reference ref : p.getReferencesFrom()) {
-				if (ref.getReferenceType().isData()) {
+				if (ref.getReferenceType().isData() && !p.getDefaultOperandRepresentation(p.getNumOperands() - 1).contains("+ R")) {
 					Address to = ref.getToAddress();
 					Symbol s = currentProgram.getSymbolTable().getPrimarySymbol(to);
 					if (to.isStackAddress()) { // 함수 주소를 지역 변수(스택 칸)에서 꺼냄 (묶음 N1)
@@ -114,6 +115,12 @@ public class CallGraphMap extends GhidraScript {
 					}
 					return (s != null && s.getSource() != SourceType.DEFAULT) ? s.getName()
 							: "@0x" + Long.toHexString(to.getOffset() - base);
+				}
+			}
+			if (p.getNumOperands() >= 2 && p.getMnemonicString().equalsIgnoreCase("MOV")) { // ⑭ "MOV RAX, [메모리]" 꼴만 (묶음 O1a)
+				String src = p.getDefaultOperandRepresentation(1).replace("qword ptr ", "").replace(" ", "");
+				if (src.startsWith("[")) {
+					return src;
 				}
 			}
 			return "?";

@@ -24,6 +24,7 @@
 //                        .asm 맨 아래에 "; --- 조각 ..." 머리와 함께 붙는다.
 //      call_off/ret_off = seh:<이름>+0x.. : 예외 정리 함수(<함수>$fin$N, <함수>$filt$N) 안의 호출. 호출로 안 닿고
 //                        예외 때 운영체제가 부르는 형제 함수라 자동으로 같이 읽는다 (.asm "; --- 예외 정리 함수 ..."). 묶음 O2.
+//      .asm 만 (묶음 O1a): 조각 줄 끝 "(= <함수> +0x..)" 환산. 장부: cfg 출처를 이름으로 못 찾으면 cfg:[레지스터+오프셋]
 //      주인 없는 덩어리 : 함수가 JMP/Jcc 로 넘어가는 곳이 **어느 함수에도 안 속한 코드**면 (Ghidra 가 함수 범위에 못 넣은 것)
 //                        거기서부터 흐름(다음 명령, 점프)을 따라가 그 함수 몫으로 읽는다. 오프셋은 본래 함수 시작 기준(+0x..),
 //                        .asm 에 "; --- 주인 없는 덩어리 ..." 머리와 함께 붙는다 (sast/06, 2026-10-21).
@@ -144,7 +145,8 @@ public class ExportFunctions extends GhidraScript {
 		Instruction p = call;
 		for (int i = 0; i < 10; i++) {
 			p = currentProgram.getListing().getInstructionBefore(p.getAddress());
-			if (p == null || !region.contains(p.getAddress()) || p.getFlowType().isCall()) {
+			// 다음 줄로 넘어오지 않는 명령(JMP·RET 등) 앞에서 멈춘다 — 다른 갈래의 값을 집지 않게 (묶음 O1a)
+			if (p == null || !region.contains(p.getAddress()) || p.getFlowType().isCall() || !p.hasFallthrough()) {
 				break;
 			}
 			boolean writesRax = false;
@@ -158,7 +160,7 @@ public class ExportFunctions extends GhidraScript {
 				continue;
 			}
 			for (Reference ref : p.getReferencesFrom()) {
-				if (ref.getReferenceType().isData()) {
+				if (ref.getReferenceType().isData() && !p.getDefaultOperandRepresentation(p.getNumOperands() - 1).contains("+ R")) {
 					Address to = ref.getToAddress();
 					Symbol s = currentProgram.getSymbolTable().getPrimarySymbol(to);
 					if (to.isStackAddress()) { // 함수 주소를 지역 변수(스택 칸)에서 꺼냄 (묶음 N1)
@@ -171,6 +173,13 @@ public class ExportFunctions extends GhidraScript {
 						return "indirect:cfg:" + s.getName();
 					}
 					return "indirect:cfg:@0x" + Long.toHexString(to.getOffset() - base);
+				}
+			}
+			// ⑭ 데이터 이름이 없으면 RAX 를 채운 원천(레지스터+오프셋)을 적는다 — "MOV RAX, [메모리]" 꼴만 (묶음 O1a)
+			if (p.getNumOperands() >= 2 && p.getMnemonicString().equalsIgnoreCase("MOV")) {
+				String src = p.getDefaultOperandRepresentation(1).replace("qword ptr ", "").replace(" ", "");
+				if (src.startsWith("[")) {
+					return "indirect:cfg:" + src;
 				}
 			}
 			return "indirect:cfg:?";
@@ -270,6 +279,10 @@ public class ExportFunctions extends GhidraScript {
 					line.append("    ; CALL ret=").append(ret).append(" -> ").append(tgt).append(aliasNote());
 					calls.printf("%s\t%s\t%s\t%s%n", ownerName, at, ret, tgt);
 				}
+			}
+			if (prefix.startsWith("frag:")) {
+				// ⑦ 조각 오프셋을 본래 함수 기준으로도 (묶음 O1a)
+				line.append("    (= ").append(ownerName).append(" ").append(off(ins.getAddress().getOffset() - owner.getEntryPoint().getOffset())).append(")");
 			}
 			w.println(line);
 		}
