@@ -23,7 +23,7 @@ Claude는 VM에 못 들어간다. 그래서 안내가 곧 실험 설계다.
 ## Workflow — 준비 모드 (runbook 만들기)
 
 1. 동적 요청서 `_workspace/dast/NN_키워드.md` 를 읽는다. 관련 정적 결과서가 적혀 있으면 그것도 읽는다.
-2. 멈춤점 이름이 **이 빌드에 있는지** 근거를 찾는다: `_index.tsv`, run 문서, flow.md. 근거가 없으면 runbook 첫 단계에 `x` 명령으로 확인하는 단계를 넣는다.
+2. 멈춤점 이름이 **이 빌드에 있는지** 근거를 찾는다: `_index.tsv`(없으면 `pdb_aliases.py --where <모듈> <이름>` — WinDbg 는 PDB 이름을 쓴다), run 문서, flow.md. 근거가 없으면 runbook 첫 단계에 `x` 명령으로 확인하는 단계를 넣는다.
    - 함수 입구에 거는 멈춤점은 **별칭 무리인지**도 본다: `python3 .claude/skills/ghidra-headless-export/scripts/pdb_aliases.py --lookup <모듈> <이름>`. 무리면 [pitfalls.md](pitfalls.md) P19 대로 건다.
 3. [runbook-template.md](runbook-template.md) 의 표준 뼈대에 이번 멈춤점을 끼워 넣는다.
    - 멈춤점마다: **멈출지 / 기록만**, `/p` 필터 방법, 찍을 것(`k`, `r`, `ln`)을 정한다.

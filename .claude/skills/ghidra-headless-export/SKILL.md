@@ -53,7 +53,7 @@ MS 바이너리를 **PDB와 함께** Ghidra로 분석해서, 요청서가 묻는
      → `ms/disassemble/<모듈>/_map/<뿌리>_{edges,nodes}.tsv`, `_summary.txt`. 형식은 [reference.md](reference.md) "지도".
      - 지도는 **읽을 목록이 아니라 색인**이다 (커널은 끝까지 1만 개가 넘는다, sast/05). "이 함수는 뿌리에서 몇 단계, 누가 부르나, caller 몇 곳"을 찾는 데 쓴다.
      - 스크립트(`ExportFunctions`·`CallGraphMap`)를 바꾼 뒤엔 지도를 다시 만든다.
-4. **이름 찾기·주변 보기**: 요청서 함수 이름이 정확하지 않으면 `_index.tsv` 를 grep 해서 실제 이름을 고른다. 대상 함수의 위치는 지도에서 본다: `_nodes.tsv` 의 깊이·caller 수·상태, `_edges.tsv` 에서 caller 열이 대상인 줄(= 직접 부르는 함수)과 callee 열이 대상인 줄(= 누가 부르나). 요청서 범위를 넓혀야 할 것 같으면(예: 일이 한두 단계 아래에서 일어남) 지도로 길을 먼저 찾고, 넓힌 이유를 결과서에 쓴다.
+4. **이름 찾기·주변 보기**: 요청서 함수 이름이 정확하지 않으면 `_index.tsv` 를 grep 해서 실제 이름을 고른다. **`_index.tsv` 에 없으면** `python3 .claude/skills/ghidra-headless-export/scripts/pdb_aliases.py --where <바이너리> <이름>` 으로 PDB 이름을 찾는다 — Ghidra 가 같은 함수를 다른 이름(내보내기 이름 등)으로 잡았으면 그 이름이 나온다 (예: `KeWaitForSingleObject` → Ghidra `KeWaitForMutexObject`). 문서에는 PDB 이름을 쓰고 Ghidra 이름을 한 번 밝힌다. 대상 함수의 위치는 지도에서 본다: `_nodes.tsv` 의 깊이·caller 수·상태, `_edges.tsv` 에서 caller 열이 대상인 줄(= 직접 부르는 함수)과 callee 열이 대상인 줄(= 누가 부르나). 요청서 범위를 넓혀야 할 것 같으면(예: 일이 한두 단계 아래에서 일어남) 지도로 길을 먼저 찾고, 넓힌 이유를 결과서에 쓴다.
 5. **뽑기**:
    ```bash
    bash .claude/skills/ghidra-headless-export/scripts/run_ghidra.sh export ntdll.dll '^(LdrpLoadDllInternal|LdrpPrepareModuleForExecution)$' 1

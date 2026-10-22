@@ -11,6 +11,12 @@
     python3 .../pdb_aliases.py --lookup ntoskrnl.exe MmIsSessionAddress   # 이름으로 무리 찾기
     python3 .../pdb_aliases.py --lookup ntoskrnl.exe 0x490960             # RVA 로 무리 찾기
     python3 .../pdb_aliases.py --outdir <폴더> ntoskrnl.exe                # 다른 곳에 쓰기 (시험용)
+    python3 .../pdb_aliases.py --where ntoskrnl.exe KeWaitForSingleObject  # PDB 이름이 어디 있나 + _index.tsv 에선 무슨 이름인가
+
+--where (sast/08, 2026-10-22): _index.tsv 는 Ghidra 가 고른 이름 하나만 담는다. PDB 이름이 내보내기 이름 등으로
+    잡혀 있으면 _index.tsv grep 으로는 "없다"고 나온다 (예: KeWaitForSingleObject → Ghidra 이름 KeWaitForMutexObject).
+    --where 는 PDB 공개 심볼 **전부**(별칭 무리가 아니어도)에서 이름을 찾아, RVA·종류·같은 주소의 다른 PDB 이름·
+    ms/decomp/<모듈>/_index.tsv 의 그 주소 이름을 보여 준다. 정확히 같은 이름이 없으면 대소문자 무시 부분 일치를 20개까지.
 
 - 입력: ms/sym/<바이너리이름>.pdb (fetch_pdb.py 가 받은 것)
 - 필요: llvm-pdbutil (서버엔 llvm-pdbutil-14). PATH 에서 llvm-pdbutil, llvm-pdbutil-NN 순으로 찾는다.
@@ -78,6 +84,48 @@ def groups(tool, pdb):
     return {rva: names for rva, names in by.items() if len(names) > 1}
 
 
+def where(tool, pdb, binname, key, root):
+    vas = section_vas(tool, pdb)
+    pubs = []
+    for name, flags, seg, off in PUB.findall(run(tool, "-publics", pdb)):
+        seg, off = int(seg), int(off)
+        if 1 <= seg <= len(vas):
+            pubs.append((name, flags.strip(), vas[seg - 1] + off))
+    hits = [p for p in pubs if p[0] == key]
+    exact = bool(hits)
+    if not hits:
+        k = key.lower()
+        hits = [p for p in pubs if k in p[0].lower()][:20]
+    if not hits:
+        print("PDB 공개 심볼에 없음: %s (이 빌드에 없거나, 공개 심볼이 아닌 이름)" % key)
+        return 0
+    module = os.path.splitext(binname)[0].lower()
+    index = defaultdict(list)
+    ipath = os.path.join(root, "ms", "decomp", module, "_index.tsv")
+    if os.path.isfile(ipath):
+        for line in open(ipath, encoding="utf-8", errors="replace"):
+            if line.startswith("#"):
+                continue
+            cols = line.rstrip("\n").split("\t")
+            if len(cols) >= 3 and cols[2].startswith("0x"):
+                index[int(cols[2], 16)].append(cols[0])
+    same = defaultdict(list)
+    for n, f, r in pubs:
+        if "function" in f:
+            same[r].append(n)
+    if not exact:
+        print("정확히 같은 이름은 없음. 부분 일치 %d개:" % len(hits))
+    for n, f, r in hits:
+        others = [x for x in same.get(r, []) if x != n]
+        gname = index.get(r)
+        print("%s  rva=0x%x  [%s]" % (n, r, f))
+        print("    _index.tsv 이름: %s" % (", ".join(gname) if gname else
+              ("(없음 — 함수 시작이 아니거나 Ghidra 가 함수로 안 잡음)" if os.path.isfile(ipath) else "(_index.tsv 없음: 아직 analyze 전)")))
+        if others:
+            print("    같은 주소의 다른 PDB 이름 %d개: %s%s" % (len(others), ", ".join(others[:8]), " ..." if len(others) > 8 else ""))
+    return 0
+
+
 def main(argv):
     outdir = None
     if "--outdir" in argv:
@@ -85,8 +133,9 @@ def main(argv):
         outdir = argv[i + 1]
         del argv[i:i + 2]
     lookup = "--lookup" in argv
-    args = [a for a in argv if a != "--lookup"]
-    if not args or (lookup and len(args) != 2):
+    wherex = "--where" in argv
+    args = [a for a in argv if a not in ("--lookup", "--where")]
+    if not args or ((lookup or wherex) and len(args) != 2):
         print(__doc__)
         return 1
     tool = find_pdbutil()
@@ -96,6 +145,14 @@ def main(argv):
     root = repo_root()
     symdir = os.path.join(root, "ms", "sym")
     outdir = outdir or symdir
+
+    if wherex:
+        binname, key = args
+        pdb = os.path.join(symdir, binname + ".pdb")
+        if not os.path.isfile(pdb):
+            print("[!] PDB 없음: %s (먼저 fetch_pdb.py %s)" % (pdb, binname))
+            return 3
+        return where(tool, pdb, binname, key, root)
 
     if lookup:
         binname, key = args
