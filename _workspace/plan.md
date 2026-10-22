@@ -1,7 +1,7 @@
 # 분석 진행표
 
-- 마지막 갱신: 2026-10-22 (run17 뒤, 단계 2 시작)
-- 다음 항목: Q9 (단계 2)
+- 마지막 갱신: 2026-10-22 (run18 뒤)
+- 다음 항목: Q9b (단계 2)
 - 근거: `runs/01_sprint/flow.md` 그림 1·2, 2장, 4장·4.1 표
 
 ## 대기열 (위에서부터 처리, 새 항목은 맨 아래에)
@@ -17,14 +17,15 @@
 | Q6 | 2.3 `nt!KiStartUserThread`, `nt!PspUserThreadStartup` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 2); ntoskrnl analyze (2026-10-19): `_index.tsv` 에 `KiStartUserThread` 없음, `KxStartUserThread` 있음 (PDB엔 `KiStartUserThread`·`KiStartUserThreadReturn` 이름 있음) → 이름 대응 확인 | 끝 (run15) |
 | Q7 | 2.3 유저 첫 위치가 `ntdll!LdrInitializeThunk`로 정해지는 곳, `RtlUserThreadStart`와의 관계 | 1 | 정적 (ntoskrnl) | 처음 (4장 2.3); sast/03 결과 (`PspCreateUserContext` 91바이트 — `NtCreateUserProcess +0xd22` 에서 부름, 첫 스레드 유저 시작 문맥 후보); sast/06 결과 (`PspAllocateThread` 는 CONTEXT.Rip→StartAddress, Rcx→Win32StartAddress 로 옮겨 적기만 함, `PspUserThreadStartup` 주소는 `+0x681` 에서 `KeInitThread` 로 → CONTEXT 를 누가 채우나); sast/10·run15 (유저 첫 RIP = `_KTRAP_FRAME.Rip`(+0x168), 트랩 프레임 = InitialStack-0x190, 처음 `KxContextToKframes` 가 채우고 `PspUserThreadStartup +0xb3 PspInitializeThunkContext` 가 다시 정함 → 이 함수 본문) | 끝 (run16) |
 | Q8 | 2.4 `ntdll!LdrInitializeThunk`, `LdrpInitializeInternal`, `LdrpInitialize` callee | 2 | 정적 (ntdll) | 처음 (그림 2); sast/02 결과 (`+0x16c` 의 caller 이름이 `_LdrpInitialize`, `LdrpInitialize` 는 꼬리호출(JMP)로 `LdrpInitializeInternal` 에 넘김 → flow.md 2.4 이름 정정 필요) | 끝 (run17) |
-| Q9 | 2.4 `ntdll!LdrpInitializeProcess` callee (크면 그 자리에서 Q9a/Q9b로 나눔) | 2 | 정적 (ntdll) | 처음 (그림 2) | 대기 |
-| Q10 | 2.5 `LdrpInitializeKernel32Functions`, `LdrLoadDll`, `LdrpLoadDll` callee | 2 | 정적 (ntdll) | 처음 (그림 2) | 대기 |
+| Q9a | 2.4 `ntdll!LdrpInitializeProcess` 앞쪽 `+0x0 ~ +0x12dd` callee (호출 94곳 — 프로세스 전체 준비: 힙·NLS·실행 옵션·환경·경로·ntdll 모듈 항목), 입구에서 RCX·RDX 쓰는 곳 | 2 | 정적 (ntdll) | 처음 (그림 2); Q9 를 그 자리에서 나눔 (2026-10-22) | 끝 (run18) |
+| Q9b | 2.4 `ntdll!LdrpInitializeProcess` 뒤쪽 `+0x12de ~ 끝` callee (호출 75곳 — 모듈 목록·디버거·WOW64·kernel32·import·그래프·TLS) | 2 | 정적 (ntdll) | 처음 (그림 2); Q9 를 그 자리에서 나눔 (2026-10-22); sast/13·run18 (넘길 연결점: `+0x1302 LdrpDrainWorkQueue`·`+0x1313 LdrpInitializeDllPath`, `+0x1359 LdrpAllocateModuleEntry`(exe 항목 → `LdrpImageEntry`), RCX 처음 쓰는 곳 `+0x17f4`, `BeingDebugged` `+0x17d2`·`+0x1b35`, KUSER `+0x330` `+0x188c`·`+0x1cb0`, `LdrpNtdllHotPatchContext` `+0x18ef`, `NtGlobalFlag & 0x100` `+0x16b7`) | 대기 |
+| Q10 | 2.5 `LdrpInitializeKernel32Functions`, `LdrLoadDll`, `LdrpLoadDll` callee | 2 | 정적 (ntdll) | 처음 (그림 2); run18 (앞쪽이 준비한 전역 `LdrpKnownDllDirectoryHandle`·`LdrpKnownDllPath`·`LdrpSystem32`·`RtlpSystem32Dirs`·`LdrpHashTable`·`LdrpHeap`·`LdrpSystemDllBase`·`LdrpAppHeaders` 를 DLL 로드 코드가 쓰는지 `refs` 로) | 대기 |
 | Q11 | 2.5 `LdrpLoadDllInternal` (`+0x284` 앞 = 올리기 쪽), `LdrpPrepareModuleForExecution` callee | 2 | 정적 (ntdll) | 처음 (그림 2, 4장 2.5) | 대기 |
 | Q12 | 2.5·2.6 올리면서 의존 관계 그래프를 만드는 함수 (Q11 결과에서 이어감) | 2 | 정적 (ntdll) | 처음 (4장 2.5·2.6) | 대기 |
 | Q13 | 2.5 KERNELBASE·KERNEL32 시작 함수 이름 (PE 진입점 → PDB 이름) | 2 | 정적 (kernelbase, kernel32) | 처음 (4장 2.5) | 대기 |
-| Q14 | 2.6 dll1·dll2를 올리는 쪽 (`LdrpInitializeProcess+0x1bb6` 앞 호출 중 import 처리) | 2 | 정적 (ntdll) | 처음 (4장 2.6) | 대기 |
+| Q14 | 2.6 dll1·dll2를 올리는 쪽 (`LdrpInitializeProcess+0x1bb6`(call 자리, ret `+0x1bbb`) 앞 호출 중 import 처리) | 2 | 정적 (ntdll) | 처음 (4장 2.6) | 대기 |
 | Q15 | 2.7 `LdrpInitializeGraphRecurse`, `LdrpInitializeNode` callee | 2 | 정적 (ntdll) | 처음 (그림 2) | 대기 |
-| Q16 | 2.7 `LdrpCallTlsInitializers`, `LdrpCallInitRoutine`, `ImageTlsCallbackCaller` callee | 2 | 정적 (ntdll) | 처음 (그림 2, 4장 2.7) | 대기 |
+| Q16 | 2.7 `LdrpCallTlsInitializers`, `LdrpCallInitRoutine`, `ImageTlsCallbackCaller` callee | 2 | 정적 (ntdll) | 처음 (그림 2, 4장 2.7); run18 (`LdrpInitializeProcess +0x774 ~ +0x8a3` 이 PEB TLS 비트맵 칸 PEB+0x78·+0x80·+0x238·+0x240 을 걸어 둠 — `LdrpInitializeTls` 바탕) | 대기 |
 | Q17 | 2.10 로더 끝 → 진입점: `LdrInitializeThunk` 뒤 `NtContinue`, `RtlUserThreadStart` callee | 2 | 정적 (ntdll, ntoskrnl) | 처음 (그림 2 PH4); run16 (커널 쪽 `NtContinue` 가 저장본 CONTEXT 의 Rip(=RtlUserThreadStart) 로 보내는 길 — `KiContinueEx`/`KiContinuePreviousModeUser` 등 ntoskrnl, 이름은 --where 로) | 대기 |
 | Q18 | 2.10 `KERNEL32!BaseThreadInitThunk` callee | 2 | 정적 (kernel32) | 처음 (그림 2) | 대기 |
 | Q19 | 2.2 첫 스레드가 실제로 풀리는 시점 (부모 스레드와의 순서) | 3 | 동적 | 처음 (4장 2.2); sast/03 동적 1·2 (`NtCreateUserProcess` 입구 ThreadFlags bit0, `PspInsertThread` 의 `KeSuspendThread` `+0x2e5`·`KeReadyThread` `+0x5a6` 탔는지); run12 (멈춘 첫 스레드도 `KeReadyThread` 를 거침 → 실제로 서는 시점·풀리는 시점, `KeSuspendThread` 안쪽); sast/08·run13 (`nt!KiSchedulerApc` 에서 `k` 로 서는 곳 확인 — 기대 `KeWaitForSingleObject ← KiSchedulerApc+0xf7 ← KiDeliverApc+0x220`, `PspUserThreadStartup+0x22` 와 `NtResumeThread` 의 순서, `KiSuspendThread` 의 어느 갈래인지, SuspendCount `+0x284`·SuspendEvent `+0x2e4` 값 바뀌는 순간); sast/09·run14 (cmd.exe 의 실제 `dwCreationFlags` 에 4 가 있나, `nt!NtCreateUserProcess`·`nt!NtResumeThread` 입구(cmd.exe `/p`)에서 긴 `k` — 유저 쪽 `KERNELBASE!CreateProcessInternalW+0x30ee`/`+0x5bd3` 보이나, `NtCreateUserProcess` 몇 번, 8번째 인자 1 인가, `CsrClientCallServer +0x4672` 순서, `NtAlertResumeThread` 엔 안 서나, 가운데 ①검사 ②CSR 알림 ③후처리 중 test.exe 때 실제로 도는 것(import 검사 12곳)) | 대기 |
@@ -52,6 +53,8 @@
 | Q41 | 2.2 부모 유저 쪽 남은 정적 확인 (작음): `kernel32!CreateProcessW` → `KERNELBASE!CreateProcessW` 연결, ApiNumber `0x1001d` 정체 (`CsrClientCallServer` 는 ntdll — import 표로 확인 2026-10-22), ntdll `NtCreateUserProcess`·`NtResumeThread` 스텁이 바로 시스템 콜을 하나, KERNELBASE 가 켜는 ProcessFlags bit9(`0x200`)를 커널이 어떻게 쓰나 | 1 | 정적 (kernel32, ntdll, ntoskrnl) | sast/09·run14 4장 | 대기 |
 | Q42 | 2.3 커널 → 유저 전환 실제 길: `KiKvaShadow`·`KiIrqlFlags` 값(유저로 가는 `IRETQ` 가 `KxStartUserThread` 조각 쪽인지 `KiKernelExit +0xa5` 인지), 멈춤 APC 가 `PspUserThreadStartup+0x26` 에서 들어오나, `+0xae`/`+0xb3` 앞뒤 트랩 프레임 `Rip`/`Rsp`, `KiStartUserThread+0x28` 에서 `dq @rbp+0xe8 L5`(유저 진입 직전 Rip·CS·EFlags·Rsp·SS), `KiInitiateUserApc` 타나, ThreadInserted/Terminated/Minimal 값, 트랩 프레임 위치 `RBP-0x80 = InitialStack-0x190` 확인, `KyStartUserThread` 템플릿이 정말 안 도나 | 3 | 동적 | sast/10 동적 확인 (Q7 결과와 같이 보면 좋음); sast/11 (`PspUserThreadStartup +0xae` 앞뒤 트랩 프레임 Rip/Rcx/Rdx/Rsp, `PspInitializeThunkContext +0x16d`/`+0x2d6`/`+0x2db`/`+0x2f5`(KiCheckForKernelApcDelivery 불리나), `ntdll!LdrInitializeThunk` 입구 RCX·RDX·`dt _CONTEXT @rcx`, `+0x13` 에서 @rbx, `dq nt!PsNtdllExports L3`, `poi(PspSystemDlls)+0x20` vs `lm m ntdll`, InstrumentationCallback·CET 비트) | 대기 |
 | Q43 | 2.4 로더 입구 실행 값 (주소로 멈춤 — 이름 겹침): `ln ntdll+0x8c0f8`·`x ntdll!*LdrpInitialize` 로 WinDbg 가 `_LdrpInitialize` 를 무슨 이름으로 보이나, `ntdll+0xe1448`/`+0xe1484` 에서 RCX·RDX 같은가와 `SecurityCookieInitialized`(`+0x1d23ce`)·`SpecialMachineFramesInitialized`(`+0x1d23d0`), `LdrpInitializeInternal` 입구 `TEB+0x17ee`·`LdrpHotPatchInitialized`(`+0x1d2928`), `LdrpInitializeHotPatching +0x45` eax 와 `LdrpIsHotPatchingEnabled`(`+0x1d26f0`) — `LdrpLoadPatchedNtdll` 타나, `_LdrpInitialize +0x43`(`ntdll+0x8bfcf`) eax (첫 스레드 0 / Worker 2), `ntdll+0xe142e` 도착이 `LdrpInitializeProcess` 끝난 뒤인가 | 3 | 동적 | sast/12·run17 | 대기 |
+| Q44 | 2.4 `LdrpInitializeProcess` 앞쪽 실행 값 (주소로 멈춤, `ntdll+0x8c404+오프셋`, test.exe 만): 입구 `r rcx rdx`(RDX = `lm m ntdll` 시작인가), `+0x5f2` `UseWOW64` 0 인가·`+0x587` 타나, `+0x58e` 에서 `NtGlobalFlag`(PEB+0xbc, 커널 디버거만 붙었을 때), `LdrpInitializeProcessHeap` 반환값, `\KnownDlls` 열기(`+0xdb8`) 성공·`KnownDllPath`·`LdrpSystem32`, `+0x1233` 의 `[ctx]`·`[ctx+8]`(둘째 `+0x126a` 타나), `+0x12de` 에서 `PebLdr`(rva 0x1d2880) 목록 3개에 ntdll 만 있나, 에필로그 `+0xa7b` 에 안 서나 | 3 | 동적 | sast/13·run18 "아직 확인 필요" 동적 1~8 (Q43 과 같은 기준점 — 연달아 있어 한 run 으로 묶을 수 있음) | 대기 |
+| Q45 | 2.4 `ntdll!LdrpInitializeNtdllDataTableEntry` 본문 (633바이트): 적재·메모리 순서 목록에 넣는 곳(`LdrpInsertDataTableEntry` 를 부르나), 색인, 둘째 호출(핫패치 ntdll)의 정체 | 2 | 정적 (ntdll) | sast/13·run18 (새 정적 후보) | 대기 |
 
 상태: `대기` / `진행 중` / `끝 (runN)` / `합침 → Qn` / `보류 (사용자 결정, 날짜)`
 
@@ -111,3 +114,6 @@
 - 2026-10-22: Q8 끝 (run17, sast/12 정적만). 동적 확인거리는 Q43 으로 맨 뒤에
 - 하네스 후보 (나중에 검토, sast/12): (16) 평범한 `CALL RAX` 도 바로 앞 `MOV RAX,[mem]` 에서 이름을 찾아 `indirect:<이름>` 으로 (지금은 `indirect:?`, 예: `_LdrpInitialize +0x9a` = `g_LdrpWow64LdrpInitialize`)
 - 하네스 후보 (나중에 검토, run17 flow-writer): (17) windbg-kd-runbook pitfalls — `LdrpInitialize` 이름이 0xe1448 과 0x8bf8c(`_LdrpInitialize`, 콜스택 표시 이름) 에 걸치니 `bp ntdll!LdrpInitialize` 대신 `ntdll+rva` 로 건다
+- 2026-10-22: Q9 가 커서 (`LdrpInitializeProcess` 7750바이트, 호출 169곳·함수 113개 — 지금까지 최대 `PspAllocateProcess` 144곳보다 큼) 규칙 4 대로 그 자리에서 Q9a(`+0x0~+0x12dd`, 95곳)·Q9b(`+0x12de~끝`, 74곳) 로 나눔. 경계 = `+0x12de LdrpInitParallelLoadingSupport` (모듈 목록 쪽 시작). 원래 Q9 줄: | Q9 | 2.4 `ntdll!LdrpInitializeProcess` callee (크면 그 자리에서 Q9a/Q9b로 나눔) | 2 | 정적 (ntdll) | 처음 (그림 2) | 대기 |. Q9a 시작 (sast/13)
+- 2026-10-22: Q9a 끝 (run18, sast/13 정적만). 호출 수 정정 — 앞쪽 94 / 뒤쪽 75 (경계 `+0x12de` 는 뒤쪽). Q44(동적)·Q45(정적) 맨 아래 추가, Q9b·Q10·Q16 에 출처 추가. flow.md 그림 2 `+0x1bb6` → ret `+0x1bbb` 정정 (run18)
+- 하네스 후보 (나중에 검토, run18 flow-writer): (18) windbg-kd-runbook pitfalls — 라벨·멈춤점 오프셋이 call 자리인지 ret 자리인지 섞지 않는다 (`+0x1bb6` call / `+0x1bbb` ret, 확인은 run8 처럼 `ub +0x1bbb`)
