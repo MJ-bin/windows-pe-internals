@@ -4,13 +4,13 @@
     python3 sort_calls.py ms/disassemble/<모듈>/_calls.tsv
 
 - 예전엔 `sort -u` (글자 순)라 `+0x1060` 이 `+0x126` 앞에 왔다 (묶음 N1, 2026-10-22).
-- 오프셋 순서: 본체 `+0x..`/`-0x..` (숫자) → 조각 `frag:<이름>+0x..` (조각 이름별, 숫자).
+- 오프셋 순서: 본체 `+0x..`/`-0x..` (숫자) → 조각 `frag:<이름>+0x..`·예외 정리 함수 `seh:<이름>+0x..` (이름별, 숫자).
 - 열: caller  call_off  ret_off  callee  (4열이 아닌 줄은 맨 뒤에 그대로)
 """
 import re
 import sys
 
-OFF = re.compile(r"^(?:frag:(?P<frag>[^+-]+))?(?P<sign>[+-])0x(?P<hex>[0-9a-fA-F]+)$")
+OFF = re.compile(r"^(?:(?:frag|seh):(?P<frag>[^+-]+))?(?P<sign>[+-])0x(?P<hex>[0-9a-fA-F]+)$")  # frag:·seh: (묶음 O2)
 
 
 def key(line):

@@ -13,6 +13,10 @@
 #       - 디컴파일 없이 뿌리에서 호출 관계만 따라가 "지도"(색인)를 만든다 (CallGraphMap.java, 몇 초).
 #       - 출력: ms/disassemble/<모듈>/_map/<뿌리>_{edges.tsv,nodes.tsv,summary.txt}
 #
+#   run_ghidra.sh refs <바이너리이름> <이름|0xRVA> [바이트수]   예) run_ghidra.sh refs ntoskrnl.exe PsNtdllExports 0x98
+#       - 그 주소(전역 변수·함수)를 읽고 쓰는 곳, 그 주소를 담은 포인터 값을 찾는다 (RefsTo.java, 묶음 O2).
+#       - 출력: ms/disassemble/<모듈>/_refs/<이름>.tsv
+#
 # 환경변수:
 #   GHIDRA_HOME  기본값: ~/tools/ghidra_11.3.2_PUBLIC_20250415/ghidra_11.3.2_PUBLIC
 #   MAXMEM       기본값: 8G   (analyzeHeadless 기본 2G로는 ntoskrnl 분석이 모자란다)
@@ -25,7 +29,7 @@ GHIDRA_HOME="${GHIDRA_HOME:-$HOME/tools/ghidra_11.3.2_PUBLIC_20250415/ghidra_11.
 MAXMEM="${MAXMEM:-8G}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-cmd="${1:?사용법: run_ghidra.sh analyze|export|map <바이너리이름> ...}"
+cmd="${1:?사용법: run_ghidra.sh analyze|export|map|refs <바이너리이름> ...}"
 bin="${2:?바이너리 이름이 필요함 (예: ntdll.dll)}"
 module="$(printf '%s' "${bin%.*}" | tr '[:upper:]' '[:lower:]')"
 
@@ -96,8 +100,19 @@ map)
 		-log "$LOG"
 	echo "[+] 지도: $OUT/${root}_edges.tsv, ${root}_nodes.tsv, ${root}_summary.txt"
 	;;
+refs)
+	key="${3:?이름이나 0xRVA 가 필요함 (예: PsNtdllExports)}"
+	OUT="$ROOT/ms/disassemble/$module/_refs"
+	mkdir -p "$OUT"
+	echo "[+] refs $module  $key ${4:-}"
+	headless "$PROJ_DIR" "$module" \
+		-process "$(basename "$BIN_PATH")" -noanalysis -readOnly \
+		-scriptPath "$HERE" \
+		-postScript RefsTo.java "$OUT" "$key" ${4:+"$4"} \
+		-log "$LOG"
+	;;
 *)
-	echo "[!] 알 수 없는 명령: $cmd (analyze|export|map)" >&2; exit 1 ;;
+	echo "[!] 알 수 없는 명령: $cmd (analyze|export|map|refs)" >&2; exit 1 ;;
 esac
 # Ghidra 는 안쪽 스크립트(SetPdb 등)가 죽어도 정상 종료한다. 로그에서 직접 찾아 실패로 알린다.
 # (로그를 덮어쓰면 LOG_START 보다 짧아진다 → 그땐 처음부터 본다)

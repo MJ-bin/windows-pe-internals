@@ -19,6 +19,7 @@
 //   helper        공용 도구: 프로그램 전체에서 caller 가 기준 이상 → 여기서 안 펼침 (지도 크기를 줄이려는 선택, 진짜 끊김 아님)
 //   depth         최대 깊이에 닿음
 //   (seen)        이미 지도에 있는 함수 — 줄만 남기고 다시 펼치지 않음
+// 예외 정리 형제 함수(<이름>$fin$N/$filt$N)는 본래 함수 몫으로 읽는다 (오프셋 seh:<이름>+0x.., 묶음 O2)
 // 그대로 따라가는 것: 직접 CALL, 꼬리호출(JMP → 이름 있는 함수, kind=tail), 떨어진 조각(JMP/Jcc → FUN_, 본래 함수에 합침),
 //   주인 없는 덩어리(JMP/Jcc → 어느 함수에도 안 속한 코드, 본래 함수에 합침, 오프셋은 본래 함수 기준 — sast/06)
 // 표시만: alias (대상 주소에 다른 PDB 이름이 N개 — 이름을 믿지 말 것)
@@ -59,6 +60,7 @@ public class CallGraphMap extends GhidraScript {
 	private FunctionManager fm;
 	private long base;
 	private final Map<Function, List<Edge>> cache = new HashMap<>();
+	private final Map<String, List<Function>> seh = new HashMap<>(); // <이름> -> <이름>$fin$N/$filt$N (묶음 O2)
 	private final Map<Function, Boolean> syscallCache = new HashMap<>();
 	private final Map<Function, Integer> callerCache = new HashMap<>();
 
@@ -250,6 +252,9 @@ public class CallGraphMap extends GhidraScript {
 		// 읽을 곳: {영역, 오프셋 기준 주소, 접두어}
 		List<Object[]> regions = new ArrayList<>();
 		regions.add(new Object[] { f.getBody(), f.getEntryPoint().getOffset(), "" });
+		for (Function g : seh.getOrDefault(f.getName(), new ArrayList<>())) { // 예외 정리 형제 함수도 이 함수 몫으로
+			regions.add(new Object[] { g.getBody(), g.getEntryPoint().getOffset(), "seh:" + g.getName() });
+		}
 		Set<Function> seenFrag = new HashSet<>();
 		AddressSet orphanDone = new AddressSet();
 		for (int ri = 0; ri < regions.size() && ri < 60; ri++) {
@@ -349,6 +354,16 @@ public class CallGraphMap extends GhidraScript {
 		int maxDepth = Integer.parseInt(a[2]);
 		int threshold = a.length > 3 ? Integer.parseInt(a[3]) : 20;
 		fm = currentProgram.getFunctionManager();
+		for (Function g : fm.getFunctions(true)) {
+			String n = g.getName();
+			int k = n.indexOf("$fin$");
+			if (k < 0) {
+				k = n.indexOf("$filt$");
+			}
+			if (k > 0) {
+				seh.computeIfAbsent(n.substring(0, k), x -> new ArrayList<>()).add(g);
+			}
+		}
 		base = currentProgram.getImageBase().getOffset();
 
 		Function root = null;

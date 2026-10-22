@@ -101,6 +101,7 @@ def where(tool, pdb, binname, key, root):
         return 0
     module = os.path.splitext(binname)[0].lower()
     index = defaultdict(list)
+    spans = []  # (rva, size, name) — 이 주소를 품은 Ghidra 함수 찾기용 (묶음 O2)
     ipath = os.path.join(root, "ms", "decomp", module, "_index.tsv")
     if os.path.isfile(ipath):
         for line in open(ipath, encoding="utf-8", errors="replace"):
@@ -109,6 +110,20 @@ def where(tool, pdb, binname, key, root):
             cols = line.rstrip("\n").split("\t")
             if len(cols) >= 3 and cols[2].startswith("0x"):
                 index[int(cols[2], 16)].append(cols[0])
+                if len(cols) >= 4 and cols[3].isdigit():
+                    spans.append((int(cols[2], 16), int(cols[3]), cols[0]))
+    spans.sort()
+    starts = [x[0] for x in spans]
+
+    def containing(r):
+        import bisect
+        i = bisect.bisect_right(starts, r) - 1
+        while i >= 0 and r - spans[i][0] < 0x100000:
+            fr, fs, fn = spans[i]
+            if fr <= r < fr + fs:
+                return "%s +0x%x" % (fn, r - fr)
+            i -= 1
+        return None
     same = defaultdict(list)
     for n, f, r in pubs:
         if "function" in f:
@@ -121,6 +136,9 @@ def where(tool, pdb, binname, key, root):
         print("%s  rva=0x%x  [%s]" % (n, r, f))
         print("    _index.tsv 이름: %s" % (", ".join(gname) if gname else
               ("(없음 — 함수 시작이 아니거나 Ghidra 가 함수로 안 잡음)" if os.path.isfile(ipath) else "(_index.tsv 없음: 아직 analyze 전)")))
+        if not gname and spans:
+            c = containing(r)
+            print("    이 주소를 품은 Ghidra 함수: %s" % (c if c else "(없음 — 어느 함수 범위에도 안 듦)"))
         if others:
             print("    같은 주소의 다른 PDB 이름 %d개: %s%s" % (len(others), ", ".join(others[:8]), " ..." if len(others) > 8 else ""))
     return 0

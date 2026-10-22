@@ -56,6 +56,7 @@ LdrpCallInitRoutine	+0x41	+0x47	indirect:__guard_dispatch_icall_fptr
   - 스크립트는 함수가 `JMP`/`Jcc` 로 넘어가는 `FUN_` 함수를 조각으로 보고 따라가서 (조각의 조각도, 최대 20개) `.asm` 맨 아래 `; --- 조각 …` 아래에 붙인다.
   - 오프셋은 **조각 시작 기준**이다. WinDbg 가 이 주소를 콜스택에서 어떻게 보여 줄지는 확인 전이라 `caller+0x..` 로 바꿔 쓰지 않는다.
   - 예: `PspInsertThread +0xa33 tail FUN_140b0d692` 의 조각 안 `KeForceResumeThread` 등 (sast/03).
+- **예외 정리 함수**: `<함수>$fin$N`, `<함수>$filt$N` 은 호출로 안 닿고 예외 때 운영체제가 부르는 형제 함수다. 장부·지도에 본래 함수 몫으로 같이 들어가고 오프셋은 `seh:<이름>+0x..` (그 함수 시작 기준). `.asm` 에는 `; --- 예외 정리 함수 …` 머리 (묶음 O2, 예: `CreateProcessInternalW$fin$0`, sast/09).
 - **같은 함수의 떨어진 범위**: Ghidra 가 한 함수 본체를 멀리 떨어진 여러 범위로 잡으면(.pdata 체인 등), `.asm` 에 `; --- 같은 함수의 떨어진 범위 …` 머리가 붙고 오프셋은 아주 커진다 (예: `KiSchedulerApc +0x4106e4`). 함수 일부가 맞지만 WinDbg 가 같은 `함수+0x..` 로 보여 줄지는 확인 전 `[추측]` — 이 줄을 그림 라벨로 쓰지 않는다 (묶음 N1).
 - **주인 없는 덩어리**: 함수가 `JMP`/`Jcc` 로 넘어가는 곳이 **어느 함수에도 안 속한 코드**면 (Ghidra 가 함수 범위에 못 넣은 것), 스크립트가 거기서부터 흐름을 따라가 그 함수 몫으로 읽는다.
   - `_calls.tsv` 오프셋은 **본래 함수 시작 기준 `+0x..`** 그대로 (조각처럼 `frag:` 를 붙이지 않는다). `.asm` 에는 `; --- 주인 없는 덩어리 <시작>~<끝> ...` 머리 아래에 붙는다.
@@ -98,6 +99,21 @@ PspAllocateProcess	0xa02568	10186	1	3	expanded
 - 정적 지도는 **"부를 수도 있는 것"**이다. 갈림길에서 안 타는 호출이 섞여 있고, 순서는 실행 순서가 아니다.
 - 호출이 아닌 길(새 스레드 출발, `NtContinue` 로 실행이 넘어감, 함수 주소를 값으로 넘겨 나중에 부름)은 지도에 없다. 예: `RtlUserThreadStart`, `ImageTlsCallbackCaller` 는 `LdrInitializeThunk` 지도에 없다 (sast/05).
 - 공용 도구 기준을 너무 낮추면 대표 함수가 잘린다 (기준 10 이면 `IopCreateFile` 이 잘림, sast/05). 기본 20.
+
+## 누가 읽고 쓰나 (`run_ghidra.sh refs`, `RefsTo.java`)
+
+`ms/disassemble/<모듈>/_refs/<이름>.tsv` — 한 주소(전역 변수·함수)를 가리키는 곳 (묶음 O2, sast/11).
+
+```
+# PsNtdllExports  rva=0xfc74b0  len=0x98
+# kind	from_rva	where	ref_type	target	text
+ref	0x910889	PspInitializeThunkContext+0x1a1	READ	+0x8	MOV R8,qword ptr [0x140fc74b8]
+ptr	0x...	NtdllExports+0x10 (함수 밖)	(8바이트 값)	+0x8
+```
+- `ref` = Ghidra 참조 (코드의 읽기·쓰기·부르기, 데이터 포인터). `ptr` = 메모리 안 8바이트 값이 그 범위를 가리키는 곳 (Ghidra 가 참조로 안 만든 표 — 예: 부팅 때 쓰는 INIT 표). 위 숫자는 모양 예시다.
+- `target` = 범위 안 몇 번째 칸(+0x..)을 가리키나. 구조체면 칸 이름은 PDB 타입으로 맞춘다.
+- 바이트 수를 안 주면 Ghidra 데이터 길이(없으면 8). 구조체 전체를 보려면 크기를 준다.
+- 한계: 실행 중에 더해서 만드는 주소(레지스터+오프셋)는 못 찾는다 → 동적.
 
 ## 결과서 양식: `_workspace/sast/NN_키워드_result.md`
 

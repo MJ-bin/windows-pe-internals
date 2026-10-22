@@ -22,6 +22,8 @@
 //                        안의 호출. 함수가 JMP/Jcc 로 넘어가는 이름 없는(FUN_) 함수를 조각으로 보고 따라간다.
 //                        오프셋은 조각 시작 기준 (WinDbg 가 이 주소를 어떻게 보여 줄지는 확인 전이라 caller+0x.. 로 적지 않는다).
 //                        .asm 맨 아래에 "; --- 조각 ..." 머리와 함께 붙는다.
+//      call_off/ret_off = seh:<이름>+0x.. : 예외 정리 함수(<함수>$fin$N, <함수>$filt$N) 안의 호출. 호출로 안 닿고
+//                        예외 때 운영체제가 부르는 형제 함수라 자동으로 같이 읽는다 (.asm "; --- 예외 정리 함수 ..."). 묶음 O2.
 //      주인 없는 덩어리 : 함수가 JMP/Jcc 로 넘어가는 곳이 **어느 함수에도 안 속한 코드**면 (Ghidra 가 함수 범위에 못 넣은 것)
 //                        거기서부터 흐름(다음 명령, 점프)을 따라가 그 함수 몫으로 읽는다. 오프셋은 본래 함수 시작 기준(+0x..),
 //                        .asm 에 "; --- 주인 없는 덩어리 ..." 머리와 함께 붙는다 (sast/06, 2026-10-21).
@@ -319,6 +321,19 @@ public class ExportFunctions extends GhidraScript {
 		}
 		println("ExportFunctions: depth " + depth + " 적용 후 " + targets.size() + "개");
 
+		// 3) 예외 정리 형제 함수 (<이름>$fin$N, <이름>$filt$N) 모으기 (묶음 O2, sast/09)
+		Map<String, List<Function>> seh = new HashMap<>();
+		for (Function g : fm.getFunctions(true)) {
+			String n = g.getName();
+			int k = n.indexOf("$fin$");
+			if (k < 0) {
+				k = n.indexOf("$filt$");
+			}
+			if (k > 0) {
+				seh.computeIfAbsent(n.substring(0, k), x -> new ArrayList<>()).add(g);
+			}
+		}
+
 		DecompInterface di = new DecompInterface();
 		di.openProgram(currentProgram);
 		Map<String, Integer> used = new HashMap<>();
@@ -407,6 +422,13 @@ public class ExportFunctions extends GhidraScript {
 							walkBody(name, f, chunk, entry, "", w, calls, fm, frags, orphans);
 							progress = true;
 						}
+					}
+					for (Function g : seh.getOrDefault(name, new ArrayList<>())) {
+						w.println();
+						w.println(String.format("; --- 예외 정리 함수 %s  entry=%s  rva=0x%x  (예외 때 운영체제가 부름 — 호출로 안 닿음. 오프셋은 이 함수 시작 기준) ---",
+							g.getName(), g.getEntryPoint(), g.getEntryPoint().getOffset() - base));
+						walkBody(name, f, g.getBody(), g.getEntryPoint().getOffset(), "seh:" + g.getName(), w, calls, fm,
+							new LinkedHashSet<>(), new LinkedHashSet<>());
 					}
 				}
 			}
