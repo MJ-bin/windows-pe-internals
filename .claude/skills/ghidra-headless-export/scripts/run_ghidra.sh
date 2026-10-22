@@ -80,7 +80,7 @@ export)
 		-postScript ExportFunctions.java "$ROOT/ms" "$module" "$regex" "$depth" \
 		-log "$LOG"
 	CALLS="$ROOT/ms/disassemble/$module/_calls.tsv"
-	[ -f "$CALLS" ] && sort -u -o "$CALLS" "$CALLS"
+	[ -f "$CALLS" ] && python3 "$HERE/sort_calls.py" "$CALLS"   # caller → 오프셋 숫자 순 (묶음 N1)
 	;;
 map)
 	root="${3:?뿌리 함수 이름이 필요함 (예: NtCreateUserProcess)}"

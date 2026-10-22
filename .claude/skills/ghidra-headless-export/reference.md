@@ -32,6 +32,9 @@ LdrpCallInitRoutine	+0x41	+0x47	indirect:__guard_dispatch_icall_fptr
 ```
 열: `caller  call_off  ret_off  callee`. 간접 호출은 `indirect:<포인터 이름>` (실제 대상은 동적분석으로만 알 수 있음).
 
+- 정렬: caller 이름 → 오프셋 **숫자** 순 (`sort_calls.py`, 묶음 N1). 본체 줄 다음에 조각(`frag:`) 줄.
+
+- `ret_off` 가 `frag` = **자기 조각(`FUN_`)으로 가는 `JMP`.** 호출이 아니라 함수 안에서 창고에 다녀오는 이동이다. `.asm` 에는 `; FRAGJMP -> FUN_…`. 예전(묶음 N1 전)엔 `tail` 로 찍혔다 (예: `MmCreatePeb +0x6b4`).
 - `ret_off` 가 `tail` = **꼬리호출(`JMP`)**. 예: `LdrpInitialize  +0x3c  tail  LdrpInitializeInternal`.
   - Ghidra 분석기 "Shared Return Calls" 가 함수 시작으로 가는 `JMP` 를 호출로 바꿔 둔 것이다.
   - 돌아올 자리가 없어서 **WinDbg 콜스택엔 caller(`LdrpInitialize`)가 안 보이고**, callee 바로 위에 caller의 caller가 보인다.
@@ -42,6 +45,7 @@ LdrpCallInitRoutine	+0x41	+0x47	indirect:__guard_dispatch_icall_fptr
   - ntoskrnl 은 `CALL _guard_dispatch_icall`, ntdll 은 `CALL [__guard_dispatch_icall_fptr]` 모양이다. 진짜 대상은 RAX 안에 있다.
   - `<출처>` = CALL 앞(최대 10개 명령)에서 RAX 를 채운 메모리 자리(함수 포인터 변수)의 이름. 이름이 없으면 `@0x<rva>`, 못 찾으면 `?`.
   - 실제 대상은 동적으로만 안다 (그 변수 값 또는 CALL 직전 `rax`).
+  - 출처가 **지역 변수 칸**(스택)이면 `indirect:cfg:stack[-0x40]` 처럼 스택 오프셋으로 적는다. 묶음 N1 전엔 이 경우가 `@0xfffffffe…` 처럼 이상한 값으로 찍혔다 (지도에 커널 2곳·ntdll 7곳, 예: `PspReturnQuota +0x217`). 다른 모듈 주소(import)면 `indirect:cfg:import:<이름>`.
 - callee 가 `alias:<이름>+N` = 대상 주소에 **PDB 이름이 N개 더 있다.** 링커가 내용이 같은 함수를 하나로 합친 것(ICF)일 때가 많다.
   - `<이름>` 은 Ghidra 가 고른 하나일 뿐이다. **문서에 그대로 쓰지 않는다.** `.asm` 에 `; ALIASES(N): …` 로 5개까지 보인다.
   - 그 주소의 **이름 전부**는 별칭 표에서 본다: `python3 .claude/skills/ghidra-headless-export/scripts/pdb_aliases.py --lookup ntoskrnl.exe <이름 또는 0xRVA>` (표: `ms/sym/<바이너리>.aliases.tsv`). PDB 기준이라 Ghidra 의 N 과 한두 개 다를 수 있다 (Ghidra 는 내보내기 이름도 센다).
@@ -52,6 +56,7 @@ LdrpCallInitRoutine	+0x41	+0x47	indirect:__guard_dispatch_icall_fptr
   - 스크립트는 함수가 `JMP`/`Jcc` 로 넘어가는 `FUN_` 함수를 조각으로 보고 따라가서 (조각의 조각도, 최대 20개) `.asm` 맨 아래 `; --- 조각 …` 아래에 붙인다.
   - 오프셋은 **조각 시작 기준**이다. WinDbg 가 이 주소를 콜스택에서 어떻게 보여 줄지는 확인 전이라 `caller+0x..` 로 바꿔 쓰지 않는다.
   - 예: `PspInsertThread +0xa33 tail FUN_140b0d692` 의 조각 안 `KeForceResumeThread` 등 (sast/03).
+- **같은 함수의 떨어진 범위**: Ghidra 가 한 함수 본체를 멀리 떨어진 여러 범위로 잡으면(.pdata 체인 등), `.asm` 에 `; --- 같은 함수의 떨어진 범위 …` 머리가 붙고 오프셋은 아주 커진다 (예: `KiSchedulerApc +0x4106e4`). 함수 일부가 맞지만 WinDbg 가 같은 `함수+0x..` 로 보여 줄지는 확인 전 `[추측]` — 이 줄을 그림 라벨로 쓰지 않는다 (묶음 N1).
 - **주인 없는 덩어리**: 함수가 `JMP`/`Jcc` 로 넘어가는 곳이 **어느 함수에도 안 속한 코드**면 (Ghidra 가 함수 범위에 못 넣은 것), 스크립트가 거기서부터 흐름을 따라가 그 함수 몫으로 읽는다.
   - `_calls.tsv` 오프셋은 **본래 함수 시작 기준 `+0x..`** 그대로 (조각처럼 `frag:` 를 붙이지 않는다). `.asm` 에는 `; --- 주인 없는 덩어리 <시작>~<끝> ...` 머리 아래에 붙는다.
   - 예: `PspAllocateThread +0x849 ~ +0xbba` 안의 `PspWow64InitThread` 등 (sast/06). 고치기 전 장부엔 빠져 있었다. 커널에 이런 덩어리가 1225개(호출 576곳) 있다.

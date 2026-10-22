@@ -8,6 +8,7 @@
 //   <ms>/disassemble/<모듈>/_calls.tsv   (누적. 래퍼 스크립트가 sort -u 로 중복 제거)
 //      열: caller  call_off  ret_off  callee
 //      ret_off = call 다음 명령의 오프셋 = WinDbg 콜스택의 "caller+0x..." 와 같은 값
+//      ret_off = frag  : 자기 조각(FUN_)으로 가는 JMP. 호출이 아니라 함수 안 이동 (.asm 에 "; FRAGJMP"). 묶음 N1.
 //      ret_off = tail  : JMP 꼬리호출. Ghidra 분석기 "Shared Return Calls" 가 함수로 가는 JMP 를
 //                        호출로 바꿔 둔 것. 돌아올 자리가 없어 콜스택에 caller 가 안 남는다.
 //      INT3 / INT n    : x86 사양(ia.sinc)이 swi(n) 로의 간접 call 로 적어서 Ghidra 는 호출로 보지만,
@@ -43,6 +44,7 @@ import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressRange;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.lang.Register;
@@ -157,6 +159,12 @@ public class ExportFunctions extends GhidraScript {
 				if (ref.getReferenceType().isData()) {
 					Address to = ref.getToAddress();
 					Symbol s = currentProgram.getSymbolTable().getPrimarySymbol(to);
+					if (to.isStackAddress()) { // 함수 주소를 지역 변수(스택 칸)에서 꺼냄 (묶음 N1)
+						return "indirect:cfg:stack[" + off(to.getOffset()) + "]";
+					}
+					if (to.isExternalAddress()) {
+						return "indirect:cfg:import:" + (s != null ? s.getName() : "?");
+					}
 					if (s != null && s.getSource() != SourceType.DEFAULT) {
 						return "indirect:cfg:" + s.getName();
 					}
@@ -202,7 +210,15 @@ public class ExportFunctions extends GhidraScript {
 	// owner·region 밖으로 가는 점프의 목적지가 이름 없는(FUN_) 함수면 frags, 어느 함수에도 안 속하면 orphans 에 모은다.
 	private void walkBody(String ownerName, Function owner, AddressSetView region, long start, String prefix,
 			PrintWriter w, PrintWriter calls, FunctionManager fm, Set<Function> frags, Set<Address> orphans) {
-		InstructionIterator it = currentProgram.getListing().getInstructions(region, true);
+		Address prevEnd = null;
+		for (AddressRange rng : region.getAddressRanges()) {
+		// 같은 함수(또는 조각·덩어리)가 멀리 떨어진 범위로 나뉘면 머리 표시 (묶음 N1, 예: KiSchedulerApc +0x4106e4)
+		if (prevEnd != null && rng.getMinAddress().subtract(prevEnd) > 0x1000) {
+			w.println(String.format("; --- 같은 함수의 떨어진 범위 %s~%s  (Ghidra 가 이 본체로 잡음. 오프셋은 같은 기준) ---",
+				rng.getMinAddress(), rng.getMaxAddress()));
+		}
+		prevEnd = rng.getMaxAddress();
+		InstructionIterator it = currentProgram.getListing().getInstructions(new AddressSet(rng), true);
 		while (it.hasNext()) {
 			Instruction ins = it.next();
 			long o = ins.getAddress().getOffset() - start;
@@ -210,6 +226,7 @@ public class ExportFunctions extends GhidraScript {
 			StringBuilder line = new StringBuilder(
 				String.format("%-9s %s  %s", at, ins.getAddress(), ins.toString()));
 			String mn = ins.getMnemonicString().toUpperCase();
+			boolean toFrag = false;
 			if (mn.startsWith("J")) {
 				for (Address fl : ins.getFlows()) {
 					if (owner.getBody().contains(fl) || region.contains(fl)) {
@@ -223,12 +240,18 @@ public class ExportFunctions extends GhidraScript {
 					}
 					else if (g != owner && !g.isExternal() && g.getName().startsWith("FUN_")) {
 						frags.add(g);
+						toFrag = true;
 					}
 				}
 			}
 			if (ins.getFlowType().isCall()) {
 				if (mn.startsWith("INT")) {
 					line.append("    ; TRAP");
+				}
+				else if (mn.startsWith("J") && toFrag) {
+					String tgt = calleeName(ins, fm);
+					line.append("    ; FRAGJMP -> ").append(tgt);
+					calls.printf("%s\t%s\t%s\t%s%n", ownerName, at, "frag", tgt);
 				}
 				else if (mn.startsWith("J")) {
 					String tgt = calleeName(ins, fm);
@@ -247,6 +270,7 @@ public class ExportFunctions extends GhidraScript {
 				}
 			}
 			w.println(line);
+		}
 		}
 	}
 

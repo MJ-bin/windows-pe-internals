@@ -104,6 +104,12 @@ public class CallGraphMap extends GhidraScript {
 				if (ref.getReferenceType().isData()) {
 					Address to = ref.getToAddress();
 					Symbol s = currentProgram.getSymbolTable().getPrimarySymbol(to);
+					if (to.isStackAddress()) { // 함수 주소를 지역 변수(스택 칸)에서 꺼냄 (묶음 N1)
+						return "stack[" + off(to.getOffset()) + "]";
+					}
+					if (to.isExternalAddress()) {
+						return "import:" + (s != null ? s.getName() : "?"); // 묶음 N1
+					}
 					return (s != null && s.getSource() != SourceType.DEFAULT) ? s.getName()
 							: "@0x" + Long.toHexString(to.getOffset() - base);
 				}
