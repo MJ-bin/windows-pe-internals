@@ -1,7 +1,7 @@
 # 분석 진행표
 
-- 마지막 갱신: 2026-10-21 (run13 뒤)
-- 다음 항목: Q5b
+- 마지막 갱신: 2026-10-22 (run14 뒤)
+- 다음 항목: Q6
 - 근거: `runs/01_sprint/flow.md` 그림 1·2, 2장, 4장·4.1 표
 
 ## 대기열 (위에서부터 처리, 새 항목은 맨 아래에)
@@ -13,7 +13,7 @@
 | Q3 | 2.1 `nt!PspAllocateThread`, `nt!PspInsertProcess` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 1) | 끝 (run11) |
 | Q4 | 2.1 `nt!PspInsertThread`, `nt!PspCallProcessNotifyRoutines` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 1); sast/06 결과 (`PspAllocateThread` 가 잡은 스레드 락을 풀지 않음 → `PspInsertThread` 에서 푸는지) | 끝 (run12) |
 | Q5a | 2.2 첫 스레드를 풀어 주는 nt 쪽: `NtResumeThread` → `PsResumeThread` → `KeResumeThread`, 그리고 멈춰 두는 쪽 `KeSuspendThread`·`KiSuspendThread` 가 하는 일 (멈춘 스레드가 실제로 어디서 서나) | 1 | 정적 (ntoskrnl) | 처음 (4장 2.2); Q5 를 그 자리에서 나눔 (2026-10-21) | 끝 (run13) |
-| Q5b | 2.2 부모 쪽에서 첫 스레드를 풀어 주는 곳: `KERNELBASE!CreateProcessInternalW` 가 `NtCreateUserProcess` 뒤에 `NtResumeThread` 를 부르나 (이름 확인 필요) | 1 | 정적 (kernelbase) | 처음 (4장 2.2); Q5 를 그 자리에서 나눔 (2026-10-21) | 대기 |
+| Q5b | 2.2 부모 쪽에서 첫 스레드를 풀어 주는 곳: `KERNELBASE!CreateProcessInternalW` 가 `NtCreateUserProcess` 뒤에 `NtResumeThread` 를 부르나 (이름 확인 필요) | 1 | 정적 (kernelbase) | 처음 (4장 2.2); Q5 를 그 자리에서 나눔 (2026-10-21) | 끝 (run14) |
 | Q6 | 2.3 `nt!KiStartUserThread`, `nt!PspUserThreadStartup` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 2); ntoskrnl analyze (2026-10-19): `_index.tsv` 에 `KiStartUserThread` 없음, `KxStartUserThread` 있음 (PDB엔 `KiStartUserThread`·`KiStartUserThreadReturn` 이름 있음) → 이름 대응 확인 | 대기 |
 | Q7 | 2.3 유저 첫 위치가 `ntdll!LdrInitializeThunk`로 정해지는 곳, `RtlUserThreadStart`와의 관계 | 1 | 정적 (ntoskrnl) | 처음 (4장 2.3); sast/03 결과 (`PspCreateUserContext` 91바이트 — `NtCreateUserProcess +0xd22` 에서 부름, 첫 스레드 유저 시작 문맥 후보); sast/06 결과 (`PspAllocateThread` 는 CONTEXT.Rip→StartAddress, Rcx→Win32StartAddress 로 옮겨 적기만 함, `PspUserThreadStartup` 주소는 `+0x681` 에서 `KeInitThread` 로 → CONTEXT 를 누가 채우나) | 대기 |
 | Q8 | 2.4 `ntdll!LdrInitializeThunk`, `LdrpInitializeInternal`, `LdrpInitialize` callee | 2 | 정적 (ntdll) | 처음 (그림 2); sast/02 결과 (`+0x16c` 의 caller 이름이 `_LdrpInitialize`, `LdrpInitialize` 는 꼬리호출(JMP)로 `LdrpInitializeInternal` 에 넘김 → flow.md 2.4 이름 정정 필요) | 대기 |
@@ -27,7 +27,7 @@
 | Q16 | 2.7 `LdrpCallTlsInitializers`, `LdrpCallInitRoutine`, `ImageTlsCallbackCaller` callee | 2 | 정적 (ntdll) | 처음 (그림 2, 4장 2.7) | 대기 |
 | Q17 | 2.10 로더 끝 → 진입점: `LdrInitializeThunk` 뒤 `NtContinue`, `RtlUserThreadStart` callee | 2 | 정적 (ntdll) | 처음 (그림 2 PH4) | 대기 |
 | Q18 | 2.10 `KERNEL32!BaseThreadInitThunk` callee | 2 | 정적 (kernel32) | 처음 (그림 2) | 대기 |
-| Q19 | 2.2 첫 스레드가 실제로 풀리는 시점 (부모 스레드와의 순서) | 3 | 동적 | 처음 (4장 2.2); sast/03 동적 1·2 (`NtCreateUserProcess` 입구 ThreadFlags bit0, `PspInsertThread` 의 `KeSuspendThread` `+0x2e5`·`KeReadyThread` `+0x5a6` 탔는지); run12 (멈춘 첫 스레드도 `KeReadyThread` 를 거침 → 실제로 서는 시점·풀리는 시점, `KeSuspendThread` 안쪽); sast/08·run13 (`nt!KiSchedulerApc` 에서 `k` 로 서는 곳 확인 — 기대 `KeWaitForSingleObject ← KiSchedulerApc+0xf7 ← KiDeliverApc+0x220`, `PspUserThreadStartup+0x22` 와 `NtResumeThread` 의 순서, `KiSuspendThread` 의 어느 갈래인지, SuspendCount `+0x284`·SuspendEvent `+0x2e4` 값 바뀌는 순간) | 대기 |
+| Q19 | 2.2 첫 스레드가 실제로 풀리는 시점 (부모 스레드와의 순서) | 3 | 동적 | 처음 (4장 2.2); sast/03 동적 1·2 (`NtCreateUserProcess` 입구 ThreadFlags bit0, `PspInsertThread` 의 `KeSuspendThread` `+0x2e5`·`KeReadyThread` `+0x5a6` 탔는지); run12 (멈춘 첫 스레드도 `KeReadyThread` 를 거침 → 실제로 서는 시점·풀리는 시점, `KeSuspendThread` 안쪽); sast/08·run13 (`nt!KiSchedulerApc` 에서 `k` 로 서는 곳 확인 — 기대 `KeWaitForSingleObject ← KiSchedulerApc+0xf7 ← KiDeliverApc+0x220`, `PspUserThreadStartup+0x22` 와 `NtResumeThread` 의 순서, `KiSuspendThread` 의 어느 갈래인지, SuspendCount `+0x284`·SuspendEvent `+0x2e4` 값 바뀌는 순간); sast/09·run14 (cmd.exe 의 실제 `dwCreationFlags` 에 4 가 있나, `nt!NtCreateUserProcess`·`nt!NtResumeThread` 입구(cmd.exe `/p`)에서 긴 `k` — 유저 쪽 `KERNELBASE!CreateProcessInternalW+0x30ee`/`+0x5bd3` 보이나, `NtCreateUserProcess` 몇 번, 8번째 인자 1 인가, `CsrClientCallServer +0x4672` 순서, `NtAlertResumeThread` 엔 안 서나, 가운데 ①검사 ②CSR 알림 ③후처리 중 test.exe 때 실제로 도는 것(import 검사 12곳)) | 대기 |
 | Q20 | 2.5 kernel32·kernelbase가 메모리에 올라오는 순간 (`NtMapViewOfSection` 계열 + `k`) | 3 | 동적 | 처음 (4장 2.5) | 대기 |
 | Q21 | 2.5 `LdrpCallInitRoutine` → KERNELBASE·KERNEL32 시작 함수 실제 진입 + 콜스택 | 3 | 동적 | 처음 (4.1 (1)) | 대기 |
 | Q22 | 2.5 `LdrpInitializeNode` [KERNELBASE]/[KERNEL32] 대응 (긴 `k`) | 3 | 동적 | 처음 (4.1 (1)) | 대기 |
@@ -49,6 +49,7 @@
 | Q38 | 2.1 `PspAllocateThread`·`PspInsertProcess` 실행 길: 입구 11번째 인자(`poi(@rsp+0x58)`) 가 0인지(보통 길), `+0x6f4` 에서 `KeInitThread` 시작 정보(`dqs @rdx`), 먼 덩어리(`nt+0xb0d315`) 를 WinDbg 가 무슨 이름으로 보이나(`ln`), `PspInsertProcess+0x115` 에서 test.exe 가 목록에 보이나, `CONTEXT.Rip/Rcx` ↔ `_ETHREAD.StartAddress/Win32StartAddress` 비교, `PspInsertProcess+0x1e3` 앞뒤 핸들 표, `PspSetupUserStack`·`MmCreateTeb` 반환값과 TEB 주소 | 3 | 동적 | sast/06 동적 확인, run11 4.1; 묶음 M 시험 (`PspSetupUserShadowStack` `+0xb65` 를 타는지 = 이 VM 에서 CET 섀도 스택이 켜졌나) | 대기 |
 | Q39 | 2.1 `PspInsertThread`·`PspCallProcessNotifyRoutines` 실행 길: 입구 flags(`poi(@r9)`) bit0·`0x20`, `+0x2e0` 멈춤 여부, `+0x5dd`/`+0x5a1` 전후 스레드 상태, 프로세스 락이 호출자에서 들어오나, 알림 간접 호출 4곳(`+0x14d`/`+0x31c`/`+0xbe`/`+0x1cf`) 의 `ln @rax` 와 `PspNotifyEnableMask`·목록·BAM/DAM 값, `PsTerminateProcess`·잡 길을 안 타는지, 둘째 스레드 때 `+0x802` 가 안 걸리는지, 알림 문턱 값(`프로세스+0x5fc` bit0, `+0x640`), `+0x499` 에서 `poi(@rax)` | 3 | 동적 | sast/07 동적 확인, flow.md 4.1 (run12) (Q38 과 연달아 있어 한 run 으로 묶을 수 있음) | 대기 |
 | Q40 | 2.2·2.3 작은 정적 확인 둘: `EPROCESS.Flags3.ProcessFirstResume`(`+0x5fc` bit15, `PsMultiResumeThread` 가 켬)를 읽는 곳, 조각 `FUN_1406b2db3` 의 정체(`KiApcInterrupt` 추정) | 1 | 정적 (ntoskrnl) | sast/08·run13 4장 | 대기 |
+| Q41 | 2.2 부모 유저 쪽 남은 정적 확인 (작음): `kernel32!CreateProcessW` → `KERNELBASE!CreateProcessW` 연결, ApiNumber `0x1001d` 정체 (`CsrClientCallServer` 는 ntdll — import 표로 확인 2026-10-22), ntdll `NtCreateUserProcess`·`NtResumeThread` 스텁이 바로 시스템 콜을 하나, KERNELBASE 가 켜는 ProcessFlags bit9(`0x200`)를 커널이 어떻게 쓰나 | 1 | 정적 (kernel32, ntdll, ntoskrnl) | sast/09·run14 4장 | 대기 |
 
 상태: `대기` / `진행 중` / `끝 (runN)` / `합침 → Qn` / `보류 (사용자 결정, 날짜)`
 
@@ -89,3 +90,6 @@
 - 2026-10-22: 사용자 "Q5b 전에 하네스 후보 먼저, N2 → N1 → N3 순서". 하네스 묶음 N2 (pdb_aliases.py --where, 이름 확인 규칙) 커밋 `f528f34`
 - 2026-10-22: 하네스 묶음 N1 (장부 숫자 순 정렬 sort_calls.py, 조각 JMP frag, 떨어진 범위 머리, CFG 출처 stack[…]/import:) 커밋 `18687ae`. ④ 는 처음 '외부 주소'로 잘못 진단 → 시험에서 스택 칸으로 밝혀져 사용자 승인 후 고침
 - 2026-10-22: 하네스 묶음 N3 (reference.md `.c` 읽을 때 주의, pitfalls P4 예) 사용자 OK — 커밋 해시는 아래 줄에. 이로써 쌓였던 하네스 후보 7개(G1~G4, sast/08 (1)(2), run13 (3), Q37 외부 주소) 정리 끝
+- 2026-10-22: 하네스 묶음 N3 커밋 `3e1575b`
+- 2026-10-22: Q5b 끝 (run14, sast/09). 2.2 정적으로 완성: KERNELBASE 가 ThreadFlags 항상 1 → 커널 KeSuspendThread → CSR 알림 → CREATE_SUSPENDED 없으면 NtResumeThread. Q19 출처 추가, Q41(정적, 작음) 추가
+- 하네스 후보 (나중에 검토): (4) SEH 정리 함수(`$fin$…`, `$filt$…`)는 호출로 닿지 않아 지도·.asm 에 안 들어옴 — reference.md "지도 > 읽을 때 주의" 에 한 줄 (sast/09 제안)
