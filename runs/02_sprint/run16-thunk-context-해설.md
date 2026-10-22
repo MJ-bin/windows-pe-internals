@@ -445,7 +445,7 @@ PspInitPhase2 +0x177                                     (원본 바이트 훑�
 
 ### 2.11 그 밖에 확인된 것
 
-- **다른 스레드의 처음 메모** — `NtCreateThreadEx +0x1c1`, `PspWow64InitThread +0x73` 도 같은 `PsNtdllExports+0x10` 칸을 읽는다 `[정적]` (참조 훑기만, 코드는 안 읽음).
+- **다른 스레드의 처음 메모** — `NtCreateThreadEx +0x1bf`, `PspWow64InitThread +0x71` 도 같은 `PsNtdllExports+0x10` 칸을 읽는다 `[정적]` (참조 훑기만, 코드는 안 읽음).
   - `[추측]` 그래서 `CreateThread` 로 만든 스레드도 처음 메모는 `Rip = RtlUserThreadStart` 이고, 그게 똑같이 사물함에 맡겨진다 (동적 Q42).
 - **멈춤 쪽지가 펼쳐질 수 있는 자리 후보가 하나 늘었다** `[정적]+[추측]`.
   - [run15 해설 2.9](run15-user-thread-startup-해설.md#29-run13-의-쪽지는-0x22-직후-펼쳐진다--고리-3개가-굳었다) 에선 첫 기회가 `PspUserThreadStartup +0x26` 이라고 짐작했다.
