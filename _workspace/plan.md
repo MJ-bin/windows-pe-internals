@@ -1,7 +1,7 @@
 # 분석 진행표
 
-- 마지막 갱신: 2026-10-22 (run14 뒤)
-- 다음 항목: Q6
+- 마지막 갱신: 2026-10-22 (run15 뒤)
+- 다음 항목: Q7
 - 근거: `runs/01_sprint/flow.md` 그림 1·2, 2장, 4장·4.1 표
 
 ## 대기열 (위에서부터 처리, 새 항목은 맨 아래에)
@@ -14,8 +14,8 @@
 | Q4 | 2.1 `nt!PspInsertThread`, `nt!PspCallProcessNotifyRoutines` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 1); sast/06 결과 (`PspAllocateThread` 가 잡은 스레드 락을 풀지 않음 → `PspInsertThread` 에서 푸는지) | 끝 (run12) |
 | Q5a | 2.2 첫 스레드를 풀어 주는 nt 쪽: `NtResumeThread` → `PsResumeThread` → `KeResumeThread`, 그리고 멈춰 두는 쪽 `KeSuspendThread`·`KiSuspendThread` 가 하는 일 (멈춘 스레드가 실제로 어디서 서나) | 1 | 정적 (ntoskrnl) | 처음 (4장 2.2); Q5 를 그 자리에서 나눔 (2026-10-21) | 끝 (run13) |
 | Q5b | 2.2 부모 쪽에서 첫 스레드를 풀어 주는 곳: `KERNELBASE!CreateProcessInternalW` 가 `NtCreateUserProcess` 뒤에 `NtResumeThread` 를 부르나 (이름 확인 필요) | 1 | 정적 (kernelbase) | 처음 (4장 2.2); Q5 를 그 자리에서 나눔 (2026-10-21) | 끝 (run14) |
-| Q6 | 2.3 `nt!KiStartUserThread`, `nt!PspUserThreadStartup` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 2); ntoskrnl analyze (2026-10-19): `_index.tsv` 에 `KiStartUserThread` 없음, `KxStartUserThread` 있음 (PDB엔 `KiStartUserThread`·`KiStartUserThreadReturn` 이름 있음) → 이름 대응 확인 | 대기 |
-| Q7 | 2.3 유저 첫 위치가 `ntdll!LdrInitializeThunk`로 정해지는 곳, `RtlUserThreadStart`와의 관계 | 1 | 정적 (ntoskrnl) | 처음 (4장 2.3); sast/03 결과 (`PspCreateUserContext` 91바이트 — `NtCreateUserProcess +0xd22` 에서 부름, 첫 스레드 유저 시작 문맥 후보); sast/06 결과 (`PspAllocateThread` 는 CONTEXT.Rip→StartAddress, Rcx→Win32StartAddress 로 옮겨 적기만 함, `PspUserThreadStartup` 주소는 `+0x681` 에서 `KeInitThread` 로 → CONTEXT 를 누가 채우나) | 대기 |
+| Q6 | 2.3 `nt!KiStartUserThread`, `nt!PspUserThreadStartup` callee | 1 | 정적 (ntoskrnl) | 처음 (그림 2); ntoskrnl analyze (2026-10-19): `_index.tsv` 에 `KiStartUserThread` 없음, `KxStartUserThread` 있음 (PDB엔 `KiStartUserThread`·`KiStartUserThreadReturn` 이름 있음) → 이름 대응 확인 | 끝 (run15) |
+| Q7 | 2.3 유저 첫 위치가 `ntdll!LdrInitializeThunk`로 정해지는 곳, `RtlUserThreadStart`와의 관계 | 1 | 정적 (ntoskrnl) | 처음 (4장 2.3); sast/03 결과 (`PspCreateUserContext` 91바이트 — `NtCreateUserProcess +0xd22` 에서 부름, 첫 스레드 유저 시작 문맥 후보); sast/06 결과 (`PspAllocateThread` 는 CONTEXT.Rip→StartAddress, Rcx→Win32StartAddress 로 옮겨 적기만 함, `PspUserThreadStartup` 주소는 `+0x681` 에서 `KeInitThread` 로 → CONTEXT 를 누가 채우나); sast/10·run15 (유저 첫 RIP = `_KTRAP_FRAME.Rip`(+0x168), 트랩 프레임 = InitialStack-0x190, 처음 `KxContextToKframes` 가 채우고 `PspUserThreadStartup +0xb3 PspInitializeThunkContext` 가 다시 정함 → 이 함수 본문) | 대기 |
 | Q8 | 2.4 `ntdll!LdrInitializeThunk`, `LdrpInitializeInternal`, `LdrpInitialize` callee | 2 | 정적 (ntdll) | 처음 (그림 2); sast/02 결과 (`+0x16c` 의 caller 이름이 `_LdrpInitialize`, `LdrpInitialize` 는 꼬리호출(JMP)로 `LdrpInitializeInternal` 에 넘김 → flow.md 2.4 이름 정정 필요) | 대기 |
 | Q9 | 2.4 `ntdll!LdrpInitializeProcess` callee (크면 그 자리에서 Q9a/Q9b로 나눔) | 2 | 정적 (ntdll) | 처음 (그림 2) | 대기 |
 | Q10 | 2.5 `LdrpInitializeKernel32Functions`, `LdrLoadDll`, `LdrpLoadDll` callee | 2 | 정적 (ntdll) | 처음 (그림 2) | 대기 |
@@ -50,6 +50,7 @@
 | Q39 | 2.1 `PspInsertThread`·`PspCallProcessNotifyRoutines` 실행 길: 입구 flags(`poi(@r9)`) bit0·`0x20`, `+0x2e0` 멈춤 여부, `+0x5dd`/`+0x5a1` 전후 스레드 상태, 프로세스 락이 호출자에서 들어오나, 알림 간접 호출 4곳(`+0x14d`/`+0x31c`/`+0xbe`/`+0x1cf`) 의 `ln @rax` 와 `PspNotifyEnableMask`·목록·BAM/DAM 값, `PsTerminateProcess`·잡 길을 안 타는지, 둘째 스레드 때 `+0x802` 가 안 걸리는지, 알림 문턱 값(`프로세스+0x5fc` bit0, `+0x640`), `+0x499` 에서 `poi(@rax)` | 3 | 동적 | sast/07 동적 확인, flow.md 4.1 (run12) (Q38 과 연달아 있어 한 run 으로 묶을 수 있음) | 대기 |
 | Q40 | 2.2·2.3 작은 정적 확인 둘: `EPROCESS.Flags3.ProcessFirstResume`(`+0x5fc` bit15, `PsMultiResumeThread` 가 켬)를 읽는 곳, 조각 `FUN_1406b2db3` 의 정체(`KiApcInterrupt` 추정) | 1 | 정적 (ntoskrnl) | sast/08·run13 4장 | 대기 |
 | Q41 | 2.2 부모 유저 쪽 남은 정적 확인 (작음): `kernel32!CreateProcessW` → `KERNELBASE!CreateProcessW` 연결, ApiNumber `0x1001d` 정체 (`CsrClientCallServer` 는 ntdll — import 표로 확인 2026-10-22), ntdll `NtCreateUserProcess`·`NtResumeThread` 스텁이 바로 시스템 콜을 하나, KERNELBASE 가 켜는 ProcessFlags bit9(`0x200`)를 커널이 어떻게 쓰나 | 1 | 정적 (kernel32, ntdll, ntoskrnl) | sast/09·run14 4장 | 대기 |
+| Q42 | 2.3 커널 → 유저 전환 실제 길: `KiKvaShadow`·`KiIrqlFlags` 값(유저로 가는 `IRETQ` 가 `KxStartUserThread` 조각 쪽인지 `KiKernelExit +0xa5` 인지), 멈춤 APC 가 `PspUserThreadStartup+0x26` 에서 들어오나, `+0xae`/`+0xb3` 앞뒤 트랩 프레임 `Rip`/`Rsp`, `KiStartUserThread+0x28` 에서 `dq @rbp+0xe8 L5`(유저 진입 직전 Rip·CS·EFlags·Rsp·SS), `KiInitiateUserApc` 타나, ThreadInserted/Terminated/Minimal 값, 트랩 프레임 위치 `RBP-0x80 = InitialStack-0x190` 확인, `KyStartUserThread` 템플릿이 정말 안 도나 | 3 | 동적 | sast/10 동적 확인 (Q7 결과와 같이 보면 좋음) | 대기 |
 
 상태: `대기` / `진행 중` / `끝 (runN)` / `합침 → Qn` / `보류 (사용자 결정, 날짜)`
 
@@ -93,3 +94,6 @@
 - 2026-10-22: 하네스 묶음 N3 커밋 `3e1575b`
 - 2026-10-22: Q5b 끝 (run14, sast/09). 2.2 정적으로 완성: KERNELBASE 가 ThreadFlags 항상 1 → 커널 KeSuspendThread → CSR 알림 → CREATE_SUSPENDED 없으면 NtResumeThread. Q19 출처 추가, Q41(정적, 작음) 추가
 - 하네스 후보 (나중에 검토): (4) SEH 정리 함수(`$fin$…`, `$filt$…`)는 호출로 닿지 않아 지도·.asm 에 안 들어옴 — reference.md "지도 > 읽을 때 주의" 에 한 줄 (sast/09 제안)
+- 하네스 후보 (나중에 검토, sast/10): (5) .asm 에 함수 범위 안 읽지 않은 틈 표시 없음 (`PspUserThreadStartup +0x80~+0x90`, `KxStartUserThread +0x22e~+0x345`) (6) `KxStartUserThread +0x229 → FUN_1406afeac` 같은 가짜 호출이 일반 호출로 적힘 (7) 조각 오프셋의 함수 시작 기준 환산값이 .asm 에 없음 (8) `--where` 가 PDB 함수를 덮는 Ghidra `FUN_` 을 안 알려 줌 (9) reference ".c 읽을 때 주의" 에 MOV CR8·SWAPGS·IRETQ 가 .c 에 안 나온다는 줄
+- 2026-10-22: Q6 끝 (run15, sast/10). 2.3 커널 → 유저 전환 = IRETQ [정적]. run13 정정 2건(이름표, CL 인자). Q7 출처 추가
+- 하네스 후보 (나중에 검토, run15 flow-writer): (10) pitfalls — IRETQ 줄 자체(Kx +0x3e1, KiKernelExit +0xa5)에 멈춤점 금지, 유저 진입 값은 KiStartUserThread+0x28 에서 `dq @rbp+0xe8 L5` (11) KxStartUserThread 안 주소는 WinDbg 에 KiStartUserThread+(x-0x60) 로 보임 [추측]
