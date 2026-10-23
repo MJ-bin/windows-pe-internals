@@ -92,7 +92,7 @@ run 문서 "목적" 그대로.
 
 - `[관찰]` (run7) `+0x19a2` 안에서 `LdrLoadDll` 이 **두 번** 불렸다. 돌아올 자리는 `+0xc0`, `+0x156`.
 - `[관찰]` (run7) 첫째 `LdrLoadDll` 안 사슬: `LdrLoadDll +0x170` → `LdrpLoadDll +0x100` → `LdrpLoadDllInternal +0x284` → `LdrpPrepareModuleForExecution +0xef` → `LdrpInitializeGraphRecurse`.
-- `[관찰]` (run7) 그 안에서 `LdrpCallInitRoutine` 이 두 번 불렸다. `rcx` 는 각각 `KERNELBASE!KernelBaseDllInitialize` **근처**, `KERNEL32!BaseDllInitialize` **근처**였다. 두 번 모두 첫째(`+0xc0`)와 둘째(`+0x156`) `LdrLoadDll` **사이**였다.
+- `[관찰]` (run7) 그 안에서 `LdrpCallInitRoutine` 이 두 번 불렸다. `rcx` 는 각각 `KERNELBASE!KernelBaseDllInitialize` **근처**, `KERNEL32!BaseDllInitialize` **근처**였다 (run8). 두 번 모두 첫째(`+0xc0`)와 둘째(`+0x156`) `LdrLoadDll` **사이**였다.
 - `[관찰]` (run7) 둘째 `LdrLoadDll` 에선 `LdrpLoadDll` 까지만 봤다 (요청서).
 - `[정적]` (run19) 이 함수는 exe 헤더 `Subsystem` 이 2·3 일 때만 불린다. 병렬 로딩 켜기 **앞**(`LdrInitState` = 0)이다.
 - `[정적]` (run19, `refs`) 이 함수의 `+0xe4` 가 전역 `Kernel32ThreadInitThunkFunction` 칸의 주소를 넘긴다. 그 칸을 읽는 곳은 `LdrpInitializeProcess` 와 `RtlUserThreadStart +0x7`.
@@ -302,8 +302,8 @@ LdrpInitializeProcess +0x19a2   (Subsystem 2/3 일 때, run19)
 **디버거가 본 것** `[관찰]` (run7, flow.md 2.5)
 
 - 시작 함수를 부르는 `LdrpCallInitRoutine` 이 **두 번** 불렸다.
-  - 첫째: `rcx` 가 `KERNELBASE!KernelBaseDllInitialize` **근처**
-  - 둘째: `rcx` 가 `KERNEL32!BaseDllInitialize` **근처**
+  - 첫째: `rcx` 가 `KERNELBASE!KernelBaseDllInitialize` **근처** (run8)
+  - 둘째: `rcx` 가 `KERNEL32!BaseDllInitialize` **근처** (run8)
 - 두 번 다 **첫째 `LdrLoadDll`(`+0xc0`) 안**이었다. 콜스택이 `+0xc0 → +0x170 → +0x100 → +0x284 → +0xef LdrpInitializeGraphRecurse` 로 이어졌다.
 - 둘째 `LdrLoadDll`(`+0x156`) 에선 `LdrpLoadDll` 까지만 봤다.
 
@@ -330,7 +330,7 @@ LdrpInitializeProcess +0x19a2   (Subsystem 2/3 일 때, run19)
 
 - "kernel32 가 kernelbase 를 import 한다" 자체가 flow.md 에서 `[추측]` 이다. kernel32 의 import 표는 이번에 안 봤다.
 - 첫째 호출 **안에서 kernelbase 가 메모리에 올라오는 순간**을 아직 못 봤다. `LdrpLoadDllInternal` 의 올리기 쪽(`+0x284` 앞)은 본문을 안 읽었다 (flow.md 2.5 `[공백]`).
-- run7 의 두 시작 함수 이름도 "기호 **근처**" 였지 정확히 일치가 아니었다 `[관찰]`. 어느 함수인지는 Q13·Q21·Q22.
+- run8 의 두 시작 함수 이름도 "기호 **근처**" 였지 정확히 일치가 아니었다 `[관찰]`. 어느 함수인지는 Q13·Q21·Q22.
 - 확인할 곳:
   - 정적 **Q11**: `LdrpLoadDllInternal` 안
   - 동적 **Q20**: 첫째 `LdrLoadDll(KERNEL32.DLL)` 안에서 kernelbase 가 올라오는 순간
