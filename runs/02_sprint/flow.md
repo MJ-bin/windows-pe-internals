@@ -3,7 +3,7 @@
 ## 기준
 
 - 타깃: Windows 11 24H2, **26100.9457**
-  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32)
+  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32, run33)
   - kernelbase.pdb: `72CCE506944DE0267C172AD64287F9BD1` (run14, run25)
   - kernel32.pdb: `AE9E9D8F7AC1467A645320FDC23235D01` (run25)
   - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20, run21, run22, run23, run24, run26, run27, run28, run29)
@@ -11,12 +11,14 @@
 - 디버거: WinDbg 커널 디버깅 (KDNET)
 - 부모: `cmd.exe`에서 `test.exe` 실행
 - 근거 로그: `runs/01_sprint/` run3 ~ run8 (디버거)
-- 정적 근거: `runs/02_sprint/` run9 ~ run32 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31·run32 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀)
+- 정적 근거: `runs/02_sprint/` run9 ~ run33 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ~ run33 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀)
   - PE 헤더·import·export 표는 `pefile` 로 읽었다 (run25). KERNELBASE·kernel32·ntdll 의 TLS 디렉터리도 PE 파일에서 읽었다 (run28). Ghidra 는 PE 진입점 함수를 PDB 이름 대신 `entry` 로 잡는다 (run25). 글에선 PDB 이름을 쓴다.
   - test.exe 는 sample 빌드라 MS 심볼 서버가 아니라 `sample/bin/` 의 exe·pdb 를 썼다 (run30). run31 의 test.exe PE 헤더 값(`AddressOfEntryPoint`, `ImageBase`, 정렬 등)도 같은 파일을 직접 읽은 것이다. 진입점 rva `0x1d40` = run5 `[관찰]`, run7 `[관찰]` 의 `…67723` 도 맞는다. 단 run3 ~ run5 와 run6 ~ run8 은 따로 빌드한 exe 라 (5장) 올라온 파일이 어느 쪽인지까지는 모른다.
   - Ghidra 가 함수로 안 잡은 곳은 원본 바이트(`objdump`)로, 구조체 칸 이름은 PDB 타입 레코드(`llvm-pdbutil`)로 읽었다. 그런 곳은 글에 그렇다고 밝혔다.
   - 예외 착지점(`__except` 안쪽)은 Ghidra 가 코드로 안 따라간다. 그런 곳은 PE 의 unwind 범위 표(`pefile`)와 원본 바이트로 읽었다 (run27, run28).
   - 전역 변수 이름(`PsNtdllExports` 등)은 PDB 공개 심볼 + PE 구역표로 맞췄다 (run16).
+  - Ghidra 가 한 함수를 여러 토막(`FUN_…`)으로 쪼갠 곳은 PE `.pdata` 함수 범위 표 + PDB 공개 이름으로 본래 함수를 맞췄다 (run33: `FUN_1406b2db3` = `KiApcInterrupt +0x273`).
+  - "구조체 칸을 누가 읽나" 는 하네스 밖 임시 스크립트로 ntoskrnl 명령 전부를 훑었다 (run33, `_EPROCESS +0x5fc`). 범위·한계는 run33 문서.
   - 시스템 호출 번호 → 커널 함수는 PE 파일의 서비스 표 `KiServiceTable` (PDB 공개 이름) 을 직접 읽어 맞췄다 (run29). 공개 PDB 에 없는 구조체(`_KCONTINUE_ARGUMENT`)는 `.asm` 의 오프셋+역할로 적었다 (run29).
   - 디버거 표시 이름과 PDB 이름이 다를 수 있다: 콜스택 `LdrpInitialize+0x16c` 의 주인은 PDB 이름 `_LdrpInitialize` (run17). 글에선 PDB 이름을 쓰고 표시 이름을 괄호로 붙인다.
 - 테스트 프로그램: `sample/` (`test.c`, `dll1.c`, `dll2.c`, `build.bat`)
@@ -146,6 +148,12 @@
 - `(1) +0x1b9` **`PspCopyAndFixupParameters`** — 부모가 준 프로세스 매개변수(명령줄 등)의 커널 사본을 새 프로세스 메모리로 옮기고, 안쪽 포인터를 고치고, **PEB `+0x20` 에 그 주소를 쓴다.** 핸들(콘솔·표준 입출력) 복제도 여기.
 - `(2) +0x1e6` **`PspPrepareSystemDllInitBlock`** — 새 프로세스 안 **ntdll 의 `LdrSystemDllInitBlock`** 에 직접 쓴다 (난수, 완화 옵션 `+0xa0`, CFG 비트맵 주소 `+0xb8` 등).
 - 둘 다 `(정적)` 상자다. 어느 갈래로 쓰는지(기능 스위치)·실제 값은 동적 (Q35). 커널이 쓰는 칸 ↔ ntdll 이 읽는 줄 짝은 2.1 짝 표.
+
+그림 2 의 `(1) 멈춤 APC 처리` 첫 상자 `h0` 의 **이름을 확정했다** (run33 `[정적]`, 2.2).
+- 장부의 조각 `FUN_1406b2db3` 은 `KiApcInterrupt` 와 같은 `.pdata` 함수 범위 한가운데(`+0x273`)다. PDB 공개 이름도 그 범위에 `KiApcInterrupt` 하나뿐이다. 그래서 상자 글에서 "추정" 을 뗐다.
+- `KiApcInterrupt` → `KiDeliverApc` 화살표는 `?` 에서 `+0x3ab` (call `+0x3a6` 의 ret) 로 바뀌었다. 상자는 그대로 `(정적)` 점선이다 (실행으로 본 적은 없다).
+- 남은 추측은 굵은 화살표 하나 — APC 인터럽트가 `PspUserThreadStartup +0x26` 에서 들어오나 (Q42).
+- 같은 바퀴에서 찾은 "첫 풀어줌 표시(`ProcessFirstResume`)를 읽는 둘째 곳" `PspProcessClose` (프로세스 핸들 닫기 콜백) 는 그림에 안 넣었다. 누가 언제 부르는지 모르고 (간접 호출), `main` 전에 서도 그 표시가 켜져 있으면 바로 돌아가는 자리라서다. `main` 전에 서는지는 동적 Q64 (2.2).
 
 > 왜 2장인가: 서로 화살표로 이어지지 않은 덩어리는 머메이드가 위아래 순서를 마음대로 정한다 (실험해보니 ③ → ② → ① 거꾸로 나왔다). 두 스레드 사이엔 호출 관계가 없어서 화살표로 이을 수 없으니, 그림을 나누고 **문서 순서로 시간 순서**를 보인다.
 
@@ -337,7 +345,7 @@ flowchart LR
     class cb1,cb2,cb3,cb4 unkg
 ```
 
-### 그림 2 — test.exe 메인 스레드 (run4 ~ run8, run13, run14 메모, run15, run16, run17, run18, run19, run20, run21, run22, run23, run24, run25, run26, run27, run28, run29, run30)
+### 그림 2 — test.exe 메인 스레드 (run4 ~ run8, run13, run14 메모, run15, run16, run17, run18, run19, run20, run21, run22, run23, run24, run25, run26, run27, run28, run29, run30, run33)
 
 ```mermaid
 flowchart LR
@@ -370,9 +378,9 @@ flowchart LR
             b8["nt!PspGetContextThreadInternal<br/>(정적: 원래 문맥 읽기, Rip = RtlUserThreadStart)"]:::kerng
             b9["nt!PspSetContextThreadInternal<br/>(정적: 새 문맥 쓰기, 안쪽 PspSetContext +0x68 이 트랩 프레임 Rip 에)"]:::kerng
             kx["nt!KiKernelExit<br/>(정적: KiKvaShadow 켜졌을 때만)"]:::kerng
-            subgraph T2NTA["(1) 멈춤 APC 처리 — 멈춰 둔 스레드일 때만 (추측 연결)"]
+            subgraph T2NTA["(1) 멈춤 APC 처리 — 멈춰 둔 스레드일 때만 (들어오는 자리는 추측)"]
                 direction LR
-                h0["nt!KiApcInterrupt 추정<br/>(장부: 조각 FUN_1406b2db3)"]:::kerng
+                h0["nt!KiApcInterrupt<br/>(정적: .pdata·PDB 로 확정, 장부 조각 FUN_1406b2db3 = +0x273.<br/>+0x3a6 에서 KiDeliverApc 호출)"]:::kerng
                 h1["nt!KiDeliverApc<br/>(정적)"]:::kerng
                 h2["nt!KiSchedulerApc<br/>(정적)"]:::kerng
                 h3["nt!KeWaitForSingleObject<br/>(정적: SuspendEvent 기다림, 이유 Suspended)"]:::kerng
@@ -590,7 +598,7 @@ flowchart LR
     %% 커널 → 유저
     b1 -->|"(1) +0x28"| b2
     b2 ==>|"APC 인터럽트 — 멈춘 스레드만, 호출 (1) 앞 (+0x22 IRQL 내림 직후, 자리 +0x26 은 추측)"| h0
-    h0 -->|"?"| h1
+    h0 -->|+0x3ab| h1
     h1 -->|+0x220| h2
     h2 -->|+0xf7| h3
     h3 -.- w0
@@ -1300,7 +1308,7 @@ ntdll 쪽은 **이미 이 문서에 적힌 줄만** 짝지었다 (run32 는 ntdl
 
 ---
 
-### 2.2 부모 쪽 마무리 ~ 첫 스레드 출발 (nt 쪽·부모 KERNELBASE 쪽 `[정적]`, run9, run12, run13, run14, run15)
+### 2.2 부모 쪽 마무리 ~ 첫 스레드 출발 (nt 쪽·부모 KERNELBASE 쪽 `[정적]`, run9, run12, run13, run14, run15, run33)
 
 여기서 알고 싶은 건 두 가지다.
 
@@ -1344,13 +1352,13 @@ ThreadFlags (NtCreateUserProcess 8번째 인자, bit0 만 허용)
 (test.exe 첫 스레드) 서는 곳                                           (run13, run15)
 KiStartUserThread +0x28 → PspUserThreadStartup                        (IRQL 1 로 들어옴, run15)
  │  +0x22  IRQL 을 0 으로 내림 (1 → 0 의 유일한 자리, run15)
- ═▶ APC 인터럽트                                                       [추측] 배달 자리 +0x26
-      └─ KiDeliverApc +0x220 → KiSchedulerApc +0xf7 → KeWaitForSingleObject(SuspendEvent, Suspended)
-                                                       ← 여기서 잠듦 [정적]
+ ═▶ APC 인터럽트 = KiApcInterrupt (이름 run33)                          [추측] 배달 자리 +0x26
+      └─ KiApcInterrupt +0x3ab → KiDeliverApc +0x220 → KiSchedulerApc +0xf7 → KeWaitForSingleObject(SuspendEvent, Suspended)
+                                                                              ← 여기서 잠듦 [정적]
 
 (부모 cmd.exe 스레드, 나중 시스템 콜) 풀어 주기          (run13, 부르는 곳은 위 (3) run14)
 NtResumeThread
- └─ +0x9b  PsMultiResumeThread
+ └─ +0x9b  PsMultiResumeThread               +0x45 Flags3 bit15 검사 → +0x4e 켬 (첫 풀어줌 표시, run33)
       └─ +0x25  KeResumeThread               SuspendCount - 1 (+0x68)
            └─ +0x87  KiResumeThread          0 이 될 때만. SuspendEvent.SignalState = 1 (+0x20)
                 └─ +0xab  KiTryUnwaitThread  기다리던 스레드 깨우기
@@ -1480,11 +1488,14 @@ NtResumeThread
   4. 첫 커널 코드 `KiStartUserThread` 는 IRQL 을 1 로 올린 채 `PspUserThreadStartup` 을 부른다 (`KxStartUserThread +0x71 MOV CR8`, 2.3).
   5. `PspUserThreadStartup +0x22` 가 **IRQL 을 0 으로 내린다** — 함수의 첫 일이다 (2.3).
      - (run15) 앞의 `+0x1d` `KiLowerIrqlProcessIrqlFlags` 는 옛 IRQL 이 2 이상일 때만 일하는데 지금은 1 이라 **아무것도 안 한다** (`KiLowerIrqlProcessIrqlFlags +0x1d CMP CL,2`). 그러니 `+0x22` 가 IRQL 1 → 0 의 **유일한 자리**다 `[정적]`.
-  6. APC 인터럽트 → `KiDeliverApc`. `KiDeliverApc` 를 부르는 조각 `FUN_1406b2db3` 이 `callers:` 에 있다 (`KiApcInterrupt` 의 떨어진 조각으로 보임, 이름은 `[추측]`).
+  6. APC 인터럽트 → `KiDeliverApc`. ~~`KiDeliverApc` 를 부르는 조각 `FUN_1406b2db3` 이 `callers:` 에 있다 (`KiApcInterrupt` 의 떨어진 조각으로 보임, 이름은 `[추측]`).~~
+     - → (run33 `[정적]`) **`FUN_1406b2db3` = `nt!KiApcInterrupt +0x273`.** 떨어진 조각이 아니라 같은 `.pdata` 범위 `[0x6b2b40, 0x6b3259)` (1817바이트, 체인 없음) 의 한가운데다. PDB 공개 이름도 그 범위에 `KiApcInterrupt` 하나뿐이다. Ghidra 가 사이의 RSB 채우기 사다리(`ADD RSP,8; CALL` 31칸) 때문에 토막을 낸 것이다.
+     - `KiApcInterrupt` 가 `KiDeliverApc(0, 0, 트랩 프레임 추정)` 를 부르는 자리: **call `+0x3a6` / ret `+0x3ab`**. 바로 앞에 `HalPerformEndOfInterrupt` (ret `+0x38f`)·`STI`, 그리고 `+0x390 CMP byte GS:[0x187],0` 검사가 있어 걸리면 `KiDeliverApc` 를 건너뛴다 (그 바이트 뜻은 안 봄). → 동적 Q42
+     - 장부(`KiDeliverApc.c` 머리 `callers:`, `_calls.tsv` 의 `frag:FUN_1406b2db3+0x133`/`+0x138`)에 남은 `FUN_1406b2db3` 은 `KiApcInterrupt` (`+0x3a6`/`+0x3ab`) 로 읽는다.
   7. `KiDeliverApc` 는 NormalRoutine 이 `KiSchedulerApc` 인지 비교해서 **직접** 부른다 (call `+0x21b` / ret **`+0x220`**). 그 앞 `+0x1f7` 에서 IRQL 을 내린다.
   8. `KiSchedulerApc` 는 `SuspendEvent.SignalState` 가 0 이고 끝내라는 요청(`+0x78` bit 15)이 없으면 `SuspendSchedulerApcWait` 를 켜고 **`KeWaitForSingleObject(SuspendEvent, 이유 5 Suspended, Alertable FALSE, Timeout 없음)`** (call `+0xf2` / ret **`+0xf7`**). 돌아오면 `+0xf7` 에서 그 비트를 끈다.
      - (장부 표시: `KeWaitForMutexObject` — 같은 함수의 공개 이름 둘. PDB 공개 심볼 이름은 `KeWaitForSingleObject` 하나다.)
-- `[정적]` 그래서 **멈춘 스레드가 서는 곳 = `KiSchedulerApc +0xf2` 의 기다림**. 스택은 `KeWaitForSingleObject` ← `KiSchedulerApc+0xf7` ← `KiDeliverApc+0x220` ← … 모양일 것이다.
+- `[정적]` 그래서 **멈춘 스레드가 서는 곳 = `KiSchedulerApc +0xf2` 의 기다림**. 스택은 `KeWaitForSingleObject` ← `KiSchedulerApc+0xf7` ← `KiDeliverApc+0x220` ← `KiApcInterrupt+0x3ab` (run33) ← … 모양일 것이다. WinDbg 가 그 칸을 이 이름으로 보여 주는지는 `[추측]` (PDB 공개 이름이 하나뿐이라 그럴 것, Q42).
 - **배달 시점 = `PspUserThreadStartup +0x22` 의 IRQL 내림 직후** (인터럽트 복귀 자리는 `+0x26`). 그러면 `PspDisablePrimaryTokenExchange`·`PspNotifyThreadCreation`·`PspInitializeThunkContext` 보다 **먼저** 잠든다.
   - (run15) 고리 3·4·5 (APC 요청이 늘 걸림, IRQL 1 로 시작, `+0x22` 가 유일한 내림 자리) 는 `[정적]`. 남은 건 **"걸린 인터럽트가 실제로 `+0x26` 에서 들어오나" 하나 `[추측]`** (CR8 을 내리면 걸려 있던 인터럽트가 다음 명령 앞에서 들어온다는 CPU 규칙으로 짐작) → 동적 (Q42, 4.1).
   - 반대 증거 없음: 유저로 가는 복귀 길은 **유저 APC 만** 본다 (2.3). 멈춤 APC(커널 모드)는 거기서 처리되지 않는다.
@@ -1509,7 +1520,28 @@ NtResumeThread
 - `[정적]` `KeResumeThread` 가 돌려준 이전 횟수가 0 이 아니고 요청 횟수 이하면 (= 이번에 완전히 풀림):
   - 프로세스 `_EPROCESS +0x5fc` bit 15 **`Flags3.ProcessFirstResume`** 를 켠다 (`+0x4e` `OR.LOCK`, 이미 켜져 있으면 건너뜀).
   - bit 20 `EnableThreadSuspendResumeLogging` 이 켜져 있으면 `EtwTiLogSuspendResumeThread` (`+0x6f`).
-- `[공백]` `ProcessFirstResume` 를 **읽는 곳**은 안 봤다. 이름대로면 "이 프로세스의 첫 풀어줌" 표시.
+- (해결됨) ~~`[공백]` `ProcessFirstResume` 를 **읽는 곳**은 안 봤다. 이름대로면 "이 프로세스의 첫 풀어줌" 표시.~~ → run33 `[정적]`:
+  - **읽고 판단하는 곳은 ntoskrnl 에 둘이다.**
+    - `PsMultiResumeThread +0x45` — 자기가 켜기 전 "이미 켜졌나" 검사 (`+0x3f MOV R8D,0x8000` → `+0x45 TEST [RAX+0x5fc],R8D` → `+0x4c JNZ +0x56`). 켜져 있으면 `+0x4e` 쓰기를 건너뛴다.
+    - `PspProcessClose +0xf` — 프로세스 핸들 **닫기 콜백** (아래 절). 켜져 있으면 `+0x1b` 로 곧장 return, 꺼져 있으면 "주인이 죽는 중이면 이 프로세스도 끝낸다" 검사로 내려간다.
+  - **켜는 곳은 `+0x4e` 하나뿐, 끄는 곳은 없다.** `+0x5fc` 에 쓰는 명령 40곳을 다 봤다. 새 프로세스를 만들 때 `PspAllocateProcess` 가 Flags3 에 쓰는 비트(0·5·7·12·23·27·30)에도 bit 15 는 없다.
+  - **유저·ETW 로 안 나간다.** `NtQueryInformationProcess` 가 Flags3 에서 읽는 비트는 2·9·19·20·28·29, ETW 쪽도 bit 15 를 안 읽는다. `EtwTiLogSuspendResumeThread` (`+0x6f`) 는 Flags3 를 아예 안 읽는다.
+  - 범위: **이 `ntoskrnl.exe` 하나**, 모든 명령의 `[reg+0x5fc]`·원본 바이트·`&Flags3` 포인터·읽어 온 값 추적으로 잡히는 꼴 안에서다. `hal`·`win32k*`·드라이버, 포인터를 다른 함수로 넘기거나 메모리에 저장했다 꺼내는 꼴은 못 본다 (run33 "찾는 법과 한계").
+  - test.exe 시동 길: `+0x45` 는 **코드상 지나는 줄**이다 (새 스레드 멈춤 횟수 1 → `+0x32`·`+0x36` 통과). 실제로 지났는지·그때 비트가 꺼져 있었는지는 동적 (Q19).
+
+#### `nt!PspProcessClose` (rva `0x9b3b50`, run33 `[정적]`) — 첫 풀어줌 표시를 읽는 둘째 곳
+
+- `[정적]` **프로세스 객체 형식의 닫기 콜백이다.** 직접 `CALL` 은 없다.
+  - 등록: `PspInitPhase0 +0x4a8` `LEA RAX,[PspProcessClose]` → `+0x4bb` 저장 → `+0x4e6` (ret `+0x4eb`) `ObCreateObjectType` (`R9 = &PsProcessType`). 이웃 `+0x47e` `PspProcessDelete`·`+0x490` `PspProcessOpen` 과의 간격이 PDB `_OBJECT_TYPE_INITIALIZER` 의 `Open`/`Close`/`DeleteProcedure` (`+0x38`/`+0x40`/`+0x48`) 와 같다.
+  - 부름: `NtClose +0xe4` (ret `+0xe9`) → `ObCloseHandleTableEntry` → 객체 형식 `+0x80` (`TypeInfo.CloseProcedure`) 을 읽어 → CFG 간접 호출 `+0x7a9` (ret `+0x7ae`). 대상이 이 함수인지는 정적으로 못 정한다 `[추측]`.
+  - 그래서 **어느 프로세스든 그 핸들이 하나 닫힐 때마다** 돈다.
+- `[정적]` 안에서 하는 일 (bit 15 앞뒤만):
+  - `+0xf` 에 오는 조건: 닫는 쪽 핸들 수(`R9`, 이름 `[추측]`)가 둘 이상이거나 (`+0x9`·`+0xd`), 아니면 `ActiveThreads` (`+0x380`) ≠ 0 (`+0x4e ~ +0x56`). 핸들 하나 + 스레드 0 이면 `+0x58` 아래 "마지막 핸들" 길 (`PspLockProcessExclusive` ret `+0x7b` → `PspUnlockProcessExclusive` ret `+0xae` → `PspRundownProcess` ret `+0xd4`). 그 길엔 bit 15 검사가 없다.
+  - bit 15 **켜짐** → `+0x1b` return. 아무것도 안 한다.
+  - bit 15 **꺼짐** → 닫히는 프로세스 `OwnerProcessId` (`+0x2d8`) = 닫는 프로세스 `UniqueProcessId` (`+0x1d0`) 이고, 닫는 프로세스 `Flags` (`+0x1f4`) 에 bit 3 `ProcessDelete` 또는 bit 30 `ProcessSelfDelete` 가 있으면 `PsTerminateProcess(닫히는 프로세스, 0xc000010a)` (call `+0x47` / ret `+0x4c`).
+- `[추측]` 뜻: "한 번도 안 풀린 자식 프로세스를, 주인이 죽으면서 핸들을 닫을 때 같이 끝낸다" 는 지름길. bit 15 = "이미 한 번 풀렸음" 이라 그 길을 막는다.
+- `[정적 읽기 + 추측]` **일반 생성에선 이 비교가 맞기 어려워 보인다.** `PspAllocateProcess +0x6f1 ~ +0x710` 이 `OwnerProcessId` 에 **부모 PID `|2`** 를 쓴다 (인자 `[RSP+0x90]` bit 9 일 때만 안 붙임, `+0x707 BT R8D,9`). PID 는 4 의 배수라 `|2` 가 붙으면 같을 수 없다. bit 9 의 뜻은 Q65.
+- test.exe 시동 길에서 서나: **정적으로는 모른다.** 누가 test.exe 프로세스 핸들을 언제 닫나에 달렸다. 부모가 `main` 전에 닫는다면 그땐 이미 `NtResumeThread` 가 bit 15 를 켰고 스레드도 살아 있으니 `+0x1b` 로 바로 돌아갈 것이다 `[추측: 순서]`. → 동적 Q64. 그림엔 안 넣었다 (1장 메모).
 
 #### `nt!KeResumeThread` (정적)
 
@@ -1557,7 +1589,7 @@ KiStartUserThread  (= Kx +0x60 이름표)                       [관찰] run4 �
  │  Kx +0x71  IRQL 1
  │  Kx +0x7e  RAX = [RSP+0x10] = PspUserThreadStartup  (KiInitializeContextThread +0x1cf 가 쌓음)
  ├─ (1) +0x28 (Kx +0x88)  PspUserThreadStartup                [관찰] run4 + [정적]
- │       │  +0x22  IRQL 0   ═▶ (멈춘 스레드면) APC 인터럽트 → KiDeliverApc … (2.2)  [추측: 자리 +0x26]
+ │       │  +0x22  IRQL 0   ═▶ (멈춘 스레드면) APC 인터럽트 KiApcInterrupt +0x3ab → KiDeliverApc … (2.2, 이름 run33)  [추측: 자리 +0x26]
  │       ├─ (1) +0x3c  PspDisablePrimaryTokenExchange
  │       ├─ (2) +0x78  PsGetSessionLocaleId                         (Minimal = 0)
  │       ├─ (3) +0x99  KeUpdateTebSchedulingPropertiesCurrentThread (Minimal = 0)
@@ -3135,9 +3167,12 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.2 | (해결됨, 정적) 멈춘 스레드가 `KeReadyThread` 뒤 **실제로 서는 곳** = `KiDeliverApc +0x220` → `KiSchedulerApc +0xf7` 의 `KeWaitForSingleObject(SuspendEvent)`. 멈춤 = 횟수 + 멈춤 APC(`KiSuspendThread +0x88`) + `SuspendEvent` 0 → run13 `[정적]` |
 | 2.2 | (일부 해결) 멈춤 APC 가 **언제** 배달되나 — 고리 3개 `[정적]` → run15: `KiStartUserThread` 가 IRQL 1 로 부름, `PspUserThreadStartup +0x22` 가 1 → 0 의 유일한 자리, `SwapContext` APC 요청 조건이 새 스레드에 늘 맞음. (해결됨) `SwapContext` 끝 조각의 "CL 인자" 정체 → 스택 `[RSP+0x28]` 바이트, 새 스레드는 `KiInitializeContextThread +0x26f` 가 넣은 1 → run15 `[정적]` |
 | 2.2 | 남은 것: 걸린 APC 인터럽트가 실제로 `PspUserThreadStartup +0x26` 에서 들어오나 (다른 호출 사이에서 잠들 수도 있음 `[추측]`) — 동적 (Q42·Q19) |
-| 2.2 | `KiDeliverApc` 를 부르는 조각 `FUN_1406b2db3` 의 정체 (`[추측]` `KiApcInterrupt` 의 떨어진 조각) |
+| 2.2 | (해결됨, 정적) `KiDeliverApc` 를 부르는 조각 `FUN_1406b2db3` 의 정체 (`[추측]` `KiApcInterrupt` 의 떨어진 조각) → run33 `[정적]`: **`KiApcInterrupt +0x273`** — 떨어진 조각이 아니라 같은 `.pdata` 범위 `[0x6b2b40, 0x6b3259)` (1817B, `UNW_FLAG_CHAININFO` 없음) 한가운데, PDB 공개 이름도 그 범위에 하나. `KiDeliverApc` 호출 call `+0x3a6` / ret `+0x3ab`. 그림 2 `h0` 이름 확정·`?` → `+0x3ab`. 남은 동적: `k` 에 `nt!KiApcInterrupt+0x3ab` 로 보이나 (Q42) |
 | 2.2 | 새 스레드가 `KiSuspendThread` 의 어느 갈래를 타나 (`[추측]` 가벼운 멈춤이 아닌 쪽, `+0x1fb` `KiSignalThreadForApc`), 그때 새 스레드 State 가 0(Initialized)인지 (`KeInitThread` 에서 쓰는 줄 못 찾음) |
-| 2.2 | `PsMultiResumeThread +0x4e` 가 켜는 `_EPROCESS` `Flags3.ProcessFirstResume` 를 **읽는 곳** |
+| 2.2 | (해결됨, 정적) `PsMultiResumeThread +0x4e` 가 켜는 `_EPROCESS` `Flags3.ProcessFirstResume` 를 **읽는 곳** → run33 `[정적]`: 둘 — `PsMultiResumeThread +0x45` (켜기 전 이미 켜졌나), `PspProcessClose +0xf` (프로세스 핸들 닫기 콜백, 켜졌으면 바로 return, 꺼졌으면 주인 PID·주인 지워지는 중이면 `PsTerminateProcess(0xc000010a)` ret `+0x4c`). 켜는 곳 `+0x4e` 하나, 끄는 곳 없음, 유저(`NtQueryInformationProcess`)·ETW 로 안 나감. 범위는 ntoskrnl 한 파일 (run33 "찾는 법과 한계") |
+| 2.2 | `ProcessFirstResume` 가 풀기 전 0 → 풀 때 1 로 바뀌나 (run33) — 동적 **Q19** 에 합침: `nt+2c9ae5` (`PsMultiResumeThread +0x45`) 에서 `dd poi(@rsi+0x220)+0x5fc L1` bit 15 꺼짐, `nt+2c9af6` (`+0x56`) 에서 켜짐 기대 |
+| 2.2 | `PspProcessClose` 가 test.exe 프로세스 객체로 `main` 전에 서나 (run33) — 동적 **Q64**: `nt+9b3b50` 입구, 조건 `@rdx == <test.exe EPROCESS>`, 서면 `k` (`ObCloseHandleTableEntry+0x7ae` 아래 누가 닫나) 와 `dd @rdx+0x5fc L1` (bit 15 켜짐 → `nt+9b3b6b` return 기대). 안 서면 그것이 답. Q19 와 같은 실행 |
+| 2.2 | `PspProcessClose` 주변 작은 정적 (run33) — 정적 **Q65**: `PspAllocateProcess` 인자 `[RSP+0x90]` bit 9 의 뜻 (`OwnerProcessId` `+0x2d8` 에 부모 PID `\|2` 를 안 붙이는 조건, `+0x707`), `OwnerProcessId` 를 쓰는 다른 줄 `NtSetInformationProcess +0x1ecd` (어느 정보 클래스), `ObCloseHandleTableEntry +0x7a9` 간접 호출 앞 인자 채움 (`PspProcessClose` 인자 이름 `[추측]` 확인) |
 | 2.3 | (해결됨, 정적) 커널 → 유저 전환 방법 → run15 `[정적]`: `PspUserThreadStartup` 이 돌아온 뒤 `KiStartUserThread`(= `KxStartUserThread`) 가 레지스터를 되살리고 **`IRETQ`** (`KiKvaShadow` 꺼짐: 조각 `+0x9c` = `Kx +0x3e1` / 켜짐: `JMP KiKernelExit` → `+0xa5`). 유저 첫 `RIP` = `_KTRAP_FRAME.Rip` (`+0x168`), 트랩 프레임 = `InitialStack - 0x190` |
 | 2.3 | 남은 것: 실제로 탄 `IRETQ` (`KiKvaShadow` 값), 그때 꺼낸 `Rip`·`Rsp` 값 — 동적 (Q42). (run29) 로더 끝 `NtContinueEx` 출구도 같은 변수로 갈린다 (2.10) |
 | 2.3 | 남은 것 (run16): 바꿔 끼우기의 실제 값 — `PspUserThreadStartup+0xae`/`+0xb3` 앞뒤 트랩 프레임 `Rip`·`Rcx`·`Rdx`·`Rsp`, `LdrInitializeThunk` 입구 `Rcx`(맡긴 문맥)와 `[Rsp]`(0 인지), `PsNtdllExports` 값, `PspSystemDlls[0]+0x20` 이 ntdll 시작 주소와 같은지, 네 스레드 모두 같은 길인지 — 동적 (Q42) |
@@ -3255,7 +3290,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 그림 1 KERNELBASE (그림 밖) | `ThreadFlags` = 1 (늘), 풀어 주기 조건 `dwCreationFlags & 4` | `+0x6cb`·`+0x30af`, `+0x5bb8`·`+0x5bc0` (run14 `[정적]`) | `+0x30e7` 에서 `dd @rsp+0x38 L1` (= 1 이어야), `+0x5bb8` 에서 `dd @rsp+0x108 L1` (cmd.exe 의 `dwCreationFlags` 사본, bit2 꺼져 있어야 풀어 줌). 커널 쪽은 `nt!NtCreateUserProcess` 입구 `poi(@rsp+0x40)` (Q19) |
 | 그림 1 ntdll ==> nt | ntdll `NtCreateUserProcess`·`NtResumeThread` 스텁 ==> 시스템 콜 진입 | KERNELBASE 가 import 로 부르는 것만 봄 (run14 `[정적]`). 스텁 안쪽은 안 봄 `[추측]`. `KiSystemServiceCopyEnd+0x28` → `nt!NtCreateUserProcess` 는 run3 `[관찰]` | 커널 `nt!NtCreateUserProcess`·`nt!NtResumeThread` 입구 (cmd.exe `/p` 필터) 에서 긴 `k`: 유저 쪽에 `ntdll!NtCreateUserProcess` → `KERNELBASE!CreateProcessInternalW+0x30ee` / `ntdll!NtResumeThread` → `KERNELBASE!CreateProcessInternalW+0x5bd3` 가 보이나. `nt!NtAlertResumeThread` 에는 안 서야 함 |
 | 그림 1 (3) 풀어 주기 | `KiSystemServiceCopyEnd` → `NtResumeThread` | `NtCreateUserProcess` 쪽 `+0x28` 은 run3 `[관찰]`, 이 호출은 안 봄 | 위와 같은 멈춤점의 `k` 에서 `KiSystemServiceCopyEnd+0x28` 인지 |
-| 그림 1 (3) 풀어 주기 | `NtResumeThread` → `PsMultiResumeThread` → `KeResumeThread` → `KiResumeThread` → `KiTryUnwaitThread` | 코드의 call 자리 (run13 `[정적]`) | `nt!PsMultiResumeThread` 입구 (`rcx` 의 Process = test.exe) 에서 `k` → `NtResumeThread+0x9b` 인지. `nt!KeResumeThread+0x82` 에서 `dt nt!_KTHREAD @rbx SuspendCount SuspendEvent` (횟수 0). `nt!KiResumeThread+0xa6` 에서 깨우는 대상. 값: `+0x284` 1→0 (`KeResumeThread +0x68`), `+0x2e4` 0→1 (`KiResumeThread +0x20`) |
+| 그림 1 (3) 풀어 주기 | `NtResumeThread` → `PsMultiResumeThread` → `KeResumeThread` → `KiResumeThread` → `KiTryUnwaitThread` | 코드의 call 자리 (run13 `[정적]`) | `nt!PsMultiResumeThread` 입구 (`rcx` 의 Process = test.exe) 에서 `k` → `NtResumeThread+0x9b` 인지. `nt!KeResumeThread+0x82` 에서 `dt nt!_KTHREAD @rbx SuspendCount SuspendEvent` (횟수 0). `nt!KiResumeThread+0xa6` 에서 깨우는 대상. 값: `+0x284` 1→0 (`KeResumeThread +0x68`), `+0x2e4` 0→1 (`KiResumeThread +0x20`). 프로세스 `+0x5fc` bit 15 0→1 (`PsMultiResumeThread +0x4e`, 앞뒤 `nt+2c9ae5`·`nt+2c9af6`, run33 → Q19) |
 | 그림 1 nt | `NtCreateUserProcess` → (11)(12) `PspCreateObjectHandle` / `PspUpdateCreateInfo` | 코드상 성공 길 끝, 값 6 | `NtCreateUserProcess+0x1124`에서 `ecx`=6, 반환값 `rax` |
 | 그림 1 nt | `PspAllocateProcess` → (1) `MmCreateProcessAddressSpace` | 코드의 call 자리 (run10 `[정적]`) | `PspAllocateProcess+0x163c`에서 멈춤 또는 callee 입구에서 `k` |
 | 그림 1 nt | `PspAllocateProcess` → (2) `MmInitializeProcessAddressSpace` | 코드상 두 곳 (`+0x2095` 보통 / `+0x2113` 복제), 플래그 bit `0x4`로 갈림 | callee 입구에서 `k`. 돌아올 자리가 `+0x2095`인지 |
@@ -3270,7 +3305,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 그림 1 nt | `_ETHREAD.Win32StartAddress` ← `CONTEXT.Rcx` | `+0x64e ~ +0x655` (run11 `[정적]`) | 입구 `dt nt!_CONTEXT poi(@rsp+0x28) Rip Rcx`, `+0x6f9` 에서 `dt nt!_ETHREAD @rsi StartAddress Win32StartAddress` |
 | 그림 1 nt (그림 밖) | `PspAllocateThread` 먼 덩어리 (Pico·본뜨기 길) | 오프셋 `+0x2ca…` (run11 `[정적]`, .pdata 체인으로 같은 함수) | `nt+0xb0d315` 에 걸어서 안 걸리면 보통 길. `ln nt+0xb0d383`, `ln nt+0xb0d315` 로 표기 확인 |
 | 그림 1 nt | `PspInsertProcess` → (1) `PspLockProcessListExclusive` → 직접 잇기, (2) `ObInsertObjectEx` | 코드의 call 자리 (run11 `[정적]`) | `PspInsertProcess+0x115` 에서 `!process 0 0 test.exe`. `+0x1e3` 앞뒤로 부모 핸들 표(`!handle 0 3 <부모>`) 비교 |
-| 그림 2 nt | `PspUserThreadStartup` ==> APC 인터럽트 (`FUN_1406b2db3`, `KiApcInterrupt` 추정) → `KiDeliverApc` → `KiSchedulerApc` → `KeWaitForSingleObject` | `KiDeliverApc +0x220`, `KiSchedulerApc +0xf7` 는 코드 (run13 `[정적]`). 배달 시점까지의 고리 3개(IRQL 1 로 시작, `+0x22` 가 유일한 내림, APC 요청 늘 걸림)는 run15 `[정적]`. 실제 자리 `+0x26`·인터럽트 조각 이름·`?` 한 칸은 `[추측]` | `nt!KiSchedulerApc` 입구 (조건 `poi(@rcx+0x220)` = test.exe EPROCESS. 자주 불림) 에서 `dd @rcx+0x2e4 L1` (0 → 곧 기다림, 1 → 이미 풀림), `+0xf2` 에서 `k`: `KiDeliverApc+0x220` 아래가 `PspUserThreadStartup+0x26` 근처인지 |
+| 그림 2 nt | `PspUserThreadStartup` ==> APC 인터럽트 `KiApcInterrupt` → (`+0x3ab`) `KiDeliverApc` → `KiSchedulerApc` → `KeWaitForSingleObject` | `KiDeliverApc +0x220`, `KiSchedulerApc +0xf7` 는 코드 (run13 `[정적]`). 배달 시점까지의 고리 3개(IRQL 1 로 시작, `+0x22` 가 유일한 내림, APC 요청 늘 걸림)는 run15 `[정적]`. (해결됨, run33 `[정적]`) 인터럽트 조각 이름 = `KiApcInterrupt` (`FUN_1406b2db3` = `+0x273`, 같은 `.pdata` 범위), `?` 한 칸 → `+0x3ab` (call `+0x3a6`). 남은 `[추측]` 은 실제 자리 `+0x26` 하나 | `nt!KiSchedulerApc` 입구 (조건 `poi(@rcx+0x220)` = test.exe EPROCESS. 자주 불림) 에서 `dd @rcx+0x2e4 L1` (0 → 곧 기다림, 1 → 이미 풀림), `+0xf2` 에서 `k`: `KiDeliverApc+0x220` 아래가 `KiApcInterrupt+0x3ab` 이고 그 아래가 `PspUserThreadStartup+0x26` 근처인지. `ln nt+6b2db3` → `nt!KiApcInterrupt+0x273` 기대, 멈춤점 후보 `nt+6b2ee6` (call) / `nt+6b2eeb` (ret), 같은 자리에서 `db gs:[0x187] L1` (`+0x390` 검사 바이트, 0 이어야 `KiDeliverApc` 를 부름) (Q42, run33) |
 | 그림 2 nt (순서) | 풀어 주기 전에 시작 코드가 어디까지 도나 | `PspUserThreadStartup +0x22` IRQL 내림이 첫 일 (run13 `[정적]`). 부모는 csrss 알림 등을 끝낸 뒤 풀어 줌 (run14 `[정적]`) | `nt!PspUserThreadStartup` 입구·`+0x22`·`+0x9c`·`+0xae`, `nt!KiSchedulerApc`, (부모) `KERNELBASE!CreateProcessInternalW+0x466b`, `nt!NtResumeThread` 가 서는 순서 |
 | 그림 2 nt | `KiStartUserThread` → (1) `PspUserThreadStartup` → (1)~(5) `PspDisablePrimaryTokenExchange` / `PsGetSessionLocaleId` / `KeUpdateTebSchedulingPropertiesCurrentThread` / `PspNotifyThreadCreation` / `PspInitializeThunkContext` | `KiStartUserThread+0x28` 은 run4 `[관찰]` + run15 `[정적]` (`Kx +0x83` 간접 호출). (1)~(5) 는 코드의 call 자리, 정상 길 순서 (run15 `[정적]`) | 각 callee 입구에서 `k` (돌아올 자리 `PspUserThreadStartup+0x3c`·`+0x78`·`+0x99`·`+0xa1`·`+0xb3`). 분기 값: `dt nt!_ETHREAD @$thread CrossThreadFlags` (`ThreadInserted` 1, `Terminated` 0), `_EPROCESS +0x5fc` bit0 (`Minimal` 0) |
 | 그림 2 nt | `PspInitializeThunkContext` → (1) `PspGetContextThreadInternal` / (2) `PspSetContextThreadInternal` (→ `PspGetSetContextSpecialApc` → `PspGetSetContextInternal` → `PspSetContext`) | 코드의 call 자리 (run16 `[정적]`). 그림엔 대표 둘만, `RtlCopyContext` `+0x285`·`KePopulateContinuationContext` `+0x29a`·`KiCheckForKernelApcDelivery` `+0x2fa` 는 글(2.3)에만 | `nt!PspInitializeThunkContext+0x16d` 에서 `dt nt!_CONTEXT @r13 Rip Rcx Rdx Rsp` (원래 문맥), `+0x2d6` 에서 `dt nt!_CONTEXT @rdx Rip Rcx Rdx Rsp R10` 과 `@r15` (맡긴 자리), `+0x2db` 에서 `dq (poi(@rsi+0x28)-0x190)+0x168 L1`·`+0x38 L2`·`+0x180 L1`. `+0x2f5` 에 서는지 (`k`). 모든 프로세스가 거치니 프로세스 조건 필수 (Q42) |
@@ -3351,6 +3386,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run30 | (정적, test.exe — sample 빌드, 로컬 pdb `C66E7084…0511`) 진입점 → `main`: rva `0x1d40` = `mainCRTStartup` (18바이트, 받은 PEB 안 씀) → `+0x9` `__security_init_cookie` → **`+0xd` 꼬리 `JMP` `__scrt_common_main_seh`** (프레임 안 남음) → `+0x19` `__scrt_initialize_crt` · `+0x61` `_initterm_e` · **`+0x10a` (ret `+0x10f`) `main`** · `+0x176` `exit`. `invoke_main`·`__scrt_common_main` 은 안 쓰는 사본. run7 `…67723` = **`try_get_function_slow +0x73`** (`LoadLibraryExW(이름, NULL, 0x800)`, 모듈 캐시, 9곳 중 유일), `main` 전 세 길 A `FlsGetValue2` · B `LCMapStringEx` · C `AreFileApisANSI` (세 번 = 세 길은 `[추측]`). test.exe CFG 함수 표 없음, 중개 `jmp rax` 뿐. TLS 배열 `[ExeTls, 0]`. `main` 에서 `k` 예상에 `mainCRTStartup` 없음 → run29 예상 정정 |
 | run31 | (정적, ntoskrnl) exe 이미지 섹션 (depth 0 21개): `MmCreateSpecialImageSection` (= `NtCreateSection` 의 커널 안 버전, 토큰·서명 수준을 인자로, 핸들 반환 `+0x146`) → `+0xd4` `MiCreateSection` → `+0xf8` `MiCreateImageOrDataSection` (**갈림길**: `+0x1a3` `MiReferenceControlArea` 가 `ImageSectionObject` 를 봐서 있으면 `+0x1d5` `MiShareExistingControlArea`) → `+0x385` `MiCreateNewSection` (`SEC_IMAGE`) → `+0x215` **`MiCreateImageFileMap`** (헤더 읽기 `+0x15c`/`+0x501`, `MZ` `+0x188`, `+0x1f6` `MiVerifyImageHeader`, `+0x2e6` `MiBuildImageControlArea`). 2.1 `[추측]` "`MiCreateImageFileMap` 은 안쪽인지 모른다" → 안쪽 맞음. **진입점 처음 기록 = `MiBuildImageControlArea +0x172`** (`ImageBase + AddressOfEntryPoint` → `TransferAddress`, 헤더 쪽 `MiVerifyImageHeader +0x8a`), 재배치 때 `MiRelocateImage` 조각 `+0x1b1279` 가 델타 더함. 프로세스 메모리엔 안 올림. 서명 재시도 고리는 이 사슬 상태값 때문 아님 |
 | run32 | (정적, ntoskrnl) 프로세스 매개변수·ntdll 시작 정보 블록 (depth 0 9개): `PspSetupUserProcessAddressSpace` 붙기 전 `+0xa0 ~ +0xea` 커널 사본 `Flags` 비트 15·**29** (`+0xe6`, 조건 silo `OneCoreForwardersEnabled`)·`LoaderThreads` 기본값 → `+0xfa` 붙기 → `+0x19c` 자리 → **`+0x1b9` `PspCopyAndFixupParameters`** (원본 = `NtCreateUserProcess +0xacb` `PspCaptureProcessParameters` 커널 사본, 포인터 12개 절대 주소로, 콘솔·표준 핸들 복제 `+0xbc`·`+0x130`, **PEB `+0x20` = `+0x52b` 또는 `+0x347`/`+0x34c`** — 기능 스위치 `nt+0xfc4110`) → **`+0x1e6` `PspPrepareSystemDllInitBlock`** (**새 프로세스 안 ntdll `LdrSystemDllInitBlock` 0x128B**, 주소 `PsNtdllExports+0x0`: `+0x98` 난수, **`+0xa0` 완화 옵션 24B (`+0x12b`·`+0x138`), `+0xb8` CFG 비트맵 (`+0x15a`)**, `+0xf0 ~` SCP 함수 표) → ApiSet 뷰. 부르는 자리 4곳·갈림 조건. 2.1 `[추측]` 두 줄 맞음, run10 순서 맞음. 커널 쓰는 줄 ↔ ntdll 읽는 줄 짝 표 (run17·18·19·20·28) |
+| run33 | (정적, ntoskrnl) 첫 풀어줌 표시·APC 인터럽트 이름 (depth 0, 전체 훑기는 임시 스크립트): `_EPROCESS +0x5fc` bit 15 `ProcessFirstResume` 를 **읽고 판단하는 곳 둘** — `PsMultiResumeThread +0x45` (켜기 전 검사) · **`PspProcessClose +0xf`** (프로세스 객체 닫기 콜백, `PspInitPhase0 +0x4a8` 등록, `ObCloseHandleTableEntry +0x7a9` 간접 호출 자리, 켜짐이면 `+0x1b` return / 꺼짐이면 주인 PID·주인 지워지는 중일 때 `+0x4c` `PsTerminateProcess(0xc000010a)`). 켜는 곳 `+0x4e` 하나, 끄는 곳 없음, 유저·ETW 로 안 나감 (범위: ntoskrnl 한 파일, 명령 264만 개 + 원본 바이트 + 포인터·값 추적). `OwnerProcessId` = 부모 PID `\|2` (`PspAllocateProcess +0x703`). **`FUN_1406b2db3` = `KiApcInterrupt +0x273`** (같은 `.pdata` 범위 1817B, 체인 없음, PDB 이름 하나), `KiDeliverApc` call `+0x3a6` / ret `+0x3ab` |
 | `sample/` 소스 | 의존 관계, 모듈별 TLS 콜백, `/MT` 빌드 |
 
 - run3 ~ run5는 타깃에서 빌드한 test.exe, run6 ~ run8은 디버거 VM에서 빌드해 옮긴 test.exe (같은 소스).
@@ -3385,3 +3421,4 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run30 | `_workspace/sast/25_exe-crt-start` | 없음 | 정적만 (대기열 Q18 — 사용자 결정으로 kernel32 `BaseThreadInitThunk` 에서 test.exe `mainCRTStartup` → `main` 까지 넓힘. test.exe 첫 analyze, 함수 3356, 사슬 + `LoadLibraryExW` 길 depth 0 41개, CRT 표 항목은 뿌리를 따로 줘서 지도). Q18 끝 = **단계 2 처음 항목(Q8 ~ Q18) 끝**. 동적 확인거리 → Q30 (`mainCRTStartup`·`main` 입구 `k`, CFG 통과), Q31 (`LoadLibraryExW` 길 A·B·C, 이름). `BasepInitializeTermsrvFpns` 안쪽은 이번에 안 봄 → 새 **Q59** (정적). dll1·dll2 `LoadLibraryExW` ×3 → Q55 출처. 지도 범위 결정 "진입점 = 경계, CRT 한 상자" (2026-10-23) 로 그림의 CRT 함수를 빼고 Q30·Q31 을 좁힘 |
 | run31 | `_workspace/sast/26_image-section` | 없음 | 정적만 (대기열 Q33, 단계 3 "작은 정적부터 몰아서" 의 바퀴. Q32 는 run12 로 이미 답해 바퀴 없이 닫음). 요청 depth 1 대신 depth 0 21개 (callee 100개 가까이라 이름으로 골라 더 내려감, `MiBuildImageControlArea`·`MiRelocateImage` 포함). Q33 끝. 동적 확인거리 D1~D5 → 새 **Q61**, D6 → Q35, `MmCreateSpecialImageSection` 횟수 → Q34 |
 | run32 | `_workspace/sast/27_params-initblock` | 없음 | 정적만 (대기열 Q36, 단계 3 "작은 정적부터 몰아서" 의 바퀴). 요청 depth 1 대신 depth 0 9개 (두 대상 + 칸 출처 3개 + 원본 쪽 3개 + 스위치 1개). Q36 끝. 동적 확인거리 1~4 → **Q35** 에 출처로 (스위치 전역, `PspPrepareSystemDllInitBlock` 입구 자리, 복사 직후·채운 뒤 값). 새 정적 공백 → **Q63** 하나로 ((a)~(d), (d) ntdll 새로 읽기는 차례 때 사용자와). 요청서 "호출 9"·"caller 3" 은 실제 8곳·4곳. 결과서 글자 두 곳 고쳐 읽음 (`+0xc3` 은 `PspWow64GetSharedInformation`, 종류는 `+0xb7`/`+0xbc`; `PspGetScpCfgFunctions` 호출은 `+0x196`/`+0x19b`) |
+| run33 | `_workspace/sast/28_first-resume` | 없음 | 정적만 (대기열 Q40, 단계 3 "작은 정적부터 몰아서" 의 바퀴. decompiler 첫 시도 로그인 오류로 한 번 다시 부름). 요청 대상 `KiApcInterrupt` + 읽는 줄 확인용 depth 0 여러 개, 전체 훑기·`.pdata` 는 임시 도구 (`ms/ghidra/_tmp_sast28/`). Q40 끝. 동적 확인거리 → **Q19** (bit 15 켜지는 순간), **Q42** (`KiApcInterrupt+0x3ab` 콜스택), 새 **Q64** (`PspProcessClose` 가 `main` 전에 서나). 새 정적 공백 → **Q65** (`OwnerProcessId` bit 9, `NtSetInformationProcess +0x1ecd`, `ObCloseHandleTableEntry +0x7a9` 인자) |
