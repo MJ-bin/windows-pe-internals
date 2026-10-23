@@ -19,3 +19,6 @@ ms/disassemble/*
 # 하네스 임시 파일
 _workspace/.commit_msg
 .claude/settings.local.json
+# 파이썬 캐시 (하네스 스크립트 실행 때 생김)
+__pycache__/
+*.py[cod]
