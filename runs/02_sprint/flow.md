@@ -3,7 +3,7 @@
 ## 기준
 
 - 타깃: Windows 11 24H2, **26100.9457**
-  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31)
+  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32)
   - kernelbase.pdb: `72CCE506944DE0267C172AD64287F9BD1` (run14, run25)
   - kernel32.pdb: `AE9E9D8F7AC1467A645320FDC23235D01` (run25)
   - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20, run21, run22, run23, run24, run26, run27, run28, run29)
@@ -11,7 +11,7 @@
 - 디버거: WinDbg 커널 디버깅 (KDNET)
 - 부모: `cmd.exe`에서 `test.exe` 실행
 - 근거 로그: `runs/01_sprint/` run3 ~ run8 (디버거)
-- 정적 근거: `runs/02_sprint/` run9 ~ run31 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀)
+- 정적 근거: `runs/02_sprint/` run9 ~ run32 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31·run32 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀)
   - PE 헤더·import·export 표는 `pefile` 로 읽었다 (run25). KERNELBASE·kernel32·ntdll 의 TLS 디렉터리도 PE 파일에서 읽었다 (run28). Ghidra 는 PE 진입점 함수를 PDB 이름 대신 `entry` 로 잡는다 (run25). 글에선 PDB 이름을 쓴다.
   - test.exe 는 sample 빌드라 MS 심볼 서버가 아니라 `sample/bin/` 의 exe·pdb 를 썼다 (run30). run31 의 test.exe PE 헤더 값(`AddressOfEntryPoint`, `ImageBase`, 정렬 등)도 같은 파일을 직접 읽은 것이다. 진입점 rva `0x1d40` = run5 `[관찰]`, run7 `[관찰]` 의 `…67723` 도 맞는다. 단 run3 ~ run5 와 run6 ~ run8 은 따로 빌드한 exe 라 (5장) 올라온 파일이 어느 쪽인지까지는 모른다.
   - Ghidra 가 함수로 안 잡은 곳은 원본 바이트(`objdump`)로, 구조체 칸 이름은 PDB 타입 레코드(`llvm-pdbutil`)로 읽었다. 그런 곳은 글에 그렇다고 밝혔다.
@@ -142,6 +142,11 @@
 - `MiCreateImageOrDataSection` 은 **같은 파일의 서랍(컨트롤 영역)에 배치표가 이미 있으면** 공유 길로 가서 오른쪽 셋을 건너뛴다. 그 갈래는 상자 글에만 적었다.
 - 여기서 exe 를 프로세스 메모리에 올리지는 않는다. 올리는 건 그대로 `PspAllocateProcess` 아래 `MmMapViewOfSectionEx` (`p4`) 다.
 
+그림 1 의 `PspSetupUserProcessAddressSpace` (`p8`) 아래에 **ntdll 이 나중에 읽을 칸을 쓰는 두 곳**을 넣었다 (run32 `[정적]`, 2.1).
+- `(1) +0x1b9` **`PspCopyAndFixupParameters`** — 부모가 준 프로세스 매개변수(명령줄 등)의 커널 사본을 새 프로세스 메모리로 옮기고, 안쪽 포인터를 고치고, **PEB `+0x20` 에 그 주소를 쓴다.** 핸들(콘솔·표준 입출력) 복제도 여기.
+- `(2) +0x1e6` **`PspPrepareSystemDllInitBlock`** — 새 프로세스 안 **ntdll 의 `LdrSystemDllInitBlock`** 에 직접 쓴다 (난수, 완화 옵션 `+0xa0`, CFG 비트맵 주소 `+0xb8` 등).
+- 둘 다 `(정적)` 상자다. 어느 갈래로 쓰는지(기능 스위치)·실제 값은 동적 (Q35). 커널이 쓰는 칸 ↔ ntdll 이 읽는 줄 짝은 2.1 짝 표.
+
 > 왜 2장인가: 서로 화살표로 이어지지 않은 덩어리는 머메이드가 위아래 순서를 마음대로 정한다 (실험해보니 ③ → ② → ① 거꾸로 나왔다). 두 스레드 사이엔 호출 관계가 없어서 화살표로 이을 수 없으니, 그림을 나누고 **문서 순서로 시간 순서**를 보인다.
 
 ### 읽는 법
@@ -170,7 +175,7 @@
 - **점선 테두리** = 이름이나 실행이 확실하지 않은 것. **노란 메모** = 같은 무렵 다른 스레드에서 일어난 일.
 - `[dll1 추정]`처럼 대괄호 = 그 함수가 그때 맡은 모듈. "추정"이 붙으면 추측이다.
 
-### 그림 1 — 부모 cmd.exe 스레드 (run3, run9, run10, run11, run12, run13, run14, run16, run31)
+### 그림 1 — 부모 cmd.exe 스레드 (run3, run9, run10, run11, run12, run13, run14, run16, run31, run32)
 
 ```mermaid
 flowchart LR
@@ -215,7 +220,9 @@ flowchart LR
             p6["nt!PspMapSystemDll<br/>(정적)"]
             p7["nt!MmMapViewOfSectionEx<br/>(정적: ntdll 올리기)"]
             a3["nt!MmCreatePeb"]
-            p8["nt!PspSetupUserProcessAddressSpace<br/>(정적)"]
+            p8["nt!PspSetupUserProcessAddressSpace<br/>(정적: 붙기 전 커널 사본 Flags·LoaderThreads 손봄,<br/>붙은 뒤 오른쪽 둘)"]
+            p9["nt!PspCopyAndFixupParameters<br/>(정적: 매개변수를 새 프로세스로 복사·포인터 12개 고침·핸들 복제,<br/>PEB +0x20 쓰기 +0x52b 또는 call +0x347 — 기능 스위치로 갈림)"]
+            p10["nt!PspPrepareSystemDllInitBlock<br/>(정적: 새 프로세스 안 ntdll LdrSystemDllInitBlock 채우기.<br/>+0xa0 완화 옵션, +0xb8 CFG 비트맵 주소. 보안 프로세스면 안 탐)"]
             s4["nt!PspCreateUserContext<br/>(정적: 갈림길 한쪽.<br/>Rip = RtlUserThreadStart, Rcx = exe 진입점)"]
             s5["nt!PspMapThreadCreationFlags<br/>(정적)"]
             a4["nt!PspAllocateThread"]
@@ -281,6 +288,8 @@ flowchart LR
     p6 -->|+0x11d| p7
     a2 -->|"(3) +0x2314"| a3
     a2 -->|"(4) +0x239c"| p8
+    p8 -->|"(1) +0x1b9"| p9
+    p8 -->|"(2) +0x1e6"| p10
     a2 -.-> a1
     a1 -->|"(5) +0xd22"| s4
     a1 -->|"(6) +0xdd3"| s5
@@ -324,7 +333,7 @@ flowchart LR
     r4 -.- wz
 
     class a0,a1,a2,a3,a4,a5,a6,a7 kern
-    class s1,s2,s3,i1,i2,i3,i4,i5,s4,s5,s6,s7,s8,t0,t1,t2,t3,p1,p2,p3,p4,p5,p6,p7,p8,u1,u2,u3,u4,u5,v1,v2,y1,y2,y3,r0a,r0,r1,r2,r3,r4 kerng
+    class s1,s2,s3,i1,i2,i3,i4,i5,s4,s5,s6,s7,s8,t0,t1,t2,t3,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,u1,u2,u3,u4,u5,v1,v2,y1,y2,y3,r0a,r0,r1,r2,r3,r4 kerng
     class cb1,cb2,cb3,cb4 unkg
 ```
 
@@ -782,7 +791,7 @@ flowchart LR
 
 ## 2. 단계별 설명
 
-### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9, run10, run11, run12, run13, run16, run31)
+### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9, run10, run11, run12, run13, run16, run31, run32)
 
 이 구간은 **test.exe가 아니라 부모 cmd.exe**가 일하는 시간이다.
 test.exe는 아직 "만들어지는 중"이라, 자기 코드는 한 줄도 안 돌았다.
@@ -814,6 +823,8 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
  │                 │                    └─ +0x11d  MmMapViewOfSectionEx  [정적] ntdll 올리기
  │                 ├─ (3) +0x2314  MmCreatePeb                       [관찰]+[정적]
  │                 └─ (4) +0x239c  PspSetupUserProcessAddressSpace   [정적]
+ │                       ├─ (1) +0x1b9  PspCopyAndFixupParameters     [정적] 매개변수 복사, PEB +0x20 쓰기 (run32)
+ │                       └─ (2) +0x1e6  PspPrepareSystemDllInitBlock  [정적] ntdll LdrSystemDllInitBlock 채우기 (run32)
  ├─ (5)  +0xd22   PspCreateUserContext                  [정적] Rip = RtlUserThreadStart, Rcx = 진입점 (run16)
  ├─ (6)  +0xdd3   PspMapThreadCreationFlags             [정적]
  ├─ (7)  +0xe5c   PspAllocateThread                     [관찰]+[정적]
@@ -855,6 +866,7 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
 - `[관찰]`+`[정적]` 관찰 4개(`+0xc36`, `+0xe5c`, `+0xfc2`, `+0x101a`)와 `PspInsertThread +0x807`은 디스어셈블 코드의 돌아올 자리와 **오프셋까지 같다**. 네 함수는 한 번씩만 불린다.
 - `[관찰]`+`[정적]` (run10) `PspAllocateProcess +0x2314` → `MmCreatePeb`도 코드와 오프셋까지 같다 (call `+0x230f`).
 - `[정적]` (run10) `PspAllocateProcess` 안에서 **주소 공간 → exe 올리기 → ntdll 올리기 → PEB** 순서다. 트리의 `PspAllocateProcess` 아래가 그 길이다.
+  - `[정적]` (run32) 그다음 `PspSetupUserProcessAddressSpace` 안에서 **매개변수 복사(+ PEB `+0x20`) → ntdll 시작 정보 블록** 이 이어진다. `MmCreatePeb` 가 비워 둔 PEB `+0x20` 이 여기서 채워진다.
 - `[정적]` (run11) `PspAllocateThread` 안에서 **스레드 객체 → 스레드 ID → 유저 스택 → TEB → `KeInitThread`** 순서다. `PspInsertProcess` 는 목록 잠금 사이에서 **호출 없이 직접** 새 프로세스를 목록에 잇는다.
 - `[정적]` (run12) `PspInsertThread` 안에서 **`KeStartThread` → 멈춤(조건부) → 객체 등록 → 스레드 락 풀기 → 프로세스 알림(첫 스레드만) → 스레드 알림 → 스레드 핸들 → `KeReadyThread`** 순서다. 오프셋 순서가 아니라 점프를 따라간 순서다.
 - 주의 `[정적]`: 오프셋 순서가 늘 실행 순서인 건 아니다. 에러 길·공통 정리 길이 코드 뒤쪽에 모여 있고, 서명 검사 재시도는 루프다. 위 트리 번호는 **성공 길로 보이는 코드 순서**이고, `(정적)` 줄은 실행을 아직 안 봤다.
@@ -1027,8 +1039,10 @@ PE AddressOfEntryPoint (NT 헤더 +0x28, test.exe 0x1d40)
 | `+0x2c0` | 세션 번호 | SessionId |
 | `+0x7b8` | leap second 뷰 주소 | LeapSecondData |
 
-- `[정적]` **PEB `+0x18`, `+0x20`, `+0x30`은 쓰지 않는다.** ntdll 은 `+0x20`을 읽는데, 누가 채우는지는 아직 모른다 (4장).
+- `[정적]` **PEB `+0x18`, `+0x20`, `+0x30`은 쓰지 않는다.** ~~ntdll 은 `+0x20`을 읽는데, 누가 채우는지는 아직 모른다 (4장).~~
+  - → **(run32) `[정적]` `+0x20` 은 바로 뒤 `PspSetupUserProcessAddressSpace +0x1b9` 아래 `PspCopyAndFixupParameters` 가 쓴다** (`+0x52b` 또는 `+0x347`, 아래 절). `+0x18` (`PEB.Ldr`) 은 ntdll `LdrpInitializeProcess +0x1c1` (run18), `+0x30` (`ProcessHeap`) 도 ntdll `+0xa50` 쪽 (run18) 이다.
 - `[추측]` 유저 쪽(ntdll)이 나중에 읽을 프로세스 **안내판**(PEB). 비유하면 새 가게 문 앞에 "주소·층수·영업 규칙"을 붙여 두는 것.
+  - (run32) 안내판에 "개업 서류(프로세스 매개변수)는 이 방에" 칸(`+0x20`)은 이 함수가 아니라 다음 함수 쪽이 적는다.
 
 #### `nt!PspSetupUserProcessAddressSpace` (정적)
 
@@ -1037,8 +1051,71 @@ PE AddressOfEntryPoint (NT 헤더 +0x28, test.exe 0x1d40)
   - 메모리 할당(`ZwAllocateVirtualMemory` `+0x19c`) → `PspCopyAndFixupParameters` `+0x1b9`
   - `PspPrepareSystemDllInitBlock` `+0x1e6`
   - ApiSet 뷰 올리기(`MmMapApiSetView` `+0x255`), silo 공유 데이터 뷰(`PspMapSiloSharedDataView` `+0x263`)
-- `[추측]` `PspCopyAndFixupParameters`가 프로세스 매개변수(명령줄 등)를 새 프로세스로 복사하고 PEB `+0x20`에 잇는 곳. 본문은 안 봤다.
-- `[추측]` `PspPrepareSystemDllInitBlock`은 ntdll 에 넘길 시작 정보 묶음을 준비한다 (이름으로 본 것).
+- ~~`[추측]` `PspCopyAndFixupParameters`가 프로세스 매개변수(명령줄 등)를 새 프로세스로 복사하고 PEB `+0x20`에 잇는 곳. 본문은 안 봤다.~~ → **(run32) 맞다 `[정적]`** (아래 절).
+- ~~`[추측]` `PspPrepareSystemDllInitBlock`은 ntdll 에 넘길 시작 정보 묶음을 준비한다 (이름으로 본 것).~~ → **(run32) 맞다 `[정적]`**. 정확히는 새 프로세스 안 ntdll 의 `LdrSystemDllInitBlock` 에 직접 쓴다 (아래 절).
+- `[정적]` (run32) 순서 전체 (call / ret):
+  - 붙기 전: `+0x8d` / `+0x92` `PspGetStandardHandleList` (표준 핸들 상태가 1 일 때만) → `+0xa0 ~ +0xea` **커널 사본의 `Flags`·`LoaderThreads` 손보기** (아래 짝 표)
+  - `+0xf5` / `+0xfa` `KiStackAttachProcess` (붙기) → `+0x197` / `+0x19c` `ZwAllocateVirtualMemory` (매개변수 블록 자리, `Dst`)
+  - → **`+0x1b4` / `+0x1b9` `PspCopyAndFixupParameters`** → **`+0x1e1` / `+0x1e6` `PspPrepareSystemDllInitBlock(0, …)`** (보안 프로세스면 건너뜀) → `+0x1f2` / `+0x1f7` `PspWow64SetupUserProcessAddressSpace` → `+0x214` / `+0x219` 32비트 블록 (WoW64 만)
+  - → `+0x222` / `+0x227` `KeCopyXfdMaskToPeb` → `+0x22f` / `+0x234` `PspUpdatePebForAffinityChange` → `+0x250` / `+0x255` `MmMapApiSetView` → `+0x25e` / `+0x263` `PspMapSiloSharedDataView` → `+0x26a` / `+0x26f` 떼어내기
+  - run10 순서 (할당 → 매개변수 복사 → 시작 정보 블록 → ApiSet 뷰) 가 맞다. 이 함수 자신은 PEB 를 건드리는 줄이 없다.
+- `[정적]` (run32) **부르는 조건**: `PspAllocateProcess +0x236c ~ +0x2397` 에서 묶음 플래그(`[RSP+0x84]`) 비트 7 켜짐 + 만들기 정보 구조 ≠ NULL + 묶음 플래그 비트 1 꺼짐. 비트 7 은 `+0x20d2` 가 켠다 (`MmInitializeProcessAddressSpace` 성공 뒤, 섹션 있는 보통 실행). 아니면 `+0x2574` 갈래로 가서 이 함수 없이 직접 붙어 ApiSet 뷰·silo 뷰를 올리고 `+0x25dc`·`+0x25fc` 에서 `PspPrepareSystemDllInitBlock(…, 0)` 을 부른다. 매개변수 복사가 없어서 그런 프로세스는 **PEB `+0x20` 이 0** 으로 남는다.
+  - `[추측]` test.exe 는 (섹션 있음, 11번째 인자 있음) 이 함수 갈래, 곧 `PspPrepareSystemDllInitBlock` 은 **`+0x1e6` 한 자리**. 실제 플래그 값은 동적 (Q35).
+- 비유 (관리사무소 = 커널, 관리실 = ntdll): 건물 짓고 안내판(PEB)까지 단 뒤, 관리사무소가 가게 안으로 들어가서 ① 빈 방에 **개업 서류 사본**을 넣고 안내판에 "서류는 이 방에" 를 적고, ② 관리실 책상 위 **업무 수첩**(`LdrSystemDllInitBlock`) 칸을 채워 둔다. 관리실은 나중에 와서 읽기만 한다 (2.4).
+
+#### `nt!PspCopyAndFixupParameters` (rva `0xae57e4`, 1340바이트, run32 `[정적]`)
+
+- `[정적]` `PspSetupUserProcessAddressSpace +0x1b9` (call `+0x1b4`) 에서 부른다. 호출 8곳.
+- `[정적]` **원본(`Src`) = 커널 사본, 도착(`Dst`) = 새 프로세스 안.**
+  - `Src` = 만들기 정보 구조 `+0xd8` (`+0x2a`). 만드는 곳은 `NtCreateUserProcess +0xacb` `PspCaptureProcessParameters` — 부모가 준 9번째 인자를 받아, 사용자 모드 호출이면 `PspCaptureUserProcessParameters` (ret `+0x3f`) 로 **커널 풀에 새 사본**을 만든다.
+  - `Dst` = 같은 구조 `+0xe0` (`+0x40`), 자리는 `PspSetupUserProcessAddressSpace +0x19c` `ZwAllocateVirtualMemory` 가 잡는다 (주소는 시스템이 고름, 크기 = `MaximumLength + EnvironmentSize`, 작으면 `0x20000` 으로 올림).
+  - 부모 쪽에서 그 9번째 인자를 만드는 게 `BasepCreateProcessParameters` 라는 건 여전히 run14 `[추측]` 이다.
+- `[정적]` **PEB `+0x20` 쓰기** — 기능 스위치(`+0x19d`, ret `+0x1a2`, 전역 `Feature_CreateProcessSegmentHeapEnablement…featureState` rva `0xfc4110`)로 두 갈래:
+  - 꺼짐 (`+0x1a4 JZ`): `+0x41f` (ret `+0x424`) 메모리 복사 → 복사본 안 포인터 고침 → **`+0x52b MOV [RAX+0x20],RDI`**.
+  - 켜짐: 원본 앞 0x450 바이트 백업 → 원본 쪽 포인터 고침 → `+0x324` (ret `+0x329`) `RtlCopyToUser` → **`+0x347` (ret `+0x34c`) `RtlWriteULong64ToUser(PEB+0x20, Dst)`** → 백업 되돌림.
+  - 새 PEB 는 `GS:[0x188]` → `+0xb8` (붙은 프로세스) → `_EPROCESS.Peb` (`+0x2e0`) 로 찾는다. 두 갈래 다 **복사가 끝난 뒤** 쓰고, 쓰기 결과는 검사하지 않는다.
+  - 어느 갈래인지는 스위치 값이라 동적 (Q35). 스위치 이름의 "SegmentHeap" 이 이 일과 왜 묶였는지는 모른다.
+- `[정적]` **"Fixup" = 안쪽 포인터 12개를 새 주소 기준 절대 주소로 고치기**: 칸 = `Dst + (칸 − Src)`, 0 이면 건너뜀. 대상 (PDB `_RTL_USER_PROCESS_PARAMETERS`): `CurrentDirectory.DosPath`·`DllPath`·`ImagePathName`·`CommandLine`·`WindowTitle`·`DesktopInfo`·`ShellInfo`·`RuntimeData`·`RedirectionDllName`·`HeapPartitionName` 의 `Buffer`, `Environment` (+0x80), `DefaultThreadpoolCpuSetMasks` (+0x430). `PackageDependencyData` (+0x400) 와 `CurrentDirectores[32]` 안쪽은 안 고친다 (이유 모름).
+- `[정적]` **정규화 비트(`Flags` 비트 0)는 안 건드린다.** 이 함수가 `Flags` 를 바꾸는 줄은 `+0x82` (비트 14 켜기, 조건부) 하나다. 대신 들어올 때 `PspCaptureUserProcessParameters +0x8f ~ +0xa8` 이 "비트 0 켜짐(정규화된 꼴) + 마스크 `0xf4010e11` 의 다른 비트 꺼짐" 을 검사한다 (아니면 `0xC000000D`). 그래서 커널 사본은 처음부터 포인터가 든 꼴이다.
+  - ntdll `LdrpInitializeProcess +0x6c5 RtlNormalizeProcessParams` (run18) 가 이미 정규화된 블록에서 무엇을 하는지는 ntdll 본문을 안 읽어 모른다 `[추측: 할 일 없음]` (Q63 (d)).
+- `[정적]` **핸들 복제** (`ObDuplicateObject`, 부모 → 새 프로세스):
+  - ret `+0xbc`: `ConsoleHandle` (+0x10) — 이미지 서브시스템 값 3 (콘솔 `[추측: 값 이름]`) 이고 핸들 > 0 일 때.
+  - ret `+0x130`: 표준 입력·출력·오류 (+0x20/+0x28/+0x30), 세 번 도는 고리 — 복제할 목록이 있을 때. 목록은 만들기 정보 `+0x11` 비트 2~3 값으로 정해진다 (`PspSetupUserProcessAddressSpace +0x41 ~ +0x73`; 1 = `PspGetStandardHandleList` 로 부모 것, 2 = 매개변수 안 칸 그대로). `[추측]` 공개 문서의 `PS_STD_HANDLE_INFO.StdHandleState` 와 같은 모양. `+0x11` 을 채우는 줄은 Q63 (c).
+- 비유: 관리사무소 서랍의 **개업 서류 사본**을 가게 안 빈 방에 옮기고, 서류 속 "몇 쪽 참고" 쪽지들을 새 방 기준 쪽 번호로 고쳐 쓴 뒤, **안내판(PEB) `+0x20` 칸에 "서류는 이 방에"** 라고 적는다. 콘솔·입출력 열쇠(핸들)도 새 가게용으로 복사해 준다.
+
+#### `nt!PspPrepareSystemDllInitBlock` (rva `0x9395d0`, 812바이트, run32 `[정적]`)
+
+- `[정적]` 부르는 자리 **4곳**: `PspSetupUserProcessAddressSpace +0x1e6` (64비트 ntdll, 보안 프로세스 아닐 때), `+0x219` (32비트 ntdll, WoW64 만), `PspAllocateProcess +0x25dc`·`+0x25fc` (`PspSetupUserProcessAddressSpace` 를 안 부른 갈래, 둘째 인자 0). test.exe 는 `+0x1e6` 일 것 `[추측]` (위 절).
+- `[정적]` **쓰는 곳 = 새 프로세스 안 ntdll 의 전역 `LdrSystemDllInitBlock`** (0x128 바이트). 64비트면 `+0x214` 에서 `PsNtdllExports` 의 `+0x0` 칸 (PDB `_PS_NTDLL_EXPORTS.LdrSystemDllInitBlock`, 부팅 때 채운 표, run16) 으로 주소를 얻는다. 32비트면 `+0x2e2` WoW64 공유 표의 7번째 칸. 커널 쪽 표가 아니다.
+  - 붙은 프로세스(`GS:[0x188]+0xb8`)를 "새 프로세스" 로 쓴다. 맨 앞 4바이트가 `0x128` 이 아니면 `0xC0000059` 로 끝 (`+0x98 ~ +0x9f`, `+0x1ee`).
+- `[정적]` **채우는 칸 대표** (블록 오프셋·쓰는 줄은 `[정적]`, 칸 이름은 PDB 에 이 타입이 없어서 `[추측]` 후보):
+  - `+0x98` ← `+0xfb` (ret `+0x100`) `ExGenRandom(1)` — 난수 (RngData `[추측]`)
+  - **`+0xa0 ~ +0xb7`** (24B) ← `+0x12b`·`+0x138`. 값은 `PspAllocateProcess` 가 `+0x1eb8` `PspApplyMitigationOptions` 에 넘긴 24바이트 (`+0x1f3f ~ +0x1f50` 이 만들기 정보 `+0x150` 에 복사) — 완화 옵션 (MitigationOptionsMap `[추측]`)
+  - **`+0xb8`** ← `+0x15a`. 새 프로세스 `Vm.Instance.VmWorkingSetList` (`EPROCESS+0x410`) 구조의 `+0x4a0` (이름 PDB 에 없음) — CFG 비트맵 주소 (CfgBitMap `[추측]`). `+0xc0` ← `+0x169` (같은 구조 `+0x4a8`, 크기 `[추측]`)
+  - `+0xd8 ~ +0xef` ← `+0x145`·`+0x152` (만들기 정보 `+0x1c0 ~ +0x1d7`, 감사용 완화 옵션 `[추측]`)
+  - `+0xf0 ~ +0x127` ← `+0x196` (ret `+0x19b`) `PspGetScpCfgFunctions` 가 돌려준 전역 표 `PspNtdllScpFunctions` 7칸 (NULL 이면 안 채움). 표는 부팅 때 `PspLocateNtdllAddressesForScpCfg` 가 채운다. 값이 ntdll 의 어떤 함수인지, "SCP" 뜻은 모른다 (Q63 (b))
+  - 그 밖: `+0x8`·`+0x10` (시스템 DLL 기록의 `+0x38` 값), `+0x18 ~ +0x97` (WoW64 공유 정보 16칸), `+0x9c` (플래그 비트 0), `+0xc8`·`+0xd0` (WoW64 만). 전체 표는 run32 문서.
+- `[정적]` `+0xb8` 비트맵을 만드는 쪽은 지도상 `MmInitializeProcessAddressSpace +0x1c9 → MiMapProcessExecutable +0xe3 → MiCfgInitializeProcess` 로 보인다. 시간 순서(`+0x2095` → `+0x239c`)는 맞다. 그 함수가 `+0x4a0` 칸을 쓰는지는 Q63 (b).
+- `[정적]` run16 이 넘긴 "`LdrInitializeThunk` 로 가는 `Rdx`" 는 이 블록이 아니라 `PspSystemDlls[0]+0x20` 이다 (run16·run18). 그래서 4장 "2.3 공백과 이어질 수 있음" 은 이어지는 줄이 없었다.
+- 비유: 관리사무소가 **관리실(ntdll) 책상 위 업무 수첩**에 직접 칸을 채워 둔다 — 오늘의 난수, 안전 규칙(완화 옵션), CFG 출입 명단(비트맵)이 어디 있는지, 검사 담당 함수 주소들. 관리실은 출근해서 수첩을 펴 보기만 한다.
+
+#### 커널이 쓰고 ntdll 이 읽는 칸 — 짝 표 (run32 `[정적]`)
+
+ntdll 쪽은 **이미 이 문서에 적힌 줄만** 짝지었다 (run32 는 ntdll 을 새로 안 읽음).
+
+| 칸 | 커널이 쓰는 줄 `[정적]` | ntdll 이 읽는 줄 (문서) | 짝 |
+|---|---|---|---|
+| **PEB `+0x20`** (`ProcessParameters`) | `PspCopyAndFixupParameters +0x52b` 또는 `+0x347` (ret `+0x34c`) | `LdrpInitialize` 의 `ProcessParameters.Flags` 맨 윗 비트 (`+0x5a`, run17), `LdrpInitializeProcess +0x6c5 RtlNormalizeProcessParams`·`+0xc3f RtlpInitParameterBlock` (run18) — 2.4 | **맞음** |
+| `Flags` 비트 29 (`0x20000000`) | **`PspSetupUserProcessAddressSpace +0xe6 BTS EBX,0x1d` → `+0xea` 저장.** 조건 `PsGetProcessServerSilo` (ret `+0xd5`) → `PsGetServerSiloGlobals` (ret `+0xdd`) → `+0x3f8` 바이트 ≠ 0 (PDB `_ESERVERSILO_GLOBALS.OneCoreForwardersEnabled`) | `LdrpInitializeKernel32Functions` "이미 있음" 길 `+0x1ff` — 켜졌으면 (4)~(6) 건너뜀 (run20) — 2.5 | **맞음 + 이름 단서** `[추측: OneCore forwarders 켜짐]` |
+| `Flags` 비트 15 (`0x8000`) | `PspSetupUserProcessAddressSpace +0xb1` (조건 `PspGlobalFlags` 비트 0) | 문서에 없음 | 빈 곳 (Q63 (d)) |
+| `Flags` 비트 14 (`0x4000`) | `PspCopyAndFixupParameters +0x82` | 문서에 없음 | 빈 곳 (Q63 (d)) |
+| `LoaderThreads` (+0x40c) | `PspSetupUserProcessAddressSpace +0xb8 ~ +0xc7` — 0 이면 전역 `PsDefaultLoaderThreads` 로 채움 | `LdrpInitializeProcess +0x1a47 LdrpEnableParallelLoading` 의 `ECX` (run19·run24). IFEO `MaxLoaderThreads` 는 `LdrpInitializeExecutionOptions` (ret `+0x536`) 가 같은 칸에 씀 (run18) — 3장 | **맞음.** 커널이 기본값, ntdll 이 IFEO 로 덮을 수 있음. `PsDefaultLoaderThreads` 값은 동적 Q47 |
+| **블록 `+0xa0`** (24B) | `PspPrepareSystemDllInitBlock +0x12b`·`+0x138` | `LdrpInitializeProcess` 묶음 4 (`+0x4a8 ~ +0x579`, run18 "무결성 설정 비트 두 개") — 2.4 | **맞음 (구간).** 두 비트의 읽는 줄·뜻은 그대로 빈 곳 |
+| **블록 `+0xb8`** | `PspPrepareSystemDllInitBlock +0x15a` | `LdrpDispatchUserCallTarget` `+0x0 ~ +0x2f` (run28) — 2.7 | **맞음.** 값 = CFG 비트맵 주소 |
+| 블록 그 밖 (`+0x8`·`+0x10`·`+0x18 ~ +0x97`·`+0x98`·`+0x9c`·`+0xc0 ~ +0xd0`·`+0xd8 ~ +0xef`·`+0xf0 ~`) | 위 절 | 문서에 없음. `+0x98` 난수 ↔ run18 `LdrInitializePerThreadRng` 는 이름만 본 후보 `[추측]` | 빈 곳 (Q63 (d)) |
+
+- `[정적]` 비트 15·29 와 `LoaderThreads` 는 **붙기 전 커널 사본**에 쓴다 (`+0xa0 ~ +0xea`). 그 값이 `+0x1b9` 복사 때 새 프로세스로 같이 넘어간다.
+- `[정적]` 비트 29 는 사용자가 켜서 넘길 수 없다: 들어올 때 검사 마스크 `0xf4010e11` 에 비트 29 가 들어 있어서 켜져 있으면 실패한다 (`PspCaptureUserProcessParameters +0x8f ~ +0xa8`). 곧 **커널만 켜는 비트**다.
 
 #### `nt!PspCreateUserContext` (정적)
 
@@ -1682,6 +1759,8 @@ LdrInitializeThunk                                  ← Rcx = 맡긴 원래 문�
 - `[정적]` 콜스택엔 안 나오는 함수다 (꼬리 점프). 01_sprint 에서 `LdrpInitialize` 로 보인 건 아래 `_LdrpInitialize` 다.
 - `[정적]` 하는 일 (코드 순서):
   1. 전역 `SecurityCookieInitialized == 0` 이면 `InitSecurityCookie` (call `+0x41`, ret `+0x46`). 이어서 `PEB.ProcessParameters.Flags` 맨 윗 비트가 켜졌으면 `LdrpIsSecureProcess = 1` (`+0x5a`). 그 비트 이름은 PDB 에 없다 `[공백]`.
+     - (run32 `[정적]`) 여기서 읽는 매개변수 블록은 커널 `PspCopyAndFixupParameters` 가 새 프로세스로 복사해 PEB `+0x20` 에 건 것이다 (2.1 짝 표).
+     - 이 비트(비트 31)를 켜는 곳은 모른다. 사용자는 못 켜고(입력 마스크 `0xf4010e11`), run32 가 읽은 커널 줄에도 없다 → Q63 (e).
   2. 전역 `SpecialMachineFramesInitialized == 0` 이면 `InitSpecialMachineFrames` (ret `+0x27`).
   3. `__cpu_features_init` (ret `+0x2c`) — 늘.
   4. `+0x3c JMP LdrpInitializeInternal`. `RCX`·`RDX` 는 받은 그대로 (`+0x11`/`+0x14` 피신 → `+0x2c`/`+0x2f` 되돌림).
@@ -1786,6 +1865,8 @@ LdrpInitializeProcess (0x8c404)          ← RCX = CONTEXT 레코드 → [RSP+0x
 | 10 | `+0x1169 ~ +0x12dd` | exe 폴더 종류 검사, exe 파일 이름 잘라 두기 (`[RSP+0x130]` → 뒤쪽 `BaseDllName`. ~~exe 폴더~~ run19 정정), **ntdll 모듈 항목**, (있으면) 패치 ntdll 항목, 히스토리 표, 초기화 순서 목록 연결 | `LdrpInitializeNtdllDataTableEntry` `+0x119d / +0x11a2` | 4 (0) |
 
 - 잡일 = `memset`·`RtlAppend*`·`LdrpLogInternal`·`RtlAllocateHeap`/`RtlFreeHeap`·`__security_check_cookie`, 합 30. 묶음 나누기·이름 주의(`alias:` 2곳)는 run18 문서.
+- `[정적]` (run18) 묶음 4 (`+0x4a8 ~ +0x579`) 는 IFEO 읽기 앞에서 `LdrSystemDllInitBlock+0xa0` 의 "무결성 설정 비트" 두 개를 읽는다 (run18 문서 표).
+  - (run32 `[정적]`) 그 칸은 커널 `PspPrepareSystemDllInitBlock +0x12b`·`+0x138` 이 채운 24바이트이고, 출처는 `PspAllocateProcess` 의 완화 옵션(`PspApplyMitigationOptions` 에 넘긴 값)이다 (2.1). 두 비트의 뜻은 그대로 모른다.
 - `[정적]` **입구 인자**: `RDX` 는 앞쪽에서 ntdll 시작 주소로 쓴다 (처음 `+0x3f9`). `RCX` 는 `[RSP+0xe0]` 에 저장만 하고 앞쪽에선 안 쓴다. ~~`RCX`(로더 문맥)~~ → (run19) `RCX` = **CONTEXT 레코드** (첫 스레드의 맡긴 문맥, run16·17 과 같은 것). `+0x18b4` 가 그 `_CONTEXT.Rcx` 칸(0x80, PDB)에 쓴다. 뒤쪽 쓰임은 아래.
 - `[정적]` **PEB.Ldr 는 여기서 생긴다**: ntdll 전역 `PebLdr`(rva `0x1d2880`, `_PEB_LDR_DATA`) 를 빈 목록 3개(적재·메모리·초기화 순서)로 채우고 `+0x1c1` 에서 PEB+0x18 에 건다. 커널이 아니라 ntdll 이 채운다.
 - `[정적]` **앞쪽 끝 모듈 목록 = ntdll 뿐.** ntdll 항목은 `+0x119d` 에서 조건 없이 만들고 `+0x1283 ~ +0x12d7` 에서 초기화 순서 목록에 직접 끼운다. 적재·메모리 순서 목록에 넣는 건 `LdrpInitializeNtdllDataTableEntry` 안(`LdrpInsertDataTableEntry`)으로 보인다 `[추측]`. **exe 항목은 뒤쪽** `+0x1359 LdrpAllocateModuleEntry` (→ `LdrpImageEntry`, run19 아래).
@@ -1865,7 +1946,7 @@ LdrpInitializeProcess
  └─ +0x19a2  LdrpInitializeKernel32Functions (0xb8024)       [관찰] run7. RCX = 출력 칸 (입구 +0x6c 에서 0)
       ├─ (1) +0x86   LdrpAppendUnicodeStringToFilenameBuffer  버퍼에 "KERNEL32.DLL"            [정적]
       ├─ (2) +0xa4   LdrpFindLoadedDllInternal (플래그 0x20)  이름만으로 이미 있나            [정적]
-      │      찾음 → +0x1ff: 베이스 = 항목+0x30. ProcessParameters.Flags 0x20000000 켜졌으면 (4)~(6) 건너뜀
+      │      찾음 → +0x1ff: 베이스 = 항목+0x30. ProcessParameters.Flags 0x20000000 켜졌으면 (4)~(6) 건너뜀 (그 비트는 커널 +0xe6 이 켬, run32)
       ├─ (3) +0xc0   LdrLoadDll(0x4001, 0, "KERNEL32.DLL")     못 찾았을 때만                  [관찰] run7 + [정적]
       │     └─ +0x170  LdrpLoadDll
       │          ├─ +0xc2   LdrpPreprocessDllName                                              [정적]
@@ -1906,6 +1987,7 @@ LdrpInitializeProcess
 - `[정적]` (run20) **순서**: 이름 버퍼 만들기 → **이미 있나 확인** → (없으면) KERNEL32 올리기 → kernel32 에서 함수 둘 찾기 → `LdrpSnapKernelBaseExtensions` → KERNELBASE 올리기 → `LdrpCodeAuthzInitialize` → kernelbase 에서 `KernelbasePostInit` 찾아 부르기. 위 트리 (1) ~ (10).
   - "이미 있나" (`+0xa4`): `LdrpFindLoadedDllInternal` 에 플래그 `0x20` → 안에서 `LdrpFindLoadedDllByName` 만 부른다. 즉 **이름만으로 모듈 목록(해시 표 `LdrpHashTable`)을 뒤지는 확인**. 찾으면 첫째 `LdrLoadDll` 을 건너뛴다 (`+0xa6 JNS`).
   - 찾은 길에서 `PEB.ProcessParameters.Flags` 의 `0x20000000` 비트가 켜져 있으면 kernel32 쪽 (4)~(6) 도 건너뛴다. 이 비트 이름은 PDB 로 못 찾았다 `[추측: 특수 모드의 예외 길]`.
+    - (run32 `[정적]`) **이 비트는 커널이 켠다**: `PspSetupUserProcessAddressSpace +0xe6 BTS EBX,0x1d` (→ `+0xea` 저장, 새 프로세스로 복사하기 전 커널 사본에). 조건은 서버 silo 전역의 `OneCoreForwardersEnabled` 바이트 (`_ESERVERSILO_GLOBALS +0x3f8`, PDB 칸 이름) ≠ 0. 사용자가 켜서 넘기면 입력 검사(마스크 `0xf4010e11`)에서 실패한다. 그래서 "이미 올라와 있음 + OneCore forwarders 켜진 silo" 일 때 kernel32 의 `BaseThreadInitThunk` 찾기 등을 건너뛰는 길로 보인다 `[추측: 이름 뜻]`. 보통 데스크톱 test.exe 에서 그 silo 값은 동적 (Q35). 짝 표는 2.1.
   - `0xc0000135` (`STATUS_DLL_NOT_FOUND` 값) 는 두 곳(첫째 `LdrLoadDll`, `LdrpCodeAuthzInitialize`)에서 일부러 실패로 안 친다 `[추측: kernel32 가 없는 프로세스용 길]`.
   - 실패로 끝나는 길 7곳: 로그 남기고 6곳 (KERNEL32·KERNELBASE 적재, `BaseThreadInitThunk`·`KernelbasePostInit` 찾기, CodeAuthz, `KernelbasePostInit` 호출), 로그 없이 1곳 (`LdrpSnapKernelBaseExtensions`). 어느 쪽이든 상태를 돌려주고, 호출자 `+0x19a2` 가 음수면 에러 끝으로 간다.
 - `[추측]` exe가 무엇을 import하든 상관없이, ntdll이 kernel32를 **스스로** 불러온다.
@@ -2208,6 +2290,7 @@ LdrpLoadDependentModuleInternal(이름, 부모문맥, 부모항목, 이유, &결
 - `[정적]` `LdrpMapAndSnapWork` 는 **`LdrpEnableParallelLoading +0xe2 TpAllocWork`** 가 채운다 (콜백 = `LdrpWorkCallback`, `+0x9d`). 안 채우는 경우: 스레드 수 ≤ 1 (`+0x7f ~ +0x82`) 또는 `LdrpDetourExist ≠ 0` (`+0x84`). 스레드 수 = 인자(`LoaderThreads`)가 0 이면 4 (스위트 마스크 비트 16 이면 0), 아니면 `min(인자, 16)`. 지우는 곳: `LdrpDetectDetour +0xd5`, `LdrpCompleteProcessCloning +0x78`.
   - 그래서 **병렬 켜기(`LdrpInitializeProcess +0x1a47`) 앞에는 일꾼을 안 깨운다.** 켠 뒤에 깨우는지는 실행 값 → 동적 Q47.
   - `[추측]` IFEO 를 따로 안 줬다면 `LoaderThreads` = 0 → 스레드 수 4 → 일감 개체가 생긴다. run5 `[관찰]` 의 ntdll 일꾼 2개와 어긋나지 않는다.
+    - (run32 `[정적]`) 단 커널이 먼저 손본다: `PspSetupUserProcessAddressSpace +0xb8 ~ +0xc7` 이 0 이면 전역 `PsDefaultLoaderThreads` 로 채운다. 그래서 IFEO 가 없어도 ntdll 이 받는 값은 0 이 아니라 그 전역 값일 수 있다. 위 "0 → 4" 는 그 전역이 0 일 때의 이야기다. 실제 값은 동적 (Q47·Q35).
 - `[정적]` 큐·잠금·이벤트 둘(`LdrpWorkCompleteEvent`, `LdrpLoadCompleteEvent`, 자동 리셋)은 `LdrpInitializeProcess +0x12e3 LdrpInitParallelLoadingSupport` 가 만든다 (run19 의 "이벤트·임계 구역만 만든다" 가 이것).
 
 #### 로드 책임자 `ntdll!LdrpDrainWorkQueue` (rva `0xad400`, 456바이트, 호출 8곳, run24 `[정적]`)
@@ -2631,6 +2714,7 @@ LdrpInitializeNode +0x16b  (exe 는 LdrpInitializeProcess +0x1c99)
 - `[정적]` TLS 길·진입점 길이 **둘 다** 지나간다. 자기 `__try` 는 없다.
 - `[정적]` **CFG 중개**: `+0x1d` 의 대상 `0x180172020` 은 5바이트 중개 → `_guard_dispatch_icall` → 칸 `__guard_dispatch_icall_fptr` (rva `0x1e6000`) 을 따라가는 **`JMP` 뿐**이다. 그래서 콜스택에 따로 안 보이고, 불린 함수의 바로 위 프레임은 `LdrpCallInitRoutineInternal+0x22` 다.
   - 칸의 파일 값은 `_guard_dispatch_icall_nop` (`JMP RAX`, 검사 없음). CFG 가 켜지면 `LdrpDispatchUserCallTarget` (비트맵 검사, 틀리면 `LdrpHandleInvalidUserCallTarget` 로 꼬리 점프) 으로 바뀌는지는 동적 Q27.
+  - (run32 `[정적]`) 그 비트맵 주소 칸 `LdrSystemDllInitBlock+0xb8` 은 커널 `PspPrepareSystemDllInitBlock +0x15a` 가 채운다 (2.1 짝 표).
 
 #### `ntdll!ImageTlsCallbackCaller` (rva `0xe83e0`, 55바이트, run28 `[정적]`)
 
@@ -2969,6 +3053,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 - `[정적]` (run18, 자리만) 메인 스레드의 `LdrpInitializeProcess` 앞쪽 `+0xb83` 에 스레드 풀 준비 `TpInitializePackage` 가, 뒤쪽 첫 호출 `+0x12de` 에 `LdrpInitParallelLoadingSupport` 가 있다. `[추측]` 일꾼은 이 뒤쪽 준비 뒤에 만들어진다 (이름으로만, 만드는 줄은 Q9b).
   - `[정적]` (run19) 좁혀졌다. `+0x12de` 는 이벤트·임계 구역만 만든다 (callee 이름 `RtlInitializeCriticalSectionEx`, `LdrpCreateLoaderEvents`). **스레드 풀을 만드는 첫 자리는 `+0x1a42` (ret `+0x1a47`) `LdrpEnableParallelLoading`** 이다 (callee 이름 `TpAllocPoolInternal`, `TpSetPoolMaxThreads`, `TpSetPoolWorkerThreadIdleTimeout`, `TpAllocWork`).
     - 인자 `ECX` = `ProcessParameters.LoaderThreads` (+0x40c, PDB. IFEO `MaxLoaderThreads` 를 `LdrpInitializeExecutionOptions` 가 여기에 씀). `PEB.AppCompatFlags` 비트 28 이 켜졌으면 1 로 고정.
+      - (run32 `[정적]`) 그 칸은 커널이 먼저 채운다: `PspSetupUserProcessAddressSpace +0xb8 ~ +0xc7` 이 0 이면 전역 `PsDefaultLoaderThreads` 값으로 (새 프로세스로 복사하기 전). 그 뒤 ntdll 이 IFEO 로 덮을 수 있다 (2.1 짝 표).
     - 일감이 처음 들어갈 수 있는 곳은 바로 뒤 `+0x1aa4 LdrpMapAndSnapDependency` 안 (`LdrpQueueWork`), 그리고 `+0x1aac LdrpDrainWorkQueue(1)` 이 일감을 처리·기다린다 (callee 이름 `LdrpProcessWork`, `NtWaitForSingleObject`).
       - `[정적]` (run22) 더 좁혀졌다: `LdrpMapAndSnapDependency` 의 `+0x4f7 LdrpQueueWork` 는 **부모가 있는 문맥**(문맥 `+0x30 ≠ 0`)의 snap 만 넘긴다. exe 문맥은 부모가 없어 안 탄다. 그러니 exe import 길의 첫 일감 후보는 dll1·dll2 쪽 (`+0x34e LdrpLoadDependentModuleInternal` 아래, 같은 함수가 다시 불린 곳의 `+0x4f7`, 그리고 `LdrpLoadDependentModuleInternal +0x182c`) `[정적: 코드 모양]`.
       - `[정적]` (run23) `LdrpLoadDependentModuleInternal +0x182c LdrpQueueWork` 의 조건이 정해졌다: **새로 만든 항목이 KnownDll 도 아니고(`0xc0000135`), 경로를 직접 준 이름도 아닐 때(flags `0x400` 꺼짐)**. 이미 올라와 있던 DLL 은 안 넣는다. `LdrpModuleDatatableLock` 독점을 **잡은 채** 부른다. 병렬 로딩 켜짐 여부는 읽지 않는다.
@@ -2980,6 +3065,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
     - `[정적]` (run24) **일꾼이 하는 일이 코드로 정해졌다.** `LdrpEnableParallelLoading` 이 풀(`LdrpThreadPool`, 늘)과 일감 개체(`LdrpMapAndSnapWork`, `+0xe2 TpAllocWork`, 콜백 `LdrpWorkCallback`)를 만든다. 일감 개체는 스레드 수(`LoaderThreads` 0 이면 4, 아니면 `min(값, 16)`) > 1 이고 `LdrpDetourExist == 0` 일 때만 생긴다. `LdrpQueueWork` 는 그 개체가 있을 때만 `TpPostWork` 로 일꾼을 깨운다.
     - `[정적]` (run24) 깨어난 일꾼은 `TppWorkpExecuteCallback` 안 복사본 반복(`+0x2e0`) 또는 `LdrpWorkCallback`(`+0xb8`) 으로 **큐가 빌 때까지** `LdrpProcessWork(일감, 0)` 를 돈다. 처음 한 번 메인 스레드 토큰을 가장한다. 메인(책임자)은 `Drain(1)` 에서 같은 큐를 같이 비우고, 비면 일꾼이 끝나길 기다린다 (2.6).
     - `[추측]` (run24) IFEO 를 안 줬다면 `LoaderThreads` = 0 → 스레드 수 4 → 최대 3 → 일감 개체가 생긴다. run5 `[관찰]` 의 일꾼 2개와 어긋나지 않는다. 일꾼이 `TpPostWork` 때 생기는지(풀을 만들 때가 아니라)는 `Tp*` 본문이라 모른다. run8 "BEFORE-GRAPH 무렵 도착" 은 exe import 일감이 처음 들어가는 `+0x1aa9` 뒤라 그 짐작과 맞는다 → 동적 Q47.
+      - (run32) 위 처음 값이 0 이 아니라 커널 기본값 `PsDefaultLoaderThreads` 일 수 있다 (바로 위). 그 전역 값은 동적 (Q47·Q35).
     - `[정적]` (run24) kernel32 준비 때(`+0x1a47` 앞)는 `LdrpMapAndSnapWork == 0` 이라 일꾼을 안 깨운다. run22 가 남긴 "kernel32 준비 때 일감이 어디서 도나" → **같은 스레드의 `LdrpLoadDllInternal +0x21a Drain(1)`** (코드상).
   - run8 `[관찰]` "BEFORE-GRAPH(`+0x1bb6`, call 자리) 무렵 도착" 과 어긋나지 않는다 (`+0x1a42` 는 그보다 앞). kernel32 준비(`+0x199d`)는 그 **앞**이라 일꾼 없이 메인 스레드가 한다 `[추측]`.
     - `[정적]` (run22) 다만 kernel32 준비 때도 `LdrpQueueWork` 를 타는 **코드 길**은 있다: kernel32 의 자식(kernelbase 등) 문맥은 부모 칸이 kernel32 항목이라 끝맺음이 `+0x4f7 LdrpQueueWork` 다 (2.5). 풀이 아직 없을 때 그 일감이 어디서 도는지는 모른다 → "일꾼 없이 메인 스레드가 한다" 는 여전히 `[추측]` (동적 Q47·Q20).
@@ -3009,8 +3095,10 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.1 | (해결됨) `PspAllocateProcess`가 직접 부르는 함수, 주소 공간·exe·ntdll·PEB 순서 → run10 `[정적]` (144줄, (가)→(나)→(다)→(라)) |
 | 2.1 | `MmInitializeProcessAddressSpace`를 test.exe 때 `+0x2095`(보통 길)와 `+0x2113`(복제 길) 중 어디서 탔는지 — `[추측]` `+0x2095` |
 | 2.1 | `PspAllocateProcess`의 간접 호출 2곳 대상: `+0x121a`(전역 포인터 `nt+0xf04d28`), `+0x17c4`(전역 포인터 `nt+0xf04d20`) — 동적으로만 앎 |
-| 2.1 · 2.4 | PEB `+0x20`은 `MmCreatePeb`가 안 씀 (run10 `[정적]`) → 누가 쓰나. 후보 `PspSetupUserProcessAddressSpace +0x1b9` `PspCopyAndFixupParameters` (본문 안 봄) |
-| 2.1 | `PspPrepareSystemDllInitBlock`(`PspSetupUserProcessAddressSpace +0x1e6`) 안쪽: ntdll 로 넘기는 시작 정보인지 (2.3 공백과 이어질 수 있음 `[추측]`) |
+| 2.1 · 2.4 | (해결됨, 정적) PEB `+0x20`은 `MmCreatePeb`가 안 씀 (run10 `[정적]`) → 누가 쓰나. 후보 `PspSetupUserProcessAddressSpace +0x1b9` `PspCopyAndFixupParameters` (본문 안 봄) → run32 `[정적]`: **`PspCopyAndFixupParameters` 가 쓴다** — 기능 스위치(`nt+0xfc4110`)에 따라 `+0x52b` 저장 또는 `+0x347` (ret `+0x34c`) `RtlWriteULong64ToUser`. 원본 = `NtCreateUserProcess +0xacb` `PspCaptureProcessParameters` 의 커널 사본, 자리 = `+0x19c` `ZwAllocateVirtualMemory`, 안쪽 포인터 12개 절대 주소로 고침. 어느 갈래·실제 값은 동적 Q35 |
+| 2.1 | (해결됨, 정적) `PspPrepareSystemDllInitBlock`(`PspSetupUserProcessAddressSpace +0x1e6`) 안쪽: ntdll 로 넘기는 시작 정보인지 (2.3 공백과 이어질 수 있음 `[추측]`) → run32 `[정적]`: **새 프로세스 안 ntdll 의 `LdrSystemDllInitBlock` (0x128B) 에 직접 쓴다** (주소 `PsNtdllExports+0x0`). 난수 `+0x98`, 완화 옵션 `+0xa0`, CFG 비트맵 주소 `+0xb8`, SCP 함수 표 `+0xf0 ~`. 부르는 자리 4곳 중 test.exe 는 `+0x1e6` 로 보임 `[추측]`. 2.3 과 이어지는 줄은 없음 (`LdrInitializeThunk` 의 `Rdx` 는 `PspSystemDlls[0]+0x20`, run16) |
+| 2.1 | 매개변수 복사·시작 정보 블록 실행 값 (run32 결과서 동적 1~4) — 동적 **Q35**: `dd nt+0xfc4110 L1` (기능 스위치 비트 4·0 → `+0x52b`/`+0x347` 갈래), `nt+0x9395d0` (`PspPrepareSystemDllInitBlock` 입구) `[rsp]` = `nt+0xae5f1a` (`+0x1e6`) 인가 · `nt+0xa04b44`·`nt+0xa04b64`·`nt+0xae5f4d` 는 안 서야 함, `nt+0xae5eed` (`+0x1b9` 복사 직후) 새 PEB `+0x20`·`Flags` (`0x1`·`0x4000`·`0x8000`·`0x20000000`)·`LoaderThreads`·`Buffer` 가 `Dst` 안인가, `nt+0xae5f1a` (`+0x1e6` 채운 뒤) 블록 `+0x98`·`+0xa0`·`+0xb8`/`+0xc0`·`+0xf0 ~` (`ln`). 붙어 있는 동안이라 읽기 문맥 주의 `[추측]` |
+| 2.1 | 매개변수·시작 정보 블록 작은 정적 묶음 (run32) — 정적 **Q63**: (a) `PspCaptureUserProcessParameters` 의 `Flags` 마스크 `0xf4010e11` 각 비트와 `Environment` 배치, (b) `MiCfgInitializeProcess` 가 작업 집합 구조 `+0x4a0`/`+0x4a8` (블록 `+0xb8`/`+0xc0` 출처) 을 쓰나, `PspLocateNtdllAddressesForScpCfg` 가 `PspNtdllScpFunctions` 에 넣는 ntdll 함수 이름, (c) `PspBuildCreateProcessContext` 가 만들기 정보 `+0x11` (표준 핸들 상태) 를 채우는 줄, (d) (ntdll 새로 읽기 — 할지 차례 때 사용자와 정함) 블록의 문서 없는 칸(`+0x8`·`+0x10`·`+0x98`·`+0xc0`·`+0xd8 ~`·`+0xf0 ~`)과 `Flags` `0x4000`·`0x8000` 을 ntdll 이 읽는 줄, `RtlNormalizeProcessParams` 가 이미 정규화된 블록에서 하는 일, (e) `ProcessParameters.Flags` 비트 31 (`LdrpIsSecureProcess` 비트, run17) 을 누가 켜나 — 입력 마스크 `0xf4010e11` 에 들어 있어 사용자는 못 켜고, run32 가 읽은 커널 줄은 비트 14·15·29 만 켬, (f) 작은 뜻 찾기: `PackageDependencyData`(+0x400)·`CurrentDirectores[32]` 안쪽을 안 고치는 이유, 기능 스위치 이름의 "SegmentHeap", "SCP" 의 뜻 |
 | 2.1 | `NtCreateUserProcess`의 간접 호출 2곳의 실제 대상: `+0x5b2`(전역 포인터 `nt+0xfd83d0`), `+0x11bb`(전역 포인터 `nt+0xf04d30`) — 동적으로만 앎 |
 | 2.1 | (해결됨) `PspMapThreadCreationFlags` 안쪽: `ThreadFlags` bit0 → flags bit0 그대로 → run12 `[정적]` (원본 바이트) |
 | 2.1 | (해결됨, 정적) `PspCreateUserContext` 안쪽: 첫 스레드의 유저 시작 위치를 정하는 곳인지 → run16 `[정적]`: `CONTEXT.Rip` = `RtlUserThreadStart`(`PsNtdllExports+0x10`), `Rcx` = exe 진입점(`TransferAddress`), `Rdx` = PEB. `LdrInitializeThunk` 는 여기가 아니라 2.3 에서 바꿔 끼움. `Rsp` 는 `PspSetupUserStack +0xdc` |
@@ -3074,13 +3162,13 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.4 | (해결됨, 정적) `LdrpInitializeProcess` 가 무엇을 어떤 순서로 하나 (`[추측]` "프로세스 준비 총괄") → run18 `[정적]`: 앞쪽 `+0x0 ~ +0x12dd` 호출 94곳 = 10묶음 (PEB.Ldr → IFEO → 프로세스 힙 → 환경 블록 → `\KnownDlls` → ntdll 모듈 항목). → run19 `[정적]`: 뒤쪽 `+0x12de ~ 끝` 75곳 = 10묶음 (exe 모듈 항목 `+0x135e` → TLS 준비 `+0x18d0` → kernel32 `+0x19a2` → 병렬 로딩 `+0x1a47` → import 올리고 연결 `+0x1aa9`·`+0x1af2` → kernel32 thunk `+0x1b5e` → 그래프 초기화 `+0x1bbb` → exe TLS `+0x1c99` → `PostProcessInitRoutine` `+0x1d1b` → 반환 `+0x1e2d`). 실행으로 맞춰 보는 건 Q44·Q46 |
 | 2.4 | 앞쪽 실행 값 (run18 `[정적]` 갈림 조건의 실제 값): 입구 `RDX` = ntdll 시작 주소인지, `UseWOW64`, `+0x587` 를 탔나(IFEO `ImageExpansionMitigation`), `+0x58e` 시점 `NtGlobalFlag`(커널 디버거만 붙었을 때), 프로세스 힙·`\KnownDlls` 열기 성공, 둘째 `LdrpInitializeNtdllDataTableEntry`(`+0x126a`)를 타나(`[ctx]`·`[ctx+8]`), `+0x12de` 시점 `PebLdr` 목록 3개에 ntdll 만 있나, 에필로그 `+0xa7b` 에 안 서나 — 동적 (Q44) |
 | 2.4 | `LdrpInitializeNtdllDataTableEntry` (633바이트) 본문: 적재·메모리 순서 목록에 ntdll 을 넣는 곳(`LdrpInsertDataTableEntry` `[추측]`), 색인, 둘째 호출(패치 ntdll) 의 정체 — 정적 (Q45, run18) |
-| 2.4 | 이름·뜻 못 정한 것 (run18): `NtGlobalFlag` 비트 `0x2`·`0x1000`·`0x800000` 이름 (`[추측]` 로더 스냅·사용자 스택 추적 DB·예외 로그), `LdrSystemDllInitBlock+0xa0` 의 무결성 설정 비트 두 개, `[LdrpNtdllHotPatchContext+8]` 의 뜻 (`[추측]` 패치 ntdll 올리기 결과 상태), 강제 종료 `+0x784`·`+0xb22` 정렬 검사가 평소 안 타는지 |
+| 2.4 | 이름·뜻 못 정한 것 (run18): `NtGlobalFlag` 비트 `0x2`·`0x1000`·`0x800000` 이름 (`[추측]` 로더 스냅·사용자 스택 추적 DB·예외 로그), `LdrSystemDllInitBlock+0xa0` 의 무결성 설정 비트 두 개 ((일부, 정적) → run32: 그 24바이트는 커널 `PspPrepareSystemDllInitBlock +0x12b`·`+0x138` 이 채우고 출처는 `PspAllocateProcess` 완화 옵션(`PspApplyMitigationOptions` 에 넘긴 값, `+0x1f3f ~ +0x1f50`). 두 비트의 읽는 줄·뜻은 그대로 모름 — ntdll 쪽은 Q63 (d)), `[LdrpNtdllHotPatchContext+8]` 의 뜻 (`[추측]` 패치 ntdll 올리기 결과 상태), 강제 종료 `+0x784`·`+0xb22` 정렬 검사가 평소 안 타는지 |
 | 2.4 | (해결됨) run18 의 앞쪽 `[RSP+0x130]` "exe 폴더 잘라 두기" 는 틀렸음 → run19 `[정적]`: 마지막 `\` **뒤** = 파일 이름 부분, 뒤쪽 `+0x1408` 이 exe 항목 `BaseDllName`(test.exe) 에 넣음. 실행 값 확인은 Q46 |
 | 2.4 | 뒤쪽 실행 값 (run19 `[정적]` 갈림 조건의 실제 값): `AvrfAppVerifierMode` = 0 (`+0x1568`, AppVerifier 묶음 건너뜀), `Subsystem` = 3 (`+0x1980`), `BeingDebugged` (`+0x1b35`, 커널 디버거만 붙었을 때), `+0x1bb6` 의 `rcx` = exe 항목 `DdagNode`, exe `TlsIndex` ≠ 0 (`+0x1c31`), exe 항목 칸 (`+0x1455` 뒤 `BaseDllName`·`FullDllName`·`DllBase`·`Flags`), 재배치 `+0x1430` 를 건너뛰나 (`+0x1424`), 정상 반환 `+0x1e2d` `rax` = 0. `UseWOW64`(`+0x1766`) 는 Q44 — 동적 (Q46) |
 | 2.4 · 2.9 | 뒤쪽 간접 호출 대상: `+0x1b59` `Kernel32ThreadInitThunkFunction(1,0,0)` 의 실제 함수 (`[추측]` `KERNEL32!BaseThreadInitThunk`. (일부 해결) run20 `[정적]`: 칸 값 = kernel32 에서 이름 `BaseThreadInitThunk` 로 찾은 주소, `LdrpInitializeKernel32Functions` ret `+0xff` 가 채움. 남은 건 실제 주소 `ln`. (일부 해결) run25 `[정적]`: export `BaseThreadInitThunk` 는 forwarder 아님, rva `0x2cd70` → `ln` 예측 `KERNEL32!BaseThreadInitThunk`. 첫 인자 1 이면 시작 함수는 안 부르고 `RtlGetSuiteMask` → (조건) `BasepInitializeTermsrvFpns` 갈래), `+0x1d16` `PEB.PostProcessInitRoutine` 값 (0 이면 안 부름, 누가 넣는지 이 함수 안에 없음), `+0x1cdf` shim (`g_ShimsEnabled` 0 이면 안 탐) — 동적 (Q48) |
 | 2.4 | 이름·뜻 못 정한 것 (run19): AppVerifier 묶음(`+0x1577 ~ +0x16a4`)이 복제하는 항목의 정체 (`[추측]` verifier 공급자 모듈), `LdrInitState` 1·2·3 의 뜻 (`[추측: 공개 문서]`), `+0x1391` 이 같은 줄을 `R12`=2 번 반복하는 이유 (`[추측]` 앞쪽 값을 반복 횟수로 재사용), `NtGlobalFlag & 0x100` 이름 (`[추측]` `FLG_APPLICATION_VERIFIER`), CPU 기능 비트·기능 번호 41 이름, `$fin$0` 가 TLS 콜백 예외 정리인지 (`[추측: 이름·오프셋]`) |
 | 2.4 · 2.7 | (해결됨) 그림 2·2.4·2.7 의 `LdrpInitializeProcess` → `LdrpInitializeGraphRecurse` 라벨 `+0x1bb6` 은 call 자리였음 → run18: ret **`+0x1bbb`** (run7 콜스택 `[관찰]` + `_calls.tsv` `[정적]`)로 정정 |
-| 3 | ntdll 일꾼이 처음 생기는 때: 코드상 가장 이른 자리는 `LdrpInitializeProcess +0x1a42 LdrpEnableParallelLoading` (스레드 풀, run19 `[정적]`). 풀을 만들 때 바로인지, `+0x1aa4` 안 `LdrpQueueWork` 로 일감이 올라올 때인지, 몇 개인지 (`ProcessParameters.LoaderThreads` 값) — 동적 (Q47). (일부, 정적) → run22: `+0x1aa4` 안 `LdrpMapAndSnapDependency +0x4f7 LdrpQueueWork` 는 부모가 있는 문맥(dll1·dll2)의 snap 만 넘기고 exe 문맥은 안 탐. kernel32 준비 때도 kernelbase 문맥에서 탈 코드 길이 있음 — 어디서 도는지는 여전히 동적 Q47·Q20. (일부, 정적) → run23: `LdrpLoadDependentModuleInternal +0x182c LdrpQueueWork` 조건 = 새 항목이 KnownDll 아님(`0xc0000135`) + 경로를 직접 준 이름 아님, `LdrpModuleDatatableLock` 독점 안에서. 병렬 여부 안 읽음. exe 길 첫 일감은 dll1 "올려 주세요" 일 것 `[추측]`. 일감이 같은 스레드에서 도는지는 `LdrpQueueWork` 본문(정적 Q12c)·실행(Q47). (일부, 정적) → run24: 일감 개체 `LdrpMapAndSnapWork` 는 `LdrpEnableParallelLoading +0xe2 TpAllocWork` 가 만든다 (스레드 수 > 1 · `LdrpDetourExist == 0` 일 때만, `LoaderThreads` 0 이면 스레드 수 4). `LdrpQueueWork +0x82 TpPostWork` 는 그 개체가 있을 때만. 일꾼은 `TppWorkpExecuteCallback +0x2e0` (또는 `LdrpWorkCallback +0xb8`) 에서 `LdrpProcessWork` 를 돈다. 남은 것: 실제 `LoaderThreads`·`LdrpMapAndSnapWork` 값, 일꾼이 생기는 순간 (`TpPostWork` 때인지) → 동적 Q47 |
+| 3 | ntdll 일꾼이 처음 생기는 때: 코드상 가장 이른 자리는 `LdrpInitializeProcess +0x1a42 LdrpEnableParallelLoading` (스레드 풀, run19 `[정적]`). 풀을 만들 때 바로인지, `+0x1aa4` 안 `LdrpQueueWork` 로 일감이 올라올 때인지, 몇 개인지 (`ProcessParameters.LoaderThreads` 값) — 동적 (Q47). (일부, 정적) → run22: `+0x1aa4` 안 `LdrpMapAndSnapDependency +0x4f7 LdrpQueueWork` 는 부모가 있는 문맥(dll1·dll2)의 snap 만 넘기고 exe 문맥은 안 탐. kernel32 준비 때도 kernelbase 문맥에서 탈 코드 길이 있음 — 어디서 도는지는 여전히 동적 Q47·Q20. (일부, 정적) → run23: `LdrpLoadDependentModuleInternal +0x182c LdrpQueueWork` 조건 = 새 항목이 KnownDll 아님(`0xc0000135`) + 경로를 직접 준 이름 아님, `LdrpModuleDatatableLock` 독점 안에서. 병렬 여부 안 읽음. exe 길 첫 일감은 dll1 "올려 주세요" 일 것 `[추측]`. 일감이 같은 스레드에서 도는지는 `LdrpQueueWork` 본문(정적 Q12c)·실행(Q47). (일부, 정적) → run24: 일감 개체 `LdrpMapAndSnapWork` 는 `LdrpEnableParallelLoading +0xe2 TpAllocWork` 가 만든다 (스레드 수 > 1 · `LdrpDetourExist == 0` 일 때만, `LoaderThreads` 0 이면 스레드 수 4). `LdrpQueueWork +0x82 TpPostWork` 는 그 개체가 있을 때만. 일꾼은 `TppWorkpExecuteCallback +0x2e0` (또는 `LdrpWorkCallback +0xb8`) 에서 `LdrpProcessWork` 를 돈다. 남은 것: 실제 `LoaderThreads`·`LdrpMapAndSnapWork` 값, 일꾼이 생기는 순간 (`TpPostWork` 때인지) → 동적 Q47. (일부, 정적) → run32: `LoaderThreads` 처음 값은 커널 `PspSetupUserProcessAddressSpace +0xc7` 이 0 이면 전역 `PsDefaultLoaderThreads` 로 채운 것 → IFEO 가 없어도 0 이 아닐 수 있음. 그 전역 값도 Q47 (Q35 같은 실행에서 볼 수 있음) |
 | 3 | ntdll 일꾼 2개·`test!Worker` 의 TEB `SameTebFlags` 값 (`SkipLoaderInit` `0x4000` / `LoaderWorker` `0x2000`) — 일꾼이 로더 일을 건너뛰는 게 이 비트 때문인지 (`[추측]`, run17) |
 | 2.4 · 2.10 | (해결됨, 정적) 커널 `NtContinue` 가 맡긴 문맥의 `Rip`(`RtlUserThreadStart`)로 보내는 부분 — `[공백]`. 이름만 본 후보 `KiContinuePreviousModeUser +0x422`, `KiContinueEx +0x1e0` → `KeContextToKframes` (run16 원본 바이트 훑기) (정적 Q17, 동적 Q29) → run29 `[정적]`: SYSCALL `0x43` → `nt!NtContinue` → 꼬리 `JMP` `NtContinueEx` → `+0x86` `KiContinueEx` → 유저 길 `+0xf0` `KiContinuePreviousModeUser` → **`+0x427` `KeContextToKframes`** (트랩 `Rip`·`Rcx`·`Rdx`·`Rsp` 덮기) → `NtContinueEx +0x426 IRETQ` (또는 `+0x40c` `KiKernelExit`), 반환 없음. `KiContinueEx +0x1e0` 은 커널 모드 길. 실행은 동적 Q29 (아래 2.10 줄) |
 | 2.5 | (해결됨, 정적) KERNELBASE·KERNEL32 시작 함수의 정확한 이름 (정적 Q13). run20 `[정적]`: ntdll 이 이름으로 찾는 함수 셋 — kernel32 `BaseThreadInitThunk`·`TermsrvGetWindowsDirectoryW`, kernelbase `KernelbasePostInit` → run25 `[정적]`: PE 진입점 = PDB `KernelBaseDllInitialize` (`0x5060`) / `BaseDllInitialize` (`0x2c5d0`), rva 정확히 같음·별칭 없음. 둘 다 `_DllMainCRTStartup` 모양 아님 (`_DllMainCRTStartupForGS2` → 전용 초기화). 세 export 는 forwarder 아님 (`0x2cd70`·`0x35f10`·`0xf4780`). 실행 때 들어가는 주소는 동적 Q21 |
@@ -3095,7 +3183,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.5 | `LdrpLoadDllInternal` 실행 값 (run21 `[정적]` 갈림의 실제 값): 두 `LdrLoadDll` 에서 `+0xb8` Fastpth `eax` (둘째가 빠른 끝인지), `+0x1f2` `eax` 가 `0xc0000135` 인가와 항목 이름, `+0x1a0` 뒤 `LdrpMainThreadToken`(`ntdll+0x1d2618`) 값, `+0x284` 결과·둘째 호출에서 오는지, `+0x29b` `LdrInitState`(`ntdll+0x1d23c8`) 0 → `LdrpPinModule` 이 불리나 — 동적 (Q49). 올리기 길(`ntdll+0xa399` `k`) — Q20. `Prepare` 입구 `State`·`LoadContext`·비트 0 — Q24 |
 | 2.5 | 이름·뜻 못 정한 것 (run21): `LdrpFastpthReloadedDll`·`LdrpFindOrPrepareLoadingModule`·`LdrpProcessWork` 의 역할 (이름·callee 이름으로만 `[추측]`), `LoadContext +0x20` 비트 0·`+0xc8` 칸 이름 (`_LDRP_LOAD_CONTEXT` 는 PDB 에 칸 정보 없음), 노드 상태 7 일 때 알림·shim 을 건너뛰는 이유, `Prepare` 첫 검사(`LdrpDllNotificationLock` 주인)의 뜻, 로드 락 풀기 `EDX` 2 / 9 의 뜻, `LdrpQueueWork` 일감이 병렬 로딩 전엔 어디서 도나 (Q47·Q20). (일부, 정적) → run22: `LdrpMapAndSnapDependency +0x4f7 LdrpQueueWork` 는 "부모가 있는 문맥의 snap 넘기기" 자리 (문맥 `+0x30 ≠ 0` 이고 남은 자식 0). 병렬 로딩 전 어디서 도는지는 그대로 Q47·Q20. (일부, 정적) → run23: `LdrpLoadDependentModuleInternal +0x182c LdrpQueueWork` 는 "새 항목이 KnownDll 아니고 경로 직접 아님" 일 때, 락 독점 안. `+0x1cae LdrpProcessWork` 는 경로를 직접 준 이름만. 둘 다 병렬 여부 안 읽음. 어디서 도는지는 그대로 Q47·Q20 (본문 Q12c). (일부, 정적) → run24: `LdrpProcessWork` 역할 = 노드 `State` 0 이면 올리기(`+0x6a LdrpMapDllSearchPath` 등), 아니면 `+0x131 LdrpSnapModule`. 병렬 로딩 전 일감은 `LdrpMapAndSnapWork == 0` 이라 일꾼을 안 깨우고 `LdrpLoadDllInternal +0x21a Drain(1)` 이 혼자 비움 (코드상). 실행은 Q47·Q20 |
 | 2.5 | `LdrpInitializeKernel32Functions` 실행 값 (run20 `[정적]` 갈림의 실제 값): `+0xa4` 가 "못 찾음" 인가, 두 `LdrLoadDll` 결과·베이스, `+0x130` 출력 칸 = `TermsrvGetWindowsDirectoryW` 인가, `+0x1aa` 직전 `rax` = `KERNELBASE!KernelbasePostInit` 인가 (run25 `[정적]` 예측: `TermsrvGetWindowsDirectoryW` = `kernel32+0x35f10`, `KernelbasePostInit` = `kernelbase+0xf4780`, 둘 다 forwarder 아님), **`LdrpCodeAuthzInitialize` 안에서 `LdrLoadDll("ADVAPI32.DLL")` 이 불리나** (레지스트리 값에 달림) — 동적 (Q49) |
-| 2.5 | 이름·뜻 못 정한 것 (run20): `PEB.ProcessParameters.Flags` `0x20000000` 비트 (이미 있을 때 kernel32 쪽을 건너뜀), `LdrLoadDll` 첫 인자 `0x4000` 의 이름 (`[추측]` `LOAD_LIBRARY_SEARCH_SYSTEM32_NO_FORWARDER`), `LdrpLoadDllInternal` 넷째 인자 `4` 가 "적재 이유" 인지 ((해결됨, 정적) → run21: `== 9`(`PatchImage`) 비교 6곳·항목 `LoadReason` 대조로 적재 이유 자리. 4 의 이름 `DynamicLoad` 만 `[추측]`), `LdrpSnapKernelBaseExtensions`·`KernelbasePostInit` 이 하는 일 ((일부) run25 `[정적]`: `KernelbasePostInit` 이 부르는 건 `BasepGetLongPathAwareRegistryState`·`BasepIsProcessLongPathAwareByManifest` 둘, 긴 경로 설정 `[추측: 이름]`), `LdrLoadDll` "경로 해제" 바이트 `[RSP+0xbc]` 를 켜는 곳 (정적 Q11 → run21: `LdrpLoadDllInternal` 안엔 없음, 경로 구조체는 `+0x1f2 FindOrPrepare` 로만 감. 그 아래일 것 `[추측]`) |
+| 2.5 | 이름·뜻 못 정한 것 (run20): `PEB.ProcessParameters.Flags` `0x20000000` 비트 (이미 있을 때 kernel32 쪽을 건너뜀) ((일부, 정적) → run32: **커널 `PspSetupUserProcessAddressSpace +0xe6` 이 켠다**, 조건 = 서버 silo `OneCoreForwardersEnabled` (`_ESERVERSILO_GLOBALS +0x3f8`, PDB) ≠ 0. 사용자는 못 켬 (입력 마스크 `0xf4010e11`). 이름은 `[추측: OneCore forwarders]`, test.exe 때 값은 동적 Q35), `LdrLoadDll` 첫 인자 `0x4000` 의 이름 (`[추측]` `LOAD_LIBRARY_SEARCH_SYSTEM32_NO_FORWARDER`), `LdrpLoadDllInternal` 넷째 인자 `4` 가 "적재 이유" 인지 ((해결됨, 정적) → run21: `== 9`(`PatchImage`) 비교 6곳·항목 `LoadReason` 대조로 적재 이유 자리. 4 의 이름 `DynamicLoad` 만 `[추측]`), `LdrpSnapKernelBaseExtensions`·`KernelbasePostInit` 이 하는 일 ((일부) run25 `[정적]`: `KernelbasePostInit` 이 부르는 건 `BasepGetLongPathAwareRegistryState`·`BasepIsProcessLongPathAwareByManifest` 둘, 긴 경로 설정 `[추측: 이름]`), `LdrLoadDll` "경로 해제" 바이트 `[RSP+0xbc]` 를 켜는 곳 (정적 Q11 → run21: `LdrpLoadDllInternal` 안엔 없음, 경로 구조체는 `+0x1f2 FindOrPrepare` 로만 감. 그 아래일 것 `[추측]`) |
 | 2.5 · 2.10 | `LoadLibraryExW` 가 `LdrLoadDll` 에 싣는 인자 (`RCX` 경로/플래그, `RDX` `DllCharacteristics`). 같은 본문이고 인자로만 갈린다는 건 run20 `[정적]` — 동적 Q31 또는 kernelbase 정적. (run30) test.exe 쪽 `LoadLibraryExW` 에 들어가는 인자는 `(이름, NULL, 0x800)` `[정적]` (`try_get_function_slow +0x67`) |
 | 2.6 | dll1·dll2가 메모리에 올라오는 순간. (일부, 정적) → run19 `[정적]`: 자리는 `+0x17c1 ~ +0x1aed` (2.6 `[추측]` "`+0x12de` 뒤 `+0x1bb6` 앞" 맞음), 후보 1순위 `+0x1aa4 LdrpMapAndSnapDependency` (첫 인자 = 로드 문맥). 남은 것: 실제로 그 호출에서 올라오는지, 이 스레드인지 일꾼인지 — 정적 Q14, 동적 Q23. run21 `[정적: 지도]`: 같은 `LdrpMapAndSnapDependency` 가 kernel32 를 올리는 길 안(`LdrpMapDllWithSectionHandle +0x1c8`)에도 있어 "kernel32 와 같은 방식" 이 이름으로 맞음. 그 아래 `LdrpQueueWork`(`+0x4f7`) 가 일꾼 쪽 갈래 후보 (Q47). (일부, 정적) → run22: 바깥 고리 = `LdrpMapAndSnapDependency` `+0x1d0 ~ +0x3a3`, import 마다 `+0x34e LdrpLoadDependentModuleInternal` 을 **직접** (일감과 갈리지 않음), snap 은 고리 밖 한 번. dll1 은 exe 고리의 한 바퀴, dll2 는 dll1 을 매핑한 `LdrpMapDllWithSectionHandle +0x1c8` 이 **같은 함수를 dll1 에 대해 다시** 불러서 나오는 코드 모양 (`[dll1·dll2 추정]`). 남은 것: `LdrpLoadDependentModuleInternal` 안 (정적 Q12b), 실제 (동적 Q23), 스레드 (Q47). Q14 는 일부 — Q12b 뒤에 다시 봄. (일부, 정적) → run23: 한 바퀴 안 = 이름 다듬기 → `+0x16ee` 이미 있나 → 못 찾으면 새 문맥·항목(`+0x115c`) → `+0x1792 LdrpLoadKnownDll` → 아니면 락 안 간선(`+0xf69`/`+0xf8b`) + `+0x182c LdrpQueueWork`. dll1·dll2 (맨 이름) 는 이 일감 길일 것 `[추측]`. 일감 뒤 실제 맵은 정적 Q12c, 실행 Q23·Q47. Q14 는 여전히 일부. (일부, 정적) → run24: 일감을 꺼내 올리는 쪽 = 책임자 `LdrpInitializeProcess +0x1ab1 Drain(1)` 안 `+0x187 LdrpProcessWork` 또는 풀 일꾼, → `+0x6a LdrpMapDllSearchPath` → (지도) … → `LdrpMapDllWithSectionHandle`. 코드 길은 끝까지 이어짐. 어느 스레드인지 실행 Q23·Q47. Q14 는 여전히 일부. (일부, 정적) → run26: 파일로 올리는 본문 = `LdrpMapDllSearchPath +0x25c` → `LdrpMapDllNtFileName` (`+0x137 NtOpenFile` → `+0x194 NtCreateSection` `SEC_IMAGE`) → `+0x28c LdrpMapDllWithSectionHandle` (`+0x4e` 매핑 → **`+0x146 LdrpInsertDataTableEntry` = PEB.Ldr 명부에 들어가는 순간** → `+0x151` 색인 → `+0x24f CompleteMap` → `+0x26c ProcessMapped` → 마지막 `+0x1c8 MapAndSnap`). Q14 끝. 남은 것: 실제로 dll1·dll2 가 이 길·이 순서로 가나, 어느 스레드인가 — 동적 Q23·Q47 |
 | 2.6 | (해결됨, 정적) 간선(누가 누구에 기대나)을 적는 자리와 "이미 올라옴 / KnownDll / 새로 올리기" 갈림, 그때 인자 5 칸(`&부모문맥.58[i]`)에 무엇이 들어가나. run22 `[정적]`: `LdrpMapAndSnapDependency`·`LdrpAllocateModuleEntry` 에는 간선 줄이 없다. 부모 정보 = `+0x34e LdrpLoadDependentModuleInternal` 인자 2(부모 문맥)·3(부모 항목) → 새 자식 문맥 `+0x30` (`Internal +0x1100 ~ +0x1108`). 새 문맥·항목·노드는 `Internal +0x10db` 힙 → `+0x115c LdrpAllocateModuleEntry` (그 갈래 조건은 `[추측]`) — 정적 Q12b → run23 `[정적]`: 간선 = `LdrpLoadDependentModuleInternal +0xf69`/`+0xf8b` (락 독점 안). 갈림 순서 = ① 찾기(`+0x16ee` 맨 이름 / 해시 훑기 전체 이름) → 못 찾으면 ③ 새 문맥·항목(`+0x115c`) → 그 항목으로 ② `+0x1792 LdrpLoadKnownDll` (KnownDll 은 ③ 안, 나란한 세 갈래 아님). 인자 5 칸 = 찾은 항목(`+0xcf6` 또는 callee) / 새 항목(`+0x1164`) / 교체되면 문맥 쪽 항목(`+0x1341`) / 실패·순환 0 |
@@ -3173,7 +3261,8 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 그림 1 nt | `PspAllocateProcess` → (2) `MmInitializeProcessAddressSpace` | 코드상 두 곳 (`+0x2095` 보통 / `+0x2113` 복제), 플래그 bit `0x4`로 갈림 | callee 입구에서 `k`. 돌아올 자리가 `+0x2095`인지 |
 | 그림 1 nt | `MiMapProcessExecutable` → (1) `MmMapViewOfSectionEx` (exe) / (2) `PsMapSystemDlls` → `PspMapSystemDll` → `MmMapViewOfSectionEx` (ntdll) | 코드의 call 자리 | `MiMapProcessExecutable+0xb8`·`+0xdc`에 멈춤. `+0xdc` 뒤 새 프로세스의 ntdll 위치가 나중 `LdrInitializeThunk` 주소와 맞는지. `PspMapSystemDll` 입구는 부팅 때 System 에도 걸리니 피한다 |
 | 그림 1 nt | `PspAllocateProcess` → (3) `MmCreatePeb` 이 쓰는 PEB 값 | 오프셋 `[정적]`, 필드 이름 `[추측]` | `+0x2314`에서 `poi(새 EPROCESS+0x2e0)`의 `+0x10`, `+0xb8`, `+0xbc`, `+0x118~`, `+0x20`(아직 0이어야 함) |
-| 그림 1 nt | `PspAllocateProcess` → (4) `PspSetupUserProcessAddressSpace` | 코드의 call 자리 | `+0x239c`에서 PEB `+0x20`이 채워졌는지 |
+| 그림 1 nt | `PspAllocateProcess` → (4) `PspSetupUserProcessAddressSpace` | 코드의 call 자리. 부르는 조건 = 묶음 플래그 비트 7 켜짐 · 만들기 정보 ≠ NULL · 비트 1 꺼짐 (`+0x236c ~ +0x2397`, run32 `[정적]`). 아니면 `+0x2574` 갈래 | `+0x239c`에서 PEB `+0x20`이 채워졌는지 (run32 `[정적]`: 이 갈래면 채워짐 → 값은 Q35) |
+| 그림 1 nt | `PspSetupUserProcessAddressSpace` → (1) `PspCopyAndFixupParameters` / (2) `PspPrepareSystemDllInitBlock` (`(정적)` 상자 둘, run32) | 코드의 call 자리 `+0x1b4`/`+0x1b9`, `+0x1e1`/`+0x1e6` (run32 `[정적]`). (2) 는 보안 프로세스면 건너뜀 (`+0x1c3 ~ +0x1da`). `PspPrepareSystemDllInitBlock` 을 부르는 자리는 4곳 (`+0x219` WoW64, `PspAllocateProcess +0x25dc`·`+0x25fc`) | Q35: `nt+0xae57e4` 입구 `k` (`PspSetupUserProcessAddressSpace+0x1b9` ← `PspAllocateProcess+0x239c`), `nt+0x9395d0` 입구 `[rsp]` = `nt+0xae5f1a` 인가. 다른 세 자리 `nt+0xae5f4d`·`nt+0xa04b44`·`nt+0xa04b64` 가 안 서는지 |
 | 그림 1 nt (그림 밖) | `PspAllocateProcess` 갈림길: `PspWow64PickBestNtdll` `+0xffb`, `PspSetProcessAffinitySafe` `+0x2364`, `KeSecureProcess` `+0x27a0` | 코드상 조건부 | 각 자리에 멈춤. 64비트 test.exe 면 `+0xffb`는 안 타야 함 `[추측]` |
 | 그림 1 nt (그림 밖) | `PspAllocateProcess` 간접 호출 `+0x121a`, `+0x17c4` | 대상이 전역 포인터 | `[nt+0xf04d28]`, `[nt+0xf04d20]` 값을 `ln` |
 | 그림 1 nt | `PspAllocateThread` → (1)~(5) `ObCreateObjectEx` / `PsAssignThreadId` / `PspSetupUserStack` / `MmCreateTeb` / `KeInitThread` | 코드의 call 자리 (run11 `[정적]`). (3)(4)는 보통 길일 때만 | 입구에서 `poi(@rsp+0x58)`(11번째 인자) ≠ 0 인지. `+0x5ef`·`+0x631` 반환값, TEB 주소 |
@@ -3261,6 +3350,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run29 | (정적, ntoskrnl·ntdll) 로더 끝 → 진입점: ntdll `NtContinue` `+0x3 EAX = 0x43` → `+0x12 SYSCALL`, 서비스 표 `[0x43]` = `nt!NtContinue` → `+0x3` 꼬리 `JMP` `NtContinueEx` (둘째 인자 `0xff` 이하 = TestAlert BOOLEAN, 크면 `_KCONTINUE_ARGUMENT` 포인터) → `+0x86` `KiContinueEx` (`+0x5e` `PreviousMode` 갈림, 정렬·쓰기 검사, 전체 `__try`) → 유저 길 `+0xce` `KeTestAlertThread(1)` · `+0xf0` `KiContinuePreviousModeUser` (커널 복사 `+0x1ce` `RtlpReadExtendedContext`, `ContextFlags` 검사·깎기, `SegCs = 0x33`, `Rsp` 검사, CET 일 때만 `+0x39e` `KiVerifyContextIpForUserCet` 가 그림자 스택 칸과 `Rip` 대조 = run16 `KePopulateContinuationContext` 목적 뒷받침) → **`+0x427` `KeContextToKframes`** (run16 후보 둘 중 유저 길, `KiContinueEx +0x1e0` 은 커널 길) → `NtContinueEx` 가 반환 없이 유저 APC 고리(`+0x160` `KiInitiateUserApc`) → 휘발 레지스터를 트랩 프레임에서 (`+0x3ea` `RCX`) → **`+0x426 IRETQ`** / `+0x40c` `KiKernelExit`. `RtlUserThreadStart`: `+0x27` (ret **`+0x2c`**, 01_sprint Worker 관찰 자리와 같음) 칸 `Kernel32ThreadInitThunkFunction(0, 진입점, PEB)` CFG 간접 (프레임 없음), 칸 0 이면 진입점 직접 → `RtlExitUserThread`, `__try +0x7~+0x4a` → `NtTerminateProcess`. 2.10 `[추측]` 앞 절반 코드로 맞음, 실행은 동적 |
 | run30 | (정적, test.exe — sample 빌드, 로컬 pdb `C66E7084…0511`) 진입점 → `main`: rva `0x1d40` = `mainCRTStartup` (18바이트, 받은 PEB 안 씀) → `+0x9` `__security_init_cookie` → **`+0xd` 꼬리 `JMP` `__scrt_common_main_seh`** (프레임 안 남음) → `+0x19` `__scrt_initialize_crt` · `+0x61` `_initterm_e` · **`+0x10a` (ret `+0x10f`) `main`** · `+0x176` `exit`. `invoke_main`·`__scrt_common_main` 은 안 쓰는 사본. run7 `…67723` = **`try_get_function_slow +0x73`** (`LoadLibraryExW(이름, NULL, 0x800)`, 모듈 캐시, 9곳 중 유일), `main` 전 세 길 A `FlsGetValue2` · B `LCMapStringEx` · C `AreFileApisANSI` (세 번 = 세 길은 `[추측]`). test.exe CFG 함수 표 없음, 중개 `jmp rax` 뿐. TLS 배열 `[ExeTls, 0]`. `main` 에서 `k` 예상에 `mainCRTStartup` 없음 → run29 예상 정정 |
 | run31 | (정적, ntoskrnl) exe 이미지 섹션 (depth 0 21개): `MmCreateSpecialImageSection` (= `NtCreateSection` 의 커널 안 버전, 토큰·서명 수준을 인자로, 핸들 반환 `+0x146`) → `+0xd4` `MiCreateSection` → `+0xf8` `MiCreateImageOrDataSection` (**갈림길**: `+0x1a3` `MiReferenceControlArea` 가 `ImageSectionObject` 를 봐서 있으면 `+0x1d5` `MiShareExistingControlArea`) → `+0x385` `MiCreateNewSection` (`SEC_IMAGE`) → `+0x215` **`MiCreateImageFileMap`** (헤더 읽기 `+0x15c`/`+0x501`, `MZ` `+0x188`, `+0x1f6` `MiVerifyImageHeader`, `+0x2e6` `MiBuildImageControlArea`). 2.1 `[추측]` "`MiCreateImageFileMap` 은 안쪽인지 모른다" → 안쪽 맞음. **진입점 처음 기록 = `MiBuildImageControlArea +0x172`** (`ImageBase + AddressOfEntryPoint` → `TransferAddress`, 헤더 쪽 `MiVerifyImageHeader +0x8a`), 재배치 때 `MiRelocateImage` 조각 `+0x1b1279` 가 델타 더함. 프로세스 메모리엔 안 올림. 서명 재시도 고리는 이 사슬 상태값 때문 아님 |
+| run32 | (정적, ntoskrnl) 프로세스 매개변수·ntdll 시작 정보 블록 (depth 0 9개): `PspSetupUserProcessAddressSpace` 붙기 전 `+0xa0 ~ +0xea` 커널 사본 `Flags` 비트 15·**29** (`+0xe6`, 조건 silo `OneCoreForwardersEnabled`)·`LoaderThreads` 기본값 → `+0xfa` 붙기 → `+0x19c` 자리 → **`+0x1b9` `PspCopyAndFixupParameters`** (원본 = `NtCreateUserProcess +0xacb` `PspCaptureProcessParameters` 커널 사본, 포인터 12개 절대 주소로, 콘솔·표준 핸들 복제 `+0xbc`·`+0x130`, **PEB `+0x20` = `+0x52b` 또는 `+0x347`/`+0x34c`** — 기능 스위치 `nt+0xfc4110`) → **`+0x1e6` `PspPrepareSystemDllInitBlock`** (**새 프로세스 안 ntdll `LdrSystemDllInitBlock` 0x128B**, 주소 `PsNtdllExports+0x0`: `+0x98` 난수, **`+0xa0` 완화 옵션 24B (`+0x12b`·`+0x138`), `+0xb8` CFG 비트맵 (`+0x15a`)**, `+0xf0 ~` SCP 함수 표) → ApiSet 뷰. 부르는 자리 4곳·갈림 조건. 2.1 `[추측]` 두 줄 맞음, run10 순서 맞음. 커널 쓰는 줄 ↔ ntdll 읽는 줄 짝 표 (run17·18·19·20·28) |
 | `sample/` 소스 | 의존 관계, 모듈별 TLS 콜백, `/MT` 빌드 |
 
 - run3 ~ run5는 타깃에서 빌드한 test.exe, run6 ~ run8은 디버거 VM에서 빌드해 옮긴 test.exe (같은 소스).
@@ -3294,3 +3384,4 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run29 | `_workspace/sast/24_continue-start` | 없음 | 정적만 (대기열 Q17, ntoskrnl 네 함수 depth 1 31개 + ntdll 두 함수 depth 1 6개, 지도 안 돌림. 서비스 표·unwind 표는 PE 파일에서). Q17 끝. 동적 확인거리 D1~D8 → D1~D4 Q29, D4·D7·D8 Q30, D3 Q42, D7 Q48, D5·D6 새 **Q57** (CET·유저 APC). 정적 남은 것(유저 SSP 되돌리기, `KiInitiateUserApc` 본문, `ContextFlags` 가정, `RtlLeaveCriticalSection` 특례)은 새 **Q58** (4장) |
 | run30 | `_workspace/sast/25_exe-crt-start` | 없음 | 정적만 (대기열 Q18 — 사용자 결정으로 kernel32 `BaseThreadInitThunk` 에서 test.exe `mainCRTStartup` → `main` 까지 넓힘. test.exe 첫 analyze, 함수 3356, 사슬 + `LoadLibraryExW` 길 depth 0 41개, CRT 표 항목은 뿌리를 따로 줘서 지도). Q18 끝 = **단계 2 처음 항목(Q8 ~ Q18) 끝**. 동적 확인거리 → Q30 (`mainCRTStartup`·`main` 입구 `k`, CFG 통과), Q31 (`LoadLibraryExW` 길 A·B·C, 이름). `BasepInitializeTermsrvFpns` 안쪽은 이번에 안 봄 → 새 **Q59** (정적). dll1·dll2 `LoadLibraryExW` ×3 → Q55 출처. 지도 범위 결정 "진입점 = 경계, CRT 한 상자" (2026-10-23) 로 그림의 CRT 함수를 빼고 Q30·Q31 을 좁힘 |
 | run31 | `_workspace/sast/26_image-section` | 없음 | 정적만 (대기열 Q33, 단계 3 "작은 정적부터 몰아서" 의 바퀴. Q32 는 run12 로 이미 답해 바퀴 없이 닫음). 요청 depth 1 대신 depth 0 21개 (callee 100개 가까이라 이름으로 골라 더 내려감, `MiBuildImageControlArea`·`MiRelocateImage` 포함). Q33 끝. 동적 확인거리 D1~D5 → 새 **Q61**, D6 → Q35, `MmCreateSpecialImageSection` 횟수 → Q34 |
+| run32 | `_workspace/sast/27_params-initblock` | 없음 | 정적만 (대기열 Q36, 단계 3 "작은 정적부터 몰아서" 의 바퀴). 요청 depth 1 대신 depth 0 9개 (두 대상 + 칸 출처 3개 + 원본 쪽 3개 + 스위치 1개). Q36 끝. 동적 확인거리 1~4 → **Q35** 에 출처로 (스위치 전역, `PspPrepareSystemDllInitBlock` 입구 자리, 복사 직후·채운 뒤 값). 새 정적 공백 → **Q63** 하나로 ((a)~(d), (d) ntdll 새로 읽기는 차례 때 사용자와). 요청서 "호출 9"·"caller 3" 은 실제 8곳·4곳. 결과서 글자 두 곳 고쳐 읽음 (`+0xc3` 은 `PspWow64GetSharedInformation`, 종류는 `+0xb7`/`+0xbc`; `PspGetScpCfgFunctions` 호출은 `+0x196`/`+0x19b`) |
