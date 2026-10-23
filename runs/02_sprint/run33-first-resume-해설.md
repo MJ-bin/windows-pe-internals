@@ -2,6 +2,8 @@
 
 > 이 글은 [run33 문서](run33-first-resume.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **정정 (run34)**: 2.6 의 "일반 생성에선 이 비교가 맞기 어려워 보인다" 는 반대다 — bit 9 는 `CREATE_SUSPENDED` 가 없을 때 켜져, 보통 생성은 `OwnerProcessId` = 부모 PID 그대로. → [run34 해설 2.7](run34-parent-leftovers-해설.md)
 
 - 대기열: **Q40** — 2.2·2.3 작은 정적 확인 둘: `EPROCESS.Flags3.ProcessFirstResume` (`+0x5fc` bit 15, `PsMultiResumeThread` 가 켬) 를 **읽는 곳**, 조각 `FUN_1406b2db3` 의 **정체** (`KiApcInterrupt` 추정) (`_workspace/plan.md`, 이번에 **끝**)
   - **단계 3 "작은 정적부터 몰아서"** 의 바퀴다 (사용자 결정, 2026-10-23). run32(Q36) 다음이다.
@@ -285,7 +287,7 @@ run 문서는 뜻을 `[추측]` 으로 적었다. 왜 그렇게 짐작하는지 
 - 멈춘 채 만들어 놓고 풀어 주기 전에 주인이 죽으면, 그 자식은 아무도 깨워 줄 사람이 없다. 그런 가게를 치워 주는 장치라고 읽힌다.
 - bit 15 가 켜졌다 = "이미 한 번 풀렸음" → 그 지름길이 **막힌다.** 한 번이라도 일을 시작한 가게는 주인이 떠나도 같이 닫지 않는다.
 
-**다만 일반 생성에선 이 비교가 맞기 어려워 보인다** `[정적 읽기 + 추측]`
+**다만 일반 생성에선 이 비교가 맞기 어려워 보인다** `[정적 읽기 + 추측]` (→ run34 정정)
 
 - `OwnerProcessId` 를 쓰는 줄은 `PspAllocateProcess +0x6f1 ~ +0x710` 이다 (run10 의 가게 짓기 안).
   - 값 = **부모 PID 에 `|2`** 를 붙인 것 (`+0x703 OR RAX,2`).
@@ -542,7 +544,7 @@ run 문서 "도구 메모" 에 적힌, **하네스 제안** 두 개다 (고치�
 |---|---|---|
 | bit 15 가 test.exe 때 **풀기 전 0 → 풀 때 1** 로 정말 바뀌나. `+0x45` 를 실제로 지났나 | 실행 때 값이다. 정적으론 "코드상 지나는 줄" 까지만 | **Q19** (동적): `nt+2c9ae5` (`PsMultiResumeThread +0x45`) 에서 `dd poi(@rsi+0x220)+0x5fc L1` → bit 15 꺼짐, `nt+2c9af6` (`+0x56`) 에서 켜짐 기대 |
 | `PspProcessClose` 가 test.exe 프로세스로 **`main` 전에 서나**. 서면 누가 닫았고 도장 값은 무엇인가 | 누가 언제 손잡이를 닫는지는 코드로 못 정한다. 간접 호출이라 대상도 `[추측]` | **Q64** (동적, Q19 와 같은 실행): `nt+9b3b50` 입구, 조건 `@rdx == <test.exe EPROCESS>`. 서면 `k` 와 `dd @rdx+0x5fc L1` (bit 15 켜짐 → `nt+9b3b6b` return 기대). **안 서면 그것이 답** |
-| `PspAllocateProcess` 인자 `[RSP+0x90]` **bit 9** 의 뜻 (`OwnerProcessId` 에 `|2` 를 안 붙이는 조건). `NtSetInformationProcess +0x1ecd` 의 다른 쓰기는 어느 정보 종류인가. `PspProcessClose` 인자 이름 | 이번 질문(읽는 곳)의 바깥이라 안 봤다. 인자 이름은 공개 문서 모양에 맞춘 `[추측]` | **Q65** (정적, 대표 지점 목표엔 덜 중요): `PspAllocateProcess +0x707`, `NtSetInformationProcess +0x1ecd`, `ObCloseHandleTableEntry +0x7a9` 앞 인자 채움 |
+| `PspAllocateProcess` 인자 `[RSP+0x90]` **bit 9** 의 뜻 (`OwnerProcessId` 에 `|2` 를 안 붙이는 조건). `NtSetInformationProcess +0x1ecd` 의 다른 쓰기는 어느 정보 종류인가. `PspProcessClose` 인자 이름 | 이번 질문(읽는 곳)의 바깥이라 안 봤다. 인자 이름은 공개 문서 모양에 맞춘 `[추측]` | **Q65** (정적, 대표 지점 목표엔 덜 중요): `PspAllocateProcess +0x707`, `NtSetInformationProcess +0x1ecd`, `ObCloseHandleTableEntry +0x7a9` 앞 인자 채움 (→ run34 정정) |
 | 콜스택에 정말 `nt!KiApcInterrupt+0x3ab` 로 보이나. 초인종이 `PspUserThreadStartup +0x26` 에서 들어오나. `+0x390` 의 `GS:[0x187]` 값과 뜻 | 실행으로 본 적 없다. `GS:[0x187]` 바이트의 뜻은 안 읽었다 | **Q42** (동적): `KiSchedulerApc +0xf2` 에서 `k`, `ln nt+6b2db3` → `nt!KiApcInterrupt+0x273` 기대, 멈춤점 후보 `nt+6b2ee6` (call) / `nt+6b2eeb` (ret), 같은 자리에서 `db gs:[0x187] L1` (0 이어야 `KiDeliverApc` 를 부름) |
 | bit 15 를 ntoskrnl **밖**(hal·win32k·드라이버)에서 읽는 곳이 있나 | 이번 훑기 범위가 ntoskrnl 한 파일이었다 (2.9) | 대기열에 **안 넣었다** (시동 지도 기준 우선순위 낮음, plan.md 결정 기록). run33 한계로만 둠 |
 

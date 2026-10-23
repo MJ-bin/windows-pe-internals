@@ -3,15 +3,17 @@
 ## 기준
 
 - 타깃: Windows 11 24H2, **26100.9457**
-  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32, run33)
-  - kernelbase.pdb: `72CCE506944DE0267C172AD64287F9BD1` (run14, run25)
-  - kernel32.pdb: `AE9E9D8F7AC1467A645320FDC23235D01` (run25)
-  - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20, run21, run22, run23, run24, run26, run27, run28, run29)
+  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32, run33, run34)
+  - kernelbase.pdb: `72CCE506944DE0267C172AD64287F9BD1` (run14, run25, run34)
+  - kernel32.pdb: `AE9E9D8F7AC1467A645320FDC23235D01` (run25, run34)
+  - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20, run21, run22, run23, run24, run26, run27, run28, run29, run34)
+  - basesrv.pdb: `4B0951C4FAD4CCBDDFDAA284D1ED2C2E1`, csrsrv.pdb: `32C5AA2B9D0AF671C35069A02C5A0C041` (run34 — csrss 프로세스 안에서 도는 DLL, 처음 analyze)
+  - cmd.pdb: `6E820A0DD74C2CA6E23F25DEBA1651261` (run34 — 부모 cmd.exe. Ghidra 로 안 걸고 `objdump` 줄에 이름만 붙임, 참고용)
   - test.pdb: `C66E7084C5CA4874B1677F6F1C36A0511` (run30. MS 것이 아니라 sample 빌드의 로컬 pdb, 사용자가 VM 에서 돌린 `sample/bin/` 파일)
 - 디버거: WinDbg 커널 디버깅 (KDNET)
 - 부모: `cmd.exe`에서 `test.exe` 실행
 - 근거 로그: `runs/01_sprint/` run3 ~ run8 (디버거)
-- 정적 근거: `runs/02_sprint/` run9 ~ run33 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ~ run33 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀)
+- 정적 근거: `runs/02_sprint/` run9 ~ run34 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ~ run33 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe, run34 kernel32·KernelBase·ntdll·ntoskrnl·basesrv·csrsrv (+ cmd.exe 참고). run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀)
   - PE 헤더·import·export 표는 `pefile` 로 읽었다 (run25). KERNELBASE·kernel32·ntdll 의 TLS 디렉터리도 PE 파일에서 읽었다 (run28). Ghidra 는 PE 진입점 함수를 PDB 이름 대신 `entry` 로 잡는다 (run25). 글에선 PDB 이름을 쓴다.
   - test.exe 는 sample 빌드라 MS 심볼 서버가 아니라 `sample/bin/` 의 exe·pdb 를 썼다 (run30). run31 의 test.exe PE 헤더 값(`AddressOfEntryPoint`, `ImageBase`, 정렬 등)도 같은 파일을 직접 읽은 것이다. 진입점 rva `0x1d40` = run5 `[관찰]`, run7 `[관찰]` 의 `…67723` 도 맞는다. 단 run3 ~ run5 와 run6 ~ run8 은 따로 빌드한 exe 라 (5장) 올라온 파일이 어느 쪽인지까지는 모른다.
   - Ghidra 가 함수로 안 잡은 곳은 원본 바이트(`objdump`)로, 구조체 칸 이름은 PDB 타입 레코드(`llvm-pdbutil`)로 읽었다. 그런 곳은 글에 그렇다고 밝혔다.
@@ -19,7 +21,8 @@
   - 전역 변수 이름(`PsNtdllExports` 등)은 PDB 공개 심볼 + PE 구역표로 맞췄다 (run16).
   - Ghidra 가 한 함수를 여러 토막(`FUN_…`)으로 쪼갠 곳은 PE `.pdata` 함수 범위 표 + PDB 공개 이름으로 본래 함수를 맞췄다 (run33: `FUN_1406b2db3` = `KiApcInterrupt +0x273`).
   - "구조체 칸을 누가 읽나" 는 하네스 밖 임시 스크립트로 ntoskrnl 명령 전부를 훑었다 (run33, `_EPROCESS +0x5fc`). 범위·한계는 run33 문서.
-  - 시스템 호출 번호 → 커널 함수는 PE 파일의 서비스 표 `KiServiceTable` (PDB 공개 이름) 을 직접 읽어 맞췄다 (run29). 공개 PDB 에 없는 구조체(`_KCONTINUE_ARGUMENT`)는 `.asm` 의 오프셋+역할로 적었다 (run29).
+  - 시스템 호출 번호 → 커널 함수는 PE 파일의 서비스 표 `KiServiceTable` (PDB 공개 이름) 을 직접 읽어 맞췄다 (run29, run34). 공개 PDB 에 없는 구조체(`_KCONTINUE_ARGUMENT`)는 `.asm` 의 오프셋+역할로 적었다 (run29).
+  - API-set 이름(`api-ms-win-core-…`)이 어느 DLL 로 풀리나는 같은 OS 의 `apisetschema.dll` 표를 읽어 맞췄다 (run34). csrss 의 API 처리 표 `BaseServerApiDispatchTable` 도 PE 파일에서 직접 읽었다 (run34).
   - 디버거 표시 이름과 PDB 이름이 다를 수 있다: 콜스택 `LdrpInitialize+0x16c` 의 주인은 PDB 이름 `_LdrpInitialize` (run17). 글에선 PDB 이름을 쓰고 표시 이름을 괄호로 붙인다.
 - 테스트 프로그램: `sample/` (`test.c`, `dll1.c`, `dll2.c`, `build.bat`)
   - 의존 관계: **`test.exe` → `dll1.dll` → `dll2.dll`**
@@ -155,6 +158,13 @@
 - 남은 추측은 굵은 화살표 하나 — APC 인터럽트가 `PspUserThreadStartup +0x26` 에서 들어오나 (Q42).
 - 같은 바퀴에서 찾은 "첫 풀어줌 표시(`ProcessFirstResume`)를 읽는 둘째 곳" `PspProcessClose` (프로세스 핸들 닫기 콜백) 는 그림에 안 넣었다. 누가 언제 부르는지 모르고 (간접 호출), `main` 전에 서도 그 표시가 켜져 있으면 바로 돌아가는 자리라서다. `main` 전에 서는지는 동적 Q64 (2.2).
 
+그림 1 의 부모 유저 쪽 입구와 시스템 콜 스텁을 **코드로 채웠다** (run34 `[정적]`, 2.2).
+- `KERNELBASE` 상자 앞에 **`KERNEL32` 상자**를 새로 넣었다. `kernel32!CreateProcessW` 는 인자 열 개를 그대로 넘기는 껍데기다 (`+0x54` → `KERNELBASE!CreateProcessW`). cmd.exe 의 import 표가 이 함수로 닿는다.
+  - cmd.exe 쪽(`cmd!ExecPgm`)은 분석 범위 밖이라 그림에 안 넣고 2.2 글에만 참고로 적었다. 실제로 이 길을 타는지는 동적 Q19.
+- ntdll 스텁 둘은 번호 `0xd1`·`0x52` 로 `SYSCALL` 하고, 커널 서비스 표의 그 칸이 `nt!NtCreateUserProcess`·`nt!NtResumeThread` 다. 그래서 굵은 화살표 라벨에서 "(추측)" 을 뗐다. 단 `INT 0x2e` 로 가는 대체 갈래가 붙어 있다 (어느 쪽인지는 동적 Q19).
+- csrss 알림 `0x1001d` 의 받는 쪽은 csrss 안 **`basesrv!BaseSrvCreateProcess2`** 다 (새 프로세스를 csrss 목록에 등록). csrss 의 다른 스레드에서 돌아서 함수 상자 대신 **노란 메모**로 붙였다 (한 그림 = 한 스레드).
+- KERNELBASE 가 `CREATE_SUSPENDED` 없을 때 켜는 ProcessFlags bit 9 는 커널 `PspAllocateProcess +0x707` 에서 `OwnerProcessId` 에 `|2` 를 붙일지 정한다. 호출이 아니라 값 쓰기라 그림엔 없고 2.1·2.2 글에 적었다. 이걸로 run33 의 `PspProcessClose` 짐작 하나를 고쳤다 (2.2).
+
 > 왜 2장인가: 서로 화살표로 이어지지 않은 덩어리는 머메이드가 위아래 순서를 마음대로 정한다 (실험해보니 ③ → ② → ① 거꾸로 나왔다). 두 스레드 사이엔 호출 관계가 없어서 화살표로 이을 수 없으니, 그림을 나누고 **문서 순서로 시간 순서**를 보인다.
 
 ### 읽는 법
@@ -183,7 +193,7 @@
 - **점선 테두리** = 이름이나 실행이 확실하지 않은 것. **노란 메모** = 같은 무렵 다른 스레드에서 일어난 일.
 - `[dll1 추정]`처럼 대괄호 = 그 함수가 그때 맡은 모듈. "추정"이 붙으면 추측이다.
 
-### 그림 1 — 부모 cmd.exe 스레드 (run3, run9, run10, run11, run12, run13, run14, run16, run31, run32)
+### 그림 1 — 부모 cmd.exe 스레드 (run3, run9, run10, run11, run12, run13, run14, run16, run31, run32, run34)
 
 ```mermaid
 flowchart LR
@@ -196,17 +206,22 @@ flowchart LR
 
     subgraph T1["① 부모 cmd.exe 스레드"]
         direction LR
+        subgraph T1K32["KERNEL32"]
+            direction LR
+            k32a["KERNEL32!CreateProcessW<br/>(정적: 94B 껍데기, 인자 10개 그대로.<br/>cmd.exe import 표가 여기로 옴, 실제 호출은 Q19)"]:::k32g
+        end
         subgraph T1KB["KERNELBASE"]
             direction LR
-            kb1["KERNELBASE!CreateProcessW<br/>(정적: 부모가 이 입구로 오는지는 추측)"]:::k32g
-            kb2["KERNELBASE!CreateProcessInternalW<br/>(정적: ThreadFlags 늘 1)"]:::k32g
+            kb1["KERNELBASE!CreateProcessW<br/>(정적: 107B 껍데기. API-set 으로 kernel32 에서 옴)"]:::k32g
+            kb2["KERNELBASE!CreateProcessInternalW<br/>(정적: ThreadFlags 늘 1,<br/>CREATE_SUSPENDED 없으면 ProcessFlags bit 9 켬)"]:::k32g
         end
-        subgraph T1DLL["ntdll (KernelBase import 표로 확인, 안쪽은 안 봄)"]
+        subgraph T1DLL["ntdll (KernelBase import 표로 확인, 스텁 둘은 run34)"]
             direction LR
-            nd1["ntdll!NtCreateUserProcess<br/>(정적: import 이름. 시스템 콜 스텁 추측)"]:::ntg
-            nd2["ntdll!CsrClientCallServer<br/>(정적: import 이름. csrss 알림)"]:::ntg
-            nd3["ntdll!NtResumeThread<br/>(정적: import 이름. CREATE_SUSPENDED 없을 때만)"]:::ntg
+            nd1["ntdll!NtCreateUserProcess<br/>(정적: 스텁. EAX 0xd1 = KiServiceTable 의<br/>nt!NtCreateUserProcess 칸)"]:::ntg
+            nd2["ntdll!CsrClientCallServer<br/>(정적: csrss 알림. ApiNumber 0x1001d)"]:::ntg
+            nd3["ntdll!NtResumeThread<br/>(정적: 스텁. EAX 0x52 = nt!NtResumeThread 칸.<br/>CREATE_SUSPENDED 없을 때만)"]:::ntg
         end
+        wc["같은 무렵 csrss 프로세스의 다른 스레드:<br/>basesrv!BaseSrvCreateProcess2 가 0x1001d 를 받아<br/>새 프로세스를 csrss 목록에 등록 (정적, 2.2)"]:::side
         subgraph T1NT["nt (커널)"]
             direction LR
             a0["nt!KiSystemServiceCopyEnd<br/>(시스템 콜 진입)"]
@@ -274,9 +289,10 @@ flowchart LR
         end
     end
 
+    k32a -->|+0x54| kb1
     kb1 -->|+0x66| kb2
     kb2 -->|"(1) +0x30ee"| nd1
-    nd1 ==>|"시스템 콜 (추측)"| a0
+    nd1 ==>|"+0x12 SYSCALL (정적. 0x7ffe0308 bit0 면 +0x15 INT 0x2e)"| a0
     a0 -->|+0x28| a1
     a1 -->|"(1) +0x29a"| s1
     a1 -->|"(2) +0x6cb"| s2
@@ -331,8 +347,9 @@ flowchart LR
 
     %% (2) csrss 알림, (3) 풀어 주기 — NtCreateUserProcess 가 돌아간 뒤
     kb2 -->|"(2) +0x4672"| nd2
+    nd2 -.- wc
     kb2 -->|"(3) +0x5bd3"| nd3
-    nd3 ==>|"시스템 콜 (추측)"| r0a
+    nd3 ==>|"+0x12 SYSCALL (정적. INT 0x2e 갈래도)"| r0a
     r0a -->|"?"| r0
     r0 -->|+0x9b| r1
     r1 -->|+0x25| r2
@@ -799,12 +816,12 @@ flowchart LR
 
 ## 2. 단계별 설명
 
-### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9, run10, run11, run12, run13, run16, run31, run32)
+### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9, run10, run11, run12, run13, run16, run31, run32, run34)
 
 이 구간은 **test.exe가 아니라 부모 cmd.exe**가 일하는 시간이다.
 test.exe는 아직 "만들어지는 중"이라, 자기 코드는 한 줄도 안 돌았다.
 
-- 이 시스템 콜을 부르는 부모 유저 쪽(`KERNELBASE!CreateProcessInternalW +0x30ee`)과, 돌아간 뒤 부모가 하는 일은 2.2 맨 앞에 모았다 (run14 `[정적]`).
+- 이 시스템 콜을 부르는 부모 유저 쪽(`kernel32!CreateProcessW +0x54` → `KERNELBASE!CreateProcessW +0x66` → `KERNELBASE!CreateProcessInternalW +0x30ee` → ntdll 스텁 `SYSCALL 0xd1`)과, 돌아간 뒤 부모가 하는 일은 2.2 맨 앞에 모았다 (run14, run34 `[정적]`).
 
 ```
 NtCreateUserProcess                                    (번호 = 코드 순서)
@@ -884,10 +901,14 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
 - `[관찰]` 유저 쪽에서 시스템 콜로 들어온다 (`nt!KiSystemServiceCopyEnd+0x28`이 부름).
 - `[정적]` (run14) 유저 쪽에서 이걸 부르는 곳: `KERNELBASE!CreateProcessInternalW +0x30ee` (call `+0x30e7`, ntdll 에서 가져온 `NtCreateUserProcess`). 그 함수 안에 **한 곳뿐**이다 (2.2).
   - `[추측]` run3 의 cmd.exe 도 이 자리에서 왔을 것. 그때 유저 쪽 콜스택은 안 찍었다 (4.1).
+    - `[정적]` (run34) 코드로는 그 길이 있다: cmd.exe import 표 → `kernel32!CreateProcessW +0x54` → `KERNELBASE!CreateProcessW +0x66` → 이 자리. 실제로 탔는지는 동적 Q19 (2.2).
+- `[정적]` (run34) 유저 → 커널 문: ntdll 스텁 `NtCreateUserProcess` (rva `0x1627c0`, 24B) 가 `EAX = 0xd1` 로 `+0x12 SYSCALL`. 서비스 표 `KiServiceTable[0xd1]` = **이 함수** (489칸 모두 함수 시작과 맞음). `0x7ffe0308` bit 0 이 켜져 있으면 `+0x15 INT 0x2e` 로 가는 갈래도 있다 (어느 쪽인지 동적 Q19).
 - `[관찰]` 아래 함수들을 직접 부르는 **총괄 함수**다.
 - `[정적]` (run9) 이 함수를 직접 부르는 함수는 코드상 없다 (Ghidra 호출자 목록이 빈다). 시스템 콜 입구가 간접으로 부르는 모양과 맞다.
 - `[정적]` (run9) 입구에서 인자를 검사한다. `ThreadFlags`(8번째 인자)에 bit0 말고 다른 비트가 있으면 바로 `0xc000000d`로 돌아간다 (`+0x1bf` → `+0x1ce` → `+0x11f9`).
   - 인자 이름(`ThreadFlags` 등)은 알려진 함수 모양에서 빌린 것이다. 이 빌드 PDB로 확인한 건 아니다. `[추측]`
+  - `[정적]` (run34) 같은 자리에서 **7번째 인자 ProcessFlags** (`[RBP+0x7d0]`) 도 본다: `+0x1b0` 읽고 `+0x1b6 TEST EBX,0xff317838` — 이 마스크 비트(3·4·5·11·12·13·14·16·20·21·24~31)가 있으면 같은 `+0x1ce` 로 `0xc000000d`. **bit 9 (`0x200`) 는 마스크에 없다** (KERNELBASE 가 켜는 비트, 2.2).
+  - `[정적]` (run34) ProcessFlags 는 따로 옮기지 않고 같은 칸을 쓴다. 이 함수 안에서 bit 9 를 검사·변경하는 줄은 없고 (`+0x2cd` bit 6 지움, `+0xdea` bit 10 켬만), `+0xbf6`/`+0xbfc` 에서 그대로 **`PspAllocateProcess` 9번째 인자**로 넘긴다 (아래).
 - `[정적]` (run9) 함수 포인터를 거치는 **간접 호출이 2곳** 있다 (`+0x5b2`, `+0x11bb`). 무엇을 부르는지는 실행해 봐야 안다 (4장).
 - `[추측]` 유저 쪽 `CreateProcess`가 결국 이 시스템 콜 하나로 커널에 "프로세스 만들어줘"를 요청하는 것.
   - `[정적]` (run14) KERNELBASE 쪽 코드로는 맞다: `CreateProcessW` → `CreateProcessInternalW` → 이 시스템 콜 한 자리. 다만 실패 길에서 같은 자리로 다시 돌아오는 재시도 길이 있어서, 몇 번 불리는지는 동적 (4장).
@@ -987,6 +1008,10 @@ PE AddressOfEntryPoint (NT 헤더 +0x28, test.exe 0x1d40)
     3. `+0x2314` `MmCreatePeb` — PEB
     4. `+0x239c` `PspSetupUserProcessAddressSpace` — 유저 쪽 준비 마무리
   - 끝쪽: `PspCidTable`에 핸들을 만들어(`ExCreateHandleEx` `+0x2703`) 새 프로세스 `+0x1d0`에 둔다. `[추측]` 이게 프로세스 ID.
+- `[정적]` (run33, run34) **`OwnerProcessId` (`+0x2d8`) 쓰기** — `+0x6f1`/`+0x6f9` 부모 PID (`[부모 EPROCESS +0x1d0]`) → `+0x703 OR RAX,2` → **`+0x707 BT R8D,9`** → `+0x70c CMOVC` (켜졌으면 `|2` 버림) → `+0x710` 저장.
+  - R8D 는 9번째 인자 사본 `[RSP+0x90]` (`+0x2ba`/`+0x2c1` 에서 만들고 `+0x625` 에서 꺼냄) = `NtCreateUserProcess` 의 **ProcessFlags** 다 (run34). 사이에 바꾸는 줄이 없다.
+  - 그래서 **`CREATE_SUSPENDED` 없이 만들면 (KERNELBASE 가 bit 9 켬) `OwnerProcessId` = 부모 PID 그대로, 있으면 부모 PID `|2`** (2.2 `PspProcessClose` 절).
+  - bit 9 를 읽는 곳은 커널에서 이 한 줄로 보인다 (run34: ProcessFlags 를 받는 `PspValidateCreateProcessProtection`·`PspInsertProcess`·`PspImplicitAssignProcessToJob` 은 bit 0·1·2·10 만 본다).
 - `[정적]` (run10) 이 함수를 부르는 곳은 `NtCreateUserProcess` 말고도 `PspCreateProcess`, `PsCreateMinimalProcess`가 있다.
 - `[정적]` (run10) 함수 포인터로 부르는 **간접 호출이 2곳** 있다 (`+0x121a`, `+0x17c4`). 대상은 실행해 봐야 안다 (4장).
 - `[추측]` 비유하면 **가게 건물 짓기**: 땅 다지기(주소 공간) → 설계도대로 건물 올리기(exe) → 관리실 들이기(ntdll) → 안내판 달기(PEB).
@@ -1308,11 +1333,12 @@ ntdll 쪽은 **이미 이 문서에 적힌 줄만** 짝지었다 (run32 는 ntdl
 
 ---
 
-### 2.2 부모 쪽 마무리 ~ 첫 스레드 출발 (nt 쪽·부모 KERNELBASE 쪽 `[정적]`, run9, run12, run13, run14, run15, run33)
+### 2.2 부모 쪽 마무리 ~ 첫 스레드 출발 (nt 쪽·부모 KERNELBASE 쪽 `[정적]`, run9, run12, run13, run14, run15, run33, run34)
 
 여기서 알고 싶은 건 두 가지다.
 
 - `NtCreateUserProcess`가 돌아간 뒤 cmd.exe(유저 쪽)가 무엇을 더 하는지 → **KERNELBASE 코드로 봤다** (run14). csrss 알림 등을 한 뒤 직접 풀어 준다. 실행으로는 아직 안 봤다.
+  - (run34) 앞쪽 입구(kernel32 껍데기), 시스템 콜 스텁 번호, csrss 쪽 받는 함수, ProcessFlags bit 9 의 쓰임도 코드로 채웠다.
 - 멈춰 있던 test.exe 첫 스레드가 언제·어떻게 풀려서 돌기 시작하는지 → **nt 쪽 장치는 코드로 봤다** (run9, run12, run13). 마지막 연결 하나는 `[추측]`.
 
 먼저 비유로 큰 그림:
@@ -1323,16 +1349,20 @@ ntdll 쪽은 **이미 이 문서에 적힌 줄만** 짝지었다 (run32 는 ntdl
 - 부모는 **늘 빨간불로 시작해 달라고** 한다 (run14). 직원이 일 시작하기 전에 서류(csrss 등록 등)를 마저 챙기고, 그다음 직접 초록불로 바꾼다. 호출자가 "빨간불 그대로 둬"(`CREATE_SUSPENDED`)라고 했으면 안 바꾼다.
 
 ```
-(부모 cmd.exe 스레드, 유저 KERNELBASE) 전체 순서                      (run14)
-KERNELBASE!CreateProcessW                  (부모가 이 입구로 오는지는 [추측])
- └─ +0x66  CreateProcessInternalW          dwCreationFlags 는 그대로 받음
-      │  +0x6cb  ESI = 1  →  +0x30af  ThreadFlags(8번째 인자) = 1  (늘, 조건 없음)
-      ├─ (1) +0x30ee  NtCreateUserProcess   ══▶ 커널: 아래 "멈춰 두기" (2.1 전체)
-      │      … 검사 (조건부)
-      ├─ (2) +0x4672  CsrClientCallServer   csrss 알림 (보안 프로세스가 아니면 늘 지남)
-      │      … 상승·잡·앱 호환·패키지 후처리 (조건부)
-      │  +0x5bb8  dwCreationFlags & 4 (CREATE_SUSPENDED) ?  켜짐 → +0x5bc0 JNZ 로 건너뜀
-      └─ (3) +0x5bd3  NtResumeThread(첫 스레드 핸들)   ══▶ 커널: 아래 "풀어 주기"
+(부모 cmd.exe 스레드, 유저 KERNEL32 → KERNELBASE) 전체 순서               (run14, run34)
+(cmd.exe — import 표로 닿음 [정적], 실제 호출은 Q19)
+kernel32!CreateProcessW                    껍데기, 인자 10개 그대로 (run34)
+ └─ +0x54  KERNELBASE!CreateProcessW       껍데기 (API-set 이 kernelbase 로 풀림)
+      └─ +0x66  CreateProcessInternalW          dwCreationFlags 는 그대로 받음
+           │  +0x6cb  ESI = 1  →  +0x30af  ThreadFlags(8번째 인자) = 1  (늘, 조건 없음)
+           │  +0x800  dwCreationFlags 에 4 가 없으면 ProcessFlags(7번째 인자) bit 9 켬 (run34: → OwnerProcessId)
+           ├─ (1) +0x30ee  NtCreateUserProcess   ntdll 스텁 SYSCALL 0xd1 ══▶ 커널: 아래 "멈춰 두기" (2.1 전체)
+           │      … 검사 (조건부)
+           ├─ (2) +0x4672  CsrClientCallServer   csrss 알림 (보안 프로세스가 아니면 늘 지남)
+           │      ┄▶ csrss 요청 스레드: basesrv!BaseSrvCreateProcess2 (0x1001d, run34)
+           │      … 상승·잡·앱 호환·패키지 후처리 (조건부)
+           │  +0x5bb8  dwCreationFlags & 4 (CREATE_SUSPENDED) ?  켜짐 → +0x5bc0 JNZ 로 건너뜀
+           └─ (3) +0x5bd3  NtResumeThread(첫 스레드 핸들)   ntdll 스텁 SYSCALL 0x52 ══▶ 커널: 아래 "풀어 주기"
 
 (부모 cmd.exe 스레드) 멈춰 두기
 ThreadFlags (NtCreateUserProcess 8번째 인자, bit0 만 허용)
@@ -1376,18 +1406,33 @@ NtResumeThread
 
   - APC(비동기 프로시저 호출) = 다른 스레드에 "다음에 돌 때 이것 좀 해" 하고 맡겨 두는 일감. 그 스레드가 직접 처리한다.
 
+#### `kernel32!CreateProcessW` (rva `0x3bdd0`, 94바이트, run34 `[정적]`)
+
+- `[정적]` **껍데기다.** 인자 열 개를 그대로 넘기고 `KERNELBASE!CreateProcessW` 를 한 번 부른다: call `+0x4d` / ret **`+0x54`**.
+  - 앞 넷(레지스터)은 안 건드리고, 5 ~ 10번째(스택)는 `+0x7 ~ +0x49` 에서 새 자리로 옮기기만 한다. 값을 바꾸는 줄 없음.
+  - 호출은 이 하나뿐 (명령 18개). 돌아와서 결과를 그대로 돌려준다. 검사·ETW 같은 다른 일 없음.
+  - export 도 forwarder 가 아니라 진짜 함수다.
+- `[정적]` 부르는 IAT 칸(rva `0x8baa8`) 이름은 **API-set 이름** `api-ms-win-core-processthreads-l1-1-0.dll!CreateProcessW` 다. 같은 OS 의 `apisetschema.dll` 표로는: 기본 `kernel32.dll`, **가져오는 쪽이 kernel32 면 `kernelbase.dll`**. 그래서 이 칸은 `KERNELBASE!CreateProcessW` 로 간다. (실행 때 풀어 주는 건 ntdll 이 PEB 의 ApiSet 표로 한다. 2.6 의 이름 다듬기와 같은 표 `[추측]`)
+- 비유: 관리사무소로 가는 민원 창구가 둘 붙어 있다. 부모는 앞 창구(kernel32)에 서류를 내는데, 앞 창구는 서류를 펴 보지도 않고 옆 창구(KERNELBASE)로 그대로 밀어 준다.
+
+##### cmd.exe 쪽 참고 (run34, 분석 범위 밖 — `objdump` + `cmd.exe.pdb`)
+
+- `[정적]` cmd.exe import 표에 `CreateProcessW`·`CreateProcessAsUserW`·`ResumeThread` 가 같은 API-set 이름으로 있다. cmd.exe 가 가져오면 기본값 `kernel32.dll` 로 풀린다 → **cmd.exe 는 `kernel32!CreateProcessW` 에 닿는다.**
+- `[정적]` 대표 호출 자리: `cmd!ExecPgm` `CreateProcessW` ret **`+0x59c`** (AsUser 쪽 ret `+0x51b`). `dwCreationFlags` 는 상수 **`0x80000`** (`EXTENDED_STARTUPINFO_PRESENT`) 뿐 — **`CREATE_SUSPENDED`(4) 없음** (`+0x57d`). `cmd!Start` (`start` 명령 `[추측: 이름]`) 는 조건에 따라 4 를 켜고 나중에 `ResumeThread` 를 부른다 (ret `+0xe52`, `+0xfa2`).
+- `[추측]` test.exe 를 그냥 입력해 실행하면 `ExecPgm` 길. 실제 길·값은 동적 Q19.
+
 #### `KERNELBASE!CreateProcessW` (정적)
 
 - `[정적]` (run14) 107바이트 껍데기. `+0x61` 에서 `CreateProcessInternalW` 를 한 번 부른다 (ret **`+0x66`**).
   - 1번째 인자(토큰) = 0, 마지막 인자 = 0, 나머지는 한 칸씩 밀어서 그대로. `dwCreationFlags` 도 **값을 바꾸지 않고** 넘긴다 (`+0x3c` → `+0x43`).
 - `[정적]` `CreateProcessInternalW` 를 부르는 곳은 지도 기준 5곳이다. 나머지 4곳은 안 봤다. 어느 입구로 오든 아래 세 자리는 같은 함수 안의 같은 줄이라, 달라지는 건 `dwCreationFlags` 값뿐이다.
-- `[추측]` cmd.exe 는 이 입구(또는 `kernel32!CreateProcessW` 를 거쳐 여기)로 온다. cmd.exe·kernel32 쪽은 안 봤다 `[공백]`.
+- ~~`[추측]` cmd.exe 는 이 입구(또는 `kernel32!CreateProcessW` 를 거쳐 여기)로 온다. cmd.exe·kernel32 쪽은 안 봤다 `[공백]`.~~ → (run34 `[정적]`) **`kernel32!CreateProcessW +0x54` 를 거쳐 여기로 온다** (위 절, cmd.exe import 표). 코드는 봤고, 실제로 탔는지는 동적 Q19.
 
 #### `KERNELBASE!CreateProcessInternalW` (정적)
 
 - `[정적]` (run14) 28087바이트짜리 큰 함수. 직접 호출 자리 357곳, 거의 다 잡일. 함수 포인터 간접 호출은 없다. 대표 세 자리가 이 순서다 (점프를 따라간 흐름 순서):
   1. **`+0x30ee` `NtCreateUserProcess`** (call `+0x30e7`) — 이 함수 안에 **한 곳뿐**. 같은 함수의 SEH 정리 함수 3개에도 없다.
-  2. **`+0x4672` `CsrClientCallServer`** (call `+0x466b`) — csrss(윈도우 서브시스템 서버)에 "프로세스 만들었다" 알림. ApiNumber `0x1001d`, 길이 `0x218`.
+  2. **`+0x4672` `CsrClientCallServer`** (call `+0x466b`) — csrss(윈도우 서브시스템 서버)에 "프로세스 만들었다" 알림. ApiNumber `0x1001d`, 길이 `0x218`. (run34) 받는 쪽 = csrss 안 **`basesrv!BaseSrvCreateProcess2`** (아래 "csrss 쪽" 절).
   3. **`+0x5bd3` `NtResumeThread`** (call `+0x5bcc`) — 첫 스레드 풀어 주기. 이것도 **한 곳뿐**.
   - 세 이름은 다른 모듈에서 가져온 함수(import) 이름 그대로다. `[정적]` 셋 다 **ntdll.dll** 에서 가져온다 — KernelBase import 표(`llvm-readobj --coff-imports`)로 확인.
   - 결과서가 흐름 그래프로 확인: `+0x4672` 를 지나지 않고는 `NtResumeThread` 에 못 간다. 예외는 `CREATE_SECURE_PROCESS`(0x400000) 길 하나 (`+0x417d` 에서 가운데를 건너뜀).
@@ -1400,7 +1445,7 @@ NtResumeThread
   - `+0x5bb2` `MOV R15D,4` → `+0x5bb8` `TEST [RSP+0x108],R15B` → `+0x5bc0` `JNZ` 로 켜져 있으면 `NtResumeThread` 를 건너뛴다.
   - 인자: 1번째 = `NtCreateUserProcess` 가 돌려준 **스레드 핸들**(`[RSP+0x1b8]`), 2번째 = 0 (`+0x5bc2`, 이전 횟수는 안 받음).
   - 4 = `CREATE_SUSPENDED` 는 Win32 공개 상수 값이다. `[RSP+0x108]` 이 `dwCreationFlags` 라는 건 같은 사본의 `0x3`(디버그 플래그)을 보고 `DbgUiConnectToDbg`(`+0x81a`)를 부르는 것과도 맞는다.
-  - 같은 비트를 앞에서 한 번 더 본다: 4 가 **꺼져 있으면** 커널에 넘길 ProcessFlags 의 bit9(`0x200`)를 켠다 (`+0x7f6` ~ `+0x800`). 커널에서 이 비트의 뜻은 안 봤다 (4장).
+  - 같은 비트를 앞에서 한 번 더 본다: 4 가 **꺼져 있으면** 커널에 넘길 ProcessFlags 의 bit9(`0x200`)를 켠다 (`+0x7f6` ~ `+0x800`). ~~커널에서 이 비트의 뜻은 안 봤다 (4장).~~ → (run34 `[정적]`) `+0x306b`/`+0x30b3` 로 7번째 인자 → 커널 `NtCreateUserProcess` 는 검사만 하고 그대로 → `PspAllocateProcess` 9번째 인자 → **`+0x707 BT R8D,9`**: 켜졌으면 `OwnerProcessId` = 부모 PID 그대로, 꺼졌으면 `|2` (2.1 `PspAllocateProcess`, 아래 `PspProcessClose`).
   - 건너뛰는 길이 둘 더 있다: 패키지(AppX) 앱 마무리 함수들이 신호를 주면 사본에 4 를 켠다 (`+0x5b5b`), 정상 PE 가 아닌 이미지 처리 뒤 (`+0x394d`). `[추측]` 둘 다 test.exe 길과는 관계없다.
 - `[정적]` **`NtAlertResumeThread` 는 안 쓴다.** KERNELBASE 의 `ResumeThread` 함수도 안 거친다. `ResumeThread`(`+0x15`)도 같은 import 칸으로 `NtResumeThread` 를 따로 부를 뿐이다.
 - `[정적]` 두 시스템 콜 사이의 큰 일 (모두 조건부, 묶음 순서는 흐름으로 확인, 묶음 안 순서는 코드 배치 순):
@@ -1410,6 +1455,46 @@ NtResumeThread
   - 대부분 "어떤 import 가 있는지" 검사(12곳) 뒤에서만 부른다. 그 검사 함수는 링커가 합친 함수라 Ghidra 이름을 믿을 수 없다 (같은 주소 이름 21개).
   - `[추측]` 앱 호환 데이터 쓰기 중 하나가 자식 PEB `+0x2d8` (x64 PEB 의 `pShimData` 자리로 알려진 오프셋)에 주소를 쓴다.
 - `[추측]` 왜 늘 멈춰 두나: 자식이 한 줄이라도 달리기 전에 csrss 등록, 앱 호환 데이터 써 넣기 같은 준비를 부모가 끝내야 해서로 보인다. 비유하면 신입이 출근하기 전에 인사팀 등록·자리 세팅을 끝내 두고 문을 열어 주는 것.
+  - (run34) "csrss 등록" 은 이제 코드로 봤다: 아래 절의 `CsrCreateProcess` → `CsrInsertProcess`. 다만 "그래서 멈춰 둔다" 는 이유는 그대로 `[추측]`.
+
+#### ntdll 스텁 `NtCreateUserProcess` · `NtResumeThread` (run34 `[정적]`)
+
+| 스텁 | rva / 크기 | `+0x3 MOV EAX,` | `KiServiceTable[번호]` |
+|---|---|---|---|
+| `ntdll!NtCreateUserProcess` | `0x1627c0` / 24B | **`0xd1`** | `nt!NtCreateUserProcess` |
+| `ntdll!NtResumeThread` | `0x1617f0` / 24B | **`0x52`** | `nt!NtResumeThread` |
+
+- `[정적]` 모양은 둘이 같다: `+0x0 MOV R10,RCX` → `+0x3 MOV EAX,번호` → `+0x8 TEST byte [0x7ffe0308],1` → `+0x10 JNZ` → **`+0x12 SYSCALL`** → `+0x14 RET` / **`+0x15 INT 0x2e`** → `+0x17 RET`.
+  - 즉 "바로 SYSCALL 하나" 에 **대체 갈래가 하나 붙어 있다**: 공유 사용자 데이터 `+0x308` (`SystemCall` 칸으로 보임 `[추측]`) bit 0 이 켜져 있으면 `INT 0x2e`. 보통은 SYSCALL 쪽일 것 `[추측]` → 동적 Q19. → Q66
+  - run29 의 `NtContinue` 스텁(`0x43`)도 같은 모양이다.
+- `[정적]` 번호 대조는 run29 와 같은 방법: PE 파일의 `KiServiceTable` (489칸, 모두 `_index.tsv` 함수 시작과 맞음). 앞뒤 칸도 이름이 맞는다 (`[0xd0]` NtCreateTransactionManager · `[0xd2]` NtCreateWaitCompletionPacket, `[0x51]` NtQuerySection · `[0x53]` NtTerminateThread).
+- 비유: 관리실(ntdll)의 전화기. 단축 번호 `0xd1` 을 누르면 관리사무소(커널) 번호부 `0xd1` 칸의 담당자(`nt!NtCreateUserProcess`)가 받는다.
+
+#### csrss 쪽 — `0x1001d` 를 받는 `basesrv!BaseSrvCreateProcess2` (run34 `[정적]`, 다른 프로세스)
+
+이 절은 **부모 cmd.exe 스레드가 아니라 csrss 프로세스의 요청 스레드**에서 도는 코드다. 그래서 그림 1 에는 노란 메모로만 붙였다.
+
+```
+(부모) KERNELBASE!CreateProcessInternalW +0x4672  ntdll!CsrClientCallServer
+        +0x27 ApiNumber bit 28 지움 → +0x51 메시지 +0x30 에 0x1001d
+   ┄┄▶ (csrss 요청 스레드)
+csrsrv!CsrApiRequestThread
+ │  +0x47f SHR 0x10 → 서버 번호 1   (+0x483 6 미만, +0x493 CsrLoadedServerDll[1])
+ │  +0x49c 아래 16비트 0x1d          (서버 구조체 [+0x20] 0 ~ [+0x24] 0x1f 안)
+ └─ +0x4e6 (CFG 간접, 표 [+0x28][0x1d])  basesrv!BaseSrvCreateProcess2      (캡처 버퍼 갈래 +0x656)
+      │  +0xb3 NtOpenProcess, +0x1ba NtOpenThread   새 프로세스·스레드 핸들을 csrss 가 직접 엶
+      └─ +0x21b  InternalBaseSrvCreateProcess
+           ├─ (1) +0x100  (CFG 간접) sxsFunctions 표 +0x8    SxS, 조건부
+           ├─ (2) +0x17c  csrsrv!CsrCreateProcess
+           │        └─ +0x1d  CsrpCreateProcess  → +0x50c CsrInsertProcess (csrss 목록에 넣기)
+           └─ (3) +0x1bc  (CFG 간접) UserNotifyProcessCreate  성공하고 값이 있을 때
+```
+
+- `[정적]` ApiNumber 짜임 = **위 16비트 서버 번호 + 아래 16비트 API 번호.** basesrv 는 `ServerDllInitialization` 에서 자기 표 `BaseServerApiDispatchTable` (31칸) 을 서버 구조체에 건다 (`+0x153 ~ +0x15a`, 범위 `+0x149` 0 ~ `+0x17f` `0x1f`). 그 표의 `0x1d` 칸 = **`BaseSrvCreateProcess2`** (rva `0x6ee0`, 815B).
+- `[정적]` 하는 일 (대표): 메시지 안 CLIENT_ID 로 새 프로세스·스레드를 열고 (`NtQueryInformationProcess` 셋으로 부모·자식 관계 검사, 실패면 `0xc0000022`) → `CsrCreateProcess` → `CsrpCreateProcess` 가 프로세스 구조를 만들고 (`CsrAllocateProcess`) **csrss 목록에 넣고** (`CsrInsertProcess` ret `+0x50c`) 첫 스레드도 등록 (`CsrCreateThread`). 앞뒤로 SxS·`UserNotifyProcessCreate` 간접 호출 (표는 sxssrv.dll·winsrvext.dll 이 import 해 채우는 함수로 채움).
+- `[정적]` 간접 증거: **서버 번호 `1` = basesrv 는 코드에 박혀 있지 않다** (csrss 명령줄 `ServerDLL=이름,번호` → `CsrParseServerCommandLine` → `CsrLoadServerDll` ret `+0x58d`). 대신 kernel32·KernelBase 가 싣는 다른 CSR 번호 10개의 아래 16비트가 basesrv 표 칸 이름과 전부 맞고 위 16비트는 모두 1 이다. 확정은 동적 (Q19, 낮음). 명령줄을 smss 가 레지스트리에서 만든다는 건 `[추측: 일반 지식]`.
+- `[추측: 일반 지식]` 부모는 `CsrClientCallServer` 에서 답을 받을 때까지 기다린다 (기다리는 줄은 안 봄). 그래서 csrss 등록은 부모의 `NtResumeThread` 보다 먼저 끝난다고 본다. → Q66
+- 비유: 가게를 만든 뒤 부모가 **동네 주민센터(csrss)** 에 전입 신고를 한다. 신고서 번호 `0x1001d` = "1번 창구(basesrv)의 `0x1d` 번 업무". 주민센터는 새 가게 열쇠를 직접 받아 주민 명부에 올린다.
 
 #### `NtCreateUserProcess` 안 — 풀어 주는 호출이 없다
 
@@ -1529,7 +1614,7 @@ NtResumeThread
   - 범위: **이 `ntoskrnl.exe` 하나**, 모든 명령의 `[reg+0x5fc]`·원본 바이트·`&Flags3` 포인터·읽어 온 값 추적으로 잡히는 꼴 안에서다. `hal`·`win32k*`·드라이버, 포인터를 다른 함수로 넘기거나 메모리에 저장했다 꺼내는 꼴은 못 본다 (run33 "찾는 법과 한계").
   - test.exe 시동 길: `+0x45` 는 **코드상 지나는 줄**이다 (새 스레드 멈춤 횟수 1 → `+0x32`·`+0x36` 통과). 실제로 지났는지·그때 비트가 꺼져 있었는지는 동적 (Q19).
 
-#### `nt!PspProcessClose` (rva `0x9b3b50`, run33 `[정적]`) — 첫 풀어줌 표시를 읽는 둘째 곳
+#### `nt!PspProcessClose` (rva `0x9b3b50`, run33 `[정적]`, run34 정정) — 첫 풀어줌 표시를 읽는 둘째 곳
 
 - `[정적]` **프로세스 객체 형식의 닫기 콜백이다.** 직접 `CALL` 은 없다.
   - 등록: `PspInitPhase0 +0x4a8` `LEA RAX,[PspProcessClose]` → `+0x4bb` 저장 → `+0x4e6` (ret `+0x4eb`) `ObCreateObjectType` (`R9 = &PsProcessType`). 이웃 `+0x47e` `PspProcessDelete`·`+0x490` `PspProcessOpen` 과의 간격이 PDB `_OBJECT_TYPE_INITIALIZER` 의 `Open`/`Close`/`DeleteProcedure` (`+0x38`/`+0x40`/`+0x48`) 와 같다.
@@ -1540,7 +1625,11 @@ NtResumeThread
   - bit 15 **켜짐** → `+0x1b` return. 아무것도 안 한다.
   - bit 15 **꺼짐** → 닫히는 프로세스 `OwnerProcessId` (`+0x2d8`) = 닫는 프로세스 `UniqueProcessId` (`+0x1d0`) 이고, 닫는 프로세스 `Flags` (`+0x1f4`) 에 bit 3 `ProcessDelete` 또는 bit 30 `ProcessSelfDelete` 가 있으면 `PsTerminateProcess(닫히는 프로세스, 0xc000010a)` (call `+0x47` / ret `+0x4c`).
 - `[추측]` 뜻: "한 번도 안 풀린 자식 프로세스를, 주인이 죽으면서 핸들을 닫을 때 같이 끝낸다" 는 지름길. bit 15 = "이미 한 번 풀렸음" 이라 그 길을 막는다.
-- `[정적 읽기 + 추측]` **일반 생성에선 이 비교가 맞기 어려워 보인다.** `PspAllocateProcess +0x6f1 ~ +0x710` 이 `OwnerProcessId` 에 **부모 PID `|2`** 를 쓴다 (인자 `[RSP+0x90]` bit 9 일 때만 안 붙임, `+0x707 BT R8D,9`). PID 는 4 의 배수라 `|2` 가 붙으면 같을 수 없다. bit 9 의 뜻은 Q65.
+- ~~`[정적 읽기 + 추측]` **일반 생성에선 이 비교가 맞기 어려워 보인다.** `PspAllocateProcess +0x6f1 ~ +0x710` 이 `OwnerProcessId` 에 **부모 PID `|2`** 를 쓴다 (인자 `[RSP+0x90]` bit 9 일 때만 안 붙임, `+0x707 BT R8D,9`). PID 는 4 의 배수라 `|2` 가 붙으면 같을 수 없다. bit 9 의 뜻은 Q65.~~
+  - → **정정 (run34 `[정적]`)**: bit 9 = KERNELBASE 가 **`CREATE_SUSPENDED` 가 없을 때** 켜는 ProcessFlags bit 9 다 (`CreateProcessInternalW +0x800` → `NtCreateUserProcess` 7번째 인자 → `PspAllocateProcess` 9번째 인자 `[RSP+0x90]`, 2.1). 그래서 **보통 생성에선 `|2` 가 안 붙고 `OwnerProcessId` = 부모 PID 그대로**다. 비교가 맞을 수 있는 건 오히려 보통 생성 쪽이다.
+  - `|2` 가 붙어 비교가 막히는 건 `CREATE_SUSPENDED` 로 만든 경우다 (PID 는 4 의 배수 `[추측: 일반 지식]`).
+  - 뜻 `[추측]`: "보통 생성이면, 첫 스레드가 한 번 풀리기 전에 주인(부모)이 죽으며 핸들을 닫을 때 자식도 같이 끝낸다. 일부러 멈춰 만든 자식은 그 길에서 뺀다."
+  - cmd.exe `ExecPgm` (`0x80000`) 으로 만든 test.exe 는 `|2` 없는 쪽이다 `[정적: 두 코드의 상수, 실제 값은 Q19]`.
 - test.exe 시동 길에서 서나: **정적으로는 모른다.** 누가 test.exe 프로세스 핸들을 언제 닫나에 달렸다. 부모가 `main` 전에 닫는다면 그땐 이미 `NtResumeThread` 가 bit 15 를 켰고 스레드도 살아 있으니 `+0x1b` 로 바로 돌아갈 것이다 `[추측: 순서]`. → 동적 Q64. 그림엔 안 넣었다 (1장 메모).
 
 #### `nt!KeResumeThread` (정적)
@@ -3156,13 +3245,14 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.2 | (일부 해결) 첫 스레드를 풀어 주는 **nt 쪽 사슬** `NtResumeThread +0x9b` → `PsMultiResumeThread +0x25` → `KeResumeThread +0x87` → `KiResumeThread +0xab` → `KiTryUnwaitThread` → run13 `[정적]`. `PsResumeThread` 는 사슬에 없음 |
 | 2.2 | (해결됨, 정적) `NtCreateUserProcess` 반환 후 부모 쪽 마무리, 부모 유저 쪽이 풀어 주는 시스템 콜을 부르는지·어느 쪽인지 → run14 `[정적]` `KERNELBASE!CreateProcessInternalW` `+0x30ee` `NtCreateUserProcess`(ThreadFlags 늘 1) → `+0x4672` `CsrClientCallServer` → `+0x5bd3` **`NtResumeThread`** (`CREATE_SUSPENDED` 없을 때만). `NtAlertResumeThread` 안 씀 (Q5b) |
 | 2.2 | 남은 것: test.exe 때 flags bit0 (= `ThreadFlags` bit0) 실제 값 (Q19). run14 로 "KERNELBASE 는 늘 1" `[정적]` 이니 실행으로 맞춰 볼 것 |
-| 2.2 | cmd.exe 가 실제로 넘기는 `dwCreationFlags` 에 `0x4`(`CREATE_SUSPENDED`)가 있나 → 없으면 `+0x5bd3` 이 불림 (`[추측]` 없음). cmd.exe 는 분석 범위 밖이라 동적으로만 |
-| 2.2 | 부모 유저 쪽 입구: cmd.exe → (`kernel32!CreateProcessW`?) → `KERNELBASE!CreateProcessW` 인지. `CreateProcessInternalW` 를 부르는 나머지 4곳 이름 (run14 지도 기준 5곳) |
+| 2.2 | cmd.exe 가 실제로 넘기는 `dwCreationFlags` 에 `0x4`(`CREATE_SUSPENDED`)가 있나 → 없으면 `+0x5bd3` 이 불림 (`[추측]` 없음). cmd.exe 는 분석 범위 밖이라 동적으로만. (일부 해결, 참고) run34 `[정적]`: cmd.exe 를 `objdump` 로 보니 `cmd!ExecPgm` 은 상수 `0x80000` 만 (4 없음), `cmd!Start` 는 조건부로 4. test.exe 때 실제 값은 동적 **Q19** |
+| 2.2 | (해결됨, 정적) 부모 유저 쪽 입구: cmd.exe → (`kernel32!CreateProcessW`?) → `KERNELBASE!CreateProcessW` 인지 → run34 `[정적]`: `kernel32!CreateProcessW` (94B) 는 인자 그대로 넘기는 껍데기, call `+0x4d` / ret `+0x54` → API-set (`api-ms-win-core-processthreads-l1-1-0`, kernel32 가 가져오면 kernelbase) → `KERNELBASE!CreateProcessW`. cmd.exe import 표에도 같은 이름 (기본 kernel32 로 풀림). 실행 확인은 동적 **Q19** (`nt!NtCreateUserProcess` 입구 긴 `k` 에 `kernel32!CreateProcessW+0x54` ← `cmd!ExecPgm+0x59c`) |
+| 2.2 | `CreateProcessInternalW` 를 부르는 나머지 4곳 이름 (run14 지도 기준 5곳). 대표 지점 목표엔 덜 중요 (test.exe 길은 `KERNELBASE!CreateProcessW +0x66`, run34) |
 | 2.2 | `CreateProcessInternalW` 가 `NtCreateUserProcess` 를 **몇 번** 부르나 — 자리는 한 곳이지만 실패 길(`+0x3158`)에서 돌아오는 재시도 길이 있음 (run14 `[정적]`) |
 | 2.2 | 두 시스템 콜 사이 ①검사 ②csrss 알림 ③후처리 중 test.exe 때 실제로 도는 것 ("어떤 import 가 있는지" 검사 12곳이 무엇을 돌려주나) |
-| 2.2 | `CreateProcessInternalW +0x800` 이 `CREATE_SUSPENDED` 가 없을 때 켜는 ProcessFlags bit9(`0x200`) 를 커널 `NtCreateUserProcess` 가 어떻게 쓰나 |
+| 2.2 | (해결됨, 정적) `CreateProcessInternalW +0x800` 이 `CREATE_SUSPENDED` 가 없을 때 켜는 ProcessFlags bit9(`0x200`) 를 커널 `NtCreateUserProcess` 가 어떻게 쓰나 → run34 `[정적]`: 7번째 인자 `[RBP+0x7d0]`, 검사 마스크 `0xff317838` (`+0x1b6`) 에 없음, 안 바꾸고 `+0xbf6`/`+0xbfc` 로 `PspAllocateProcess` 9번째 인자 → `[RSP+0x90]` (`+0x2c1`) → **`+0x707 BT R8D,9`**: 켜짐 = `OwnerProcessId` (`+0x710`) 부모 PID 그대로, 꺼짐 = `\|2`. 읽는 곳은 이 한 줄로 보임 (다른 셋은 bit 0·1·2·10). 실행 값은 동적 **Q19** (7번째 인자 bit 9, `PspAllocateProcess+0x710` 직전 `rax`) |
 | 2.2 | (해결됨) `CsrClientCallServer`·`NtCreateUserProcess`·`NtResumeThread` 를 어느 DLL 에서 가져오나 → ntdll.dll, KernelBase import 표(`llvm-readobj --coff-imports`) `[정적]` → run14 |
-| 2.2 | csrss 쪽 ApiNumber `0x1001d` 의 정체. ntdll `NtCreateUserProcess`·`NtResumeThread` 스텁이 바로 시스템 콜을 하는지 (`[추측]` 그렇다) |
+| 2.2 | (해결됨, 정적) csrss 쪽 ApiNumber `0x1001d` 의 정체. ntdll `NtCreateUserProcess`·`NtResumeThread` 스텁이 바로 시스템 콜을 하는지 (`[추측]` 그렇다) → run34 `[정적]`: `0x1001d` = 서버 1 + API `0x1d` (`csrsrv!CsrApiRequestThread +0x47f` 나눔) → basesrv `BaseServerApiDispatchTable[0x1d]` = **`basesrv!BaseSrvCreateProcess2`** (csrss 가 핸들 열고 `CsrCreateProcess` → `CsrInsertProcess` 로 등록, SxS·`UserNotifyProcessCreate` 간접 호출). 서버 1 = basesrv 는 간접 증거 (csrss 명령줄 값). 스텁: `EAX 0xd1`/`0x52` → `+0x12 SYSCALL`, `KiServiceTable` 같은 칸 = `nt!NtCreateUserProcess`/`nt!NtResumeThread`. 단 `0x7ffe0308` bit 0 면 `+0x15 INT 0x2e` 갈래. 남은 동적 → **Q19** (SYSCALL/INT 2e, 낮음: csrss 에서 `BaseSrvCreateProcess2` 입구 `k`·`CsrLoadedServerDll[1]`) |
 | 2.2 | (해결됨) `KeStartThread`(`+0x5e2`)가 언제 타나 → run12 `[정적]` 흐름상 제일 먼저. `KeReadyThread`는 멈춘 스레드에도 불림 (모든 길의 끝) |
 | 2.2 | (해결됨, 정적) 멈춘 스레드가 `KeReadyThread` 뒤 **실제로 서는 곳** = `KiDeliverApc +0x220` → `KiSchedulerApc +0xf7` 의 `KeWaitForSingleObject(SuspendEvent)`. 멈춤 = 횟수 + 멈춤 APC(`KiSuspendThread +0x88`) + `SuspendEvent` 0 → run13 `[정적]` |
 | 2.2 | (일부 해결) 멈춤 APC 가 **언제** 배달되나 — 고리 3개 `[정적]` → run15: `KiStartUserThread` 가 IRQL 1 로 부름, `PspUserThreadStartup +0x22` 가 1 → 0 의 유일한 자리, `SwapContext` APC 요청 조건이 새 스레드에 늘 맞음. (해결됨) `SwapContext` 끝 조각의 "CL 인자" 정체 → 스택 `[RSP+0x28]` 바이트, 새 스레드는 `KiInitializeContextThread +0x26f` 가 넣은 1 → run15 `[정적]` |
@@ -3172,7 +3262,8 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.2 | (해결됨, 정적) `PsMultiResumeThread +0x4e` 가 켜는 `_EPROCESS` `Flags3.ProcessFirstResume` 를 **읽는 곳** → run33 `[정적]`: 둘 — `PsMultiResumeThread +0x45` (켜기 전 이미 켜졌나), `PspProcessClose +0xf` (프로세스 핸들 닫기 콜백, 켜졌으면 바로 return, 꺼졌으면 주인 PID·주인 지워지는 중이면 `PsTerminateProcess(0xc000010a)` ret `+0x4c`). 켜는 곳 `+0x4e` 하나, 끄는 곳 없음, 유저(`NtQueryInformationProcess`)·ETW 로 안 나감. 범위는 ntoskrnl 한 파일 (run33 "찾는 법과 한계") |
 | 2.2 | `ProcessFirstResume` 가 풀기 전 0 → 풀 때 1 로 바뀌나 (run33) — 동적 **Q19** 에 합침: `nt+2c9ae5` (`PsMultiResumeThread +0x45`) 에서 `dd poi(@rsi+0x220)+0x5fc L1` bit 15 꺼짐, `nt+2c9af6` (`+0x56`) 에서 켜짐 기대 |
 | 2.2 | `PspProcessClose` 가 test.exe 프로세스 객체로 `main` 전에 서나 (run33) — 동적 **Q64**: `nt+9b3b50` 입구, 조건 `@rdx == <test.exe EPROCESS>`, 서면 `k` (`ObCloseHandleTableEntry+0x7ae` 아래 누가 닫나) 와 `dd @rdx+0x5fc L1` (bit 15 켜짐 → `nt+9b3b6b` return 기대). 안 서면 그것이 답. Q19 와 같은 실행 |
-| 2.2 | `PspProcessClose` 주변 작은 정적 (run33) — 정적 **Q65**: `PspAllocateProcess` 인자 `[RSP+0x90]` bit 9 의 뜻 (`OwnerProcessId` `+0x2d8` 에 부모 PID `\|2` 를 안 붙이는 조건, `+0x707`), `OwnerProcessId` 를 쓰는 다른 줄 `NtSetInformationProcess +0x1ecd` (어느 정보 클래스), `ObCloseHandleTableEntry +0x7a9` 간접 호출 앞 인자 채움 (`PspProcessClose` 인자 이름 `[추측]` 확인) |
+| 2.2 | `PspProcessClose` 주변 작은 정적 (run33) — 정적 **Q65**: (해결됨 → run34) ~~`PspAllocateProcess` 인자 `[RSP+0x90]` bit 9 의 뜻 (`OwnerProcessId` `+0x2d8` 에 부모 PID `\|2` 를 안 붙이는 조건, `+0x707`)~~ = KERNELBASE 가 `CREATE_SUSPENDED` 없을 때 켜는 ProcessFlags bit 9 (같은 비트, run33 짐작 정정). 남은 것: `OwnerProcessId` 를 쓰는 다른 줄 `NtSetInformationProcess +0x1ecd` (어느 정보 클래스), `ObCloseHandleTableEntry +0x7a9` 간접 호출 앞 인자 채움 (`PspProcessClose` 인자 이름 `[추측]` 확인) |
+| 2.2 | 부모 유저 쪽 작은 정적 둘 (run34) — 정적 **Q66**: (a) ntdll 스텁이 보는 공유 사용자 데이터 `0x7ffe0308` 칸 이름 (`_KUSER_SHARED_DATA.SystemCall` 로 보임 `[추측]`, PDB 타입으로), (b) `CsrClientCallServer` 가 csrss 답을 기다리나 (지금 `[추측: 일반 지식]`, ntdll 안쪽 보내고 받는 줄). `INT 0x2e` 갈래의 커널 입구는 동적 **Q19** |
 | 2.3 | (해결됨, 정적) 커널 → 유저 전환 방법 → run15 `[정적]`: `PspUserThreadStartup` 이 돌아온 뒤 `KiStartUserThread`(= `KxStartUserThread`) 가 레지스터를 되살리고 **`IRETQ`** (`KiKvaShadow` 꺼짐: 조각 `+0x9c` = `Kx +0x3e1` / 켜짐: `JMP KiKernelExit` → `+0xa5`). 유저 첫 `RIP` = `_KTRAP_FRAME.Rip` (`+0x168`), 트랩 프레임 = `InitialStack - 0x190` |
 | 2.3 | 남은 것: 실제로 탄 `IRETQ` (`KiKvaShadow` 값), 그때 꺼낸 `Rip`·`Rsp` 값 — 동적 (Q42). (run29) 로더 끝 `NtContinueEx` 출구도 같은 변수로 갈린다 (2.10) |
 | 2.3 | 남은 것 (run16): 바꿔 끼우기의 실제 값 — `PspUserThreadStartup+0xae`/`+0xb3` 앞뒤 트랩 프레임 `Rip`·`Rcx`·`Rdx`·`Rsp`, `LdrInitializeThunk` 입구 `Rcx`(맡긴 문맥)와 `[Rsp]`(0 인지), `PsNtdllExports` 값, `PspSystemDlls[0]+0x20` 이 ntdll 시작 주소와 같은지, 네 스레드 모두 같은 길인지 — 동적 (Q42) |
@@ -3285,10 +3376,12 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 그림 1 nt (그림 밖) | `PspInsertThread` 잡·보안 길: `+0x106`, `+0x8ef` `PspAssignProcessToJobList`, `+0x93d` `PspCreateSecureThread` | 코드상 조건부 (run12 `[정적]`) | call 자리 `+0x101`, `+0x8ea`, `+0x938` 이 test.exe 에서 안 걸리는지 |
 | 그림 1 nt | `PspInsertThread` → (5) `KeReadyThread` | 코드상 모든 길의 끝, 멈춘 스레드도 (run9, run12 `[정적]`) | `KeReadyThread` 입구에서 `k`, 돌아올 자리 `PspInsertThread+0x5a6`인지. `+0x5a1` 에서 `dt nt!_KTHREAD @rcx State` |
 | 그림 1 nt | `KeSuspendThread` → `KiSuspendThread` → (1) `KiInsertQueueApc` / (2) `KiSignalThreadForApc` | 코드의 call 자리 (run13 `[정적]`). 새 스레드는 (2) 갈래 `[추측]` | `nt!KiSuspendThread+0x83`·`+0x1f6` 에 서나. 값이 바뀌는 순간: 스레드 `+0x284` 0→1 (`KeSuspendThread +0x60`), `+0x2e4` 1→0 (`KiSuspendThread +0x6c`) |
-| 그림 1 KERNELBASE | `CreateProcessW` → `CreateProcessInternalW`, 부모가 이 입구로 오나 | `CreateProcessW +0x66` 코드의 call 자리 (run14 `[정적]`). cmd.exe 가 이 입구로 오는지는 `[추측]` | `KERNELBASE!CreateProcessInternalW` 입구 (cmd.exe 문맥) 에서 `k`: `CreateProcessW+0x66` 아래가 cmd.exe 인지, 사이에 `kernel32!CreateProcessW` 가 끼는지 |
+| 그림 1 KERNEL32 → KERNELBASE | `kernel32!CreateProcessW` → `KERNELBASE!CreateProcessW` (`(정적)` 상자, run34) | 코드의 call 자리 `+0x4d` / ret `+0x54`, IAT = API-set 이름 → kernel32 가 가져오면 kernelbase (run34 `[정적]`, `apisetschema.dll` 표). cmd.exe import 표에 같은 이름 (cmd.exe 쪽은 `objdump` 참고: `cmd!ExecPgm` ret `+0x59c`) | Q19: `nt!NtCreateUserProcess` 입구 (cmd.exe 문맥) 긴 `k` 에 `kernel32!CreateProcessW+0x54` 가 `KERNELBASE!CreateProcessW+0x66` 아래에, 그 아래 `cmd!ExecPgm+0x59c` (또는 AsUser `+0x51b`, `start` 면 `cmd!Start+0xe52`) 가 보이나 |
+| 그림 1 KERNELBASE | `CreateProcessW` → `CreateProcessInternalW`, 부모가 이 입구로 오나 | `CreateProcessW +0x66` 코드의 call 자리 (run14 `[정적]`). ~~cmd.exe 가 이 입구로 오는지는 `[추측]`~~ → run34 `[정적]`: `kernel32!CreateProcessW +0x54` 를 거쳐 옴 (위 줄). 실행은 안 봄 | `KERNELBASE!CreateProcessInternalW` 입구 (cmd.exe 문맥) 에서 `k`: `CreateProcessW+0x66` 아래가 `kernel32!CreateProcessW+0x54` 인지 (Q19) |
 | 그림 1 KERNELBASE | `CreateProcessInternalW` → (1) `NtCreateUserProcess` / (2) `CsrClientCallServer` / (3) `NtResumeThread` | 코드의 call 자리, 흐름 순서 (run14 `[정적]`). 각각 한 곳 | `CreateProcessInternalW+0x30e7`·`+0x466b`·`+0x5bcc` 에 멈춤 (유저 모드 자리라 cmd.exe 문맥으로 거는 법은 dast 가 정함). 서는 순서와 횟수 (`+0x30e7` 이 두 번 서면 재시도) |
 | 그림 1 KERNELBASE (그림 밖) | `ThreadFlags` = 1 (늘), 풀어 주기 조건 `dwCreationFlags & 4` | `+0x6cb`·`+0x30af`, `+0x5bb8`·`+0x5bc0` (run14 `[정적]`) | `+0x30e7` 에서 `dd @rsp+0x38 L1` (= 1 이어야), `+0x5bb8` 에서 `dd @rsp+0x108 L1` (cmd.exe 의 `dwCreationFlags` 사본, bit2 꺼져 있어야 풀어 줌). 커널 쪽은 `nt!NtCreateUserProcess` 입구 `poi(@rsp+0x40)` (Q19) |
-| 그림 1 ntdll ==> nt | ntdll `NtCreateUserProcess`·`NtResumeThread` 스텁 ==> 시스템 콜 진입 | KERNELBASE 가 import 로 부르는 것만 봄 (run14 `[정적]`). 스텁 안쪽은 안 봄 `[추측]`. `KiSystemServiceCopyEnd+0x28` → `nt!NtCreateUserProcess` 는 run3 `[관찰]` | 커널 `nt!NtCreateUserProcess`·`nt!NtResumeThread` 입구 (cmd.exe `/p` 필터) 에서 긴 `k`: 유저 쪽에 `ntdll!NtCreateUserProcess` → `KERNELBASE!CreateProcessInternalW+0x30ee` / `ntdll!NtResumeThread` → `KERNELBASE!CreateProcessInternalW+0x5bd3` 가 보이나. `nt!NtAlertResumeThread` 에는 안 서야 함 |
+| 그림 1 ntdll ==> nt | ntdll `NtCreateUserProcess`·`NtResumeThread` 스텁 ==> 시스템 콜 진입 | KERNELBASE 가 import 로 부르는 것만 봄 (run14 `[정적]`). ~~스텁 안쪽은 안 봄 `[추측]`~~ → run34 `[정적]`: `EAX 0xd1`/`0x52` → `+0x12 SYSCALL`, `KiServiceTable` 같은 칸이 `nt!NtCreateUserProcess`/`nt!NtResumeThread`. `0x7ffe0308` bit 0 이면 `+0x15 INT 0x2e` 갈래. `KiSystemServiceCopyEnd+0x28` → `nt!NtCreateUserProcess` 는 run3 `[관찰]` | 커널 `nt!NtCreateUserProcess`·`nt!NtResumeThread` 입구 (cmd.exe `/p` 필터) 에서 긴 `k`: 유저 쪽에 `ntdll!NtCreateUserProcess` → `KERNELBASE!CreateProcessInternalW+0x30ee` / `ntdll!NtResumeThread` → `KERNELBASE!CreateProcessInternalW+0x5bd3` 가 보이나. `nt!NtAlertResumeThread` 에는 안 서야 함. (run34) `db 0x7ffe0308 L1` bit 0 — 꺼져 있으면 `SYSCALL` 갈래 (Q19) |
+| 그림 1 노란 메모 (csrss) | `ntdll!CsrClientCallServer` (`0x1001d`) ┄ csrss 요청 스레드 `csrsrv!CsrApiRequestThread` → `basesrv!BaseSrvCreateProcess2` → `InternalBaseSrvCreateProcess` → `csrsrv!CsrCreateProcess` | 코드의 call 자리 `+0x4e6`(`+0x656`) / `+0x21b` / `+0x17c` (run34 `[정적]`). 표 칸 `[0x1d]` 은 PE 파일, 서버 번호 1 = basesrv 는 간접 증거. 다른 프로세스라 그림 1 엔 메모만 | Q19 (낮음): csrss 문맥에서 `basesrv!BaseSrvCreateProcess2` 입구 `k` (`CsrApiRequestThread+0x4e6` 또는 `+0x656`), `poi(@rcx+0x30)` = `0x1001d`, 부모 `CsrClientCallServer` 와 순서. `dq csrsrv!CsrLoadedServerDll L6` 의 `[1]` 이름 |
 | 그림 1 (3) 풀어 주기 | `KiSystemServiceCopyEnd` → `NtResumeThread` | `NtCreateUserProcess` 쪽 `+0x28` 은 run3 `[관찰]`, 이 호출은 안 봄 | 위와 같은 멈춤점의 `k` 에서 `KiSystemServiceCopyEnd+0x28` 인지 |
 | 그림 1 (3) 풀어 주기 | `NtResumeThread` → `PsMultiResumeThread` → `KeResumeThread` → `KiResumeThread` → `KiTryUnwaitThread` | 코드의 call 자리 (run13 `[정적]`) | `nt!PsMultiResumeThread` 입구 (`rcx` 의 Process = test.exe) 에서 `k` → `NtResumeThread+0x9b` 인지. `nt!KeResumeThread+0x82` 에서 `dt nt!_KTHREAD @rbx SuspendCount SuspendEvent` (횟수 0). `nt!KiResumeThread+0xa6` 에서 깨우는 대상. 값: `+0x284` 1→0 (`KeResumeThread +0x68`), `+0x2e4` 0→1 (`KiResumeThread +0x20`). 프로세스 `+0x5fc` bit 15 0→1 (`PsMultiResumeThread +0x4e`, 앞뒤 `nt+2c9ae5`·`nt+2c9af6`, run33 → Q19) |
 | 그림 1 nt | `NtCreateUserProcess` → (11)(12) `PspCreateObjectHandle` / `PspUpdateCreateInfo` | 코드상 성공 길 끝, 값 6 | `NtCreateUserProcess+0x1124`에서 `ecx`=6, 반환값 `rax` |
@@ -3387,6 +3480,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run31 | (정적, ntoskrnl) exe 이미지 섹션 (depth 0 21개): `MmCreateSpecialImageSection` (= `NtCreateSection` 의 커널 안 버전, 토큰·서명 수준을 인자로, 핸들 반환 `+0x146`) → `+0xd4` `MiCreateSection` → `+0xf8` `MiCreateImageOrDataSection` (**갈림길**: `+0x1a3` `MiReferenceControlArea` 가 `ImageSectionObject` 를 봐서 있으면 `+0x1d5` `MiShareExistingControlArea`) → `+0x385` `MiCreateNewSection` (`SEC_IMAGE`) → `+0x215` **`MiCreateImageFileMap`** (헤더 읽기 `+0x15c`/`+0x501`, `MZ` `+0x188`, `+0x1f6` `MiVerifyImageHeader`, `+0x2e6` `MiBuildImageControlArea`). 2.1 `[추측]` "`MiCreateImageFileMap` 은 안쪽인지 모른다" → 안쪽 맞음. **진입점 처음 기록 = `MiBuildImageControlArea +0x172`** (`ImageBase + AddressOfEntryPoint` → `TransferAddress`, 헤더 쪽 `MiVerifyImageHeader +0x8a`), 재배치 때 `MiRelocateImage` 조각 `+0x1b1279` 가 델타 더함. 프로세스 메모리엔 안 올림. 서명 재시도 고리는 이 사슬 상태값 때문 아님 |
 | run32 | (정적, ntoskrnl) 프로세스 매개변수·ntdll 시작 정보 블록 (depth 0 9개): `PspSetupUserProcessAddressSpace` 붙기 전 `+0xa0 ~ +0xea` 커널 사본 `Flags` 비트 15·**29** (`+0xe6`, 조건 silo `OneCoreForwardersEnabled`)·`LoaderThreads` 기본값 → `+0xfa` 붙기 → `+0x19c` 자리 → **`+0x1b9` `PspCopyAndFixupParameters`** (원본 = `NtCreateUserProcess +0xacb` `PspCaptureProcessParameters` 커널 사본, 포인터 12개 절대 주소로, 콘솔·표준 핸들 복제 `+0xbc`·`+0x130`, **PEB `+0x20` = `+0x52b` 또는 `+0x347`/`+0x34c`** — 기능 스위치 `nt+0xfc4110`) → **`+0x1e6` `PspPrepareSystemDllInitBlock`** (**새 프로세스 안 ntdll `LdrSystemDllInitBlock` 0x128B**, 주소 `PsNtdllExports+0x0`: `+0x98` 난수, **`+0xa0` 완화 옵션 24B (`+0x12b`·`+0x138`), `+0xb8` CFG 비트맵 (`+0x15a`)**, `+0xf0 ~` SCP 함수 표) → ApiSet 뷰. 부르는 자리 4곳·갈림 조건. 2.1 `[추측]` 두 줄 맞음, run10 순서 맞음. 커널 쓰는 줄 ↔ ntdll 읽는 줄 짝 표 (run17·18·19·20·28) |
 | run33 | (정적, ntoskrnl) 첫 풀어줌 표시·APC 인터럽트 이름 (depth 0, 전체 훑기는 임시 스크립트): `_EPROCESS +0x5fc` bit 15 `ProcessFirstResume` 를 **읽고 판단하는 곳 둘** — `PsMultiResumeThread +0x45` (켜기 전 검사) · **`PspProcessClose +0xf`** (프로세스 객체 닫기 콜백, `PspInitPhase0 +0x4a8` 등록, `ObCloseHandleTableEntry +0x7a9` 간접 호출 자리, 켜짐이면 `+0x1b` return / 꺼짐이면 주인 PID·주인 지워지는 중일 때 `+0x4c` `PsTerminateProcess(0xc000010a)`). 켜는 곳 `+0x4e` 하나, 끄는 곳 없음, 유저·ETW 로 안 나감 (범위: ntoskrnl 한 파일, 명령 264만 개 + 원본 바이트 + 포인터·값 추적). `OwnerProcessId` = 부모 PID `\|2` (`PspAllocateProcess +0x703`). **`FUN_1406b2db3` = `KiApcInterrupt +0x273`** (같은 `.pdata` 범위 1817B, 체인 없음, PDB 이름 하나), `KiDeliverApc` call `+0x3a6` / ret `+0x3ab` |
+| run34 | (정적, kernel32·KernelBase·ntdll·ntoskrnl + 처음 analyze basesrv·csrsrv, cmd.exe 는 `objdump` 참고) 부모 유저 쪽 남은 넷: **`kernel32!CreateProcessW` 껍데기** (94B, 인자 그대로, call `+0x4d` / ret `+0x54`, IAT = API-set `api-ms-win-core-processthreads-l1-1-0` → kernel32 가 가져오면 kernelbase) → `KERNELBASE!CreateProcessW`. cmd.exe import 표도 같은 이름 (`cmd!ExecPgm` ret `+0x59c`, `dwCreationFlags` `0x80000`). ntdll 스텁 `NtCreateUserProcess` `0xd1` / `NtResumeThread` `0x52` → `+0x12 SYSCALL` = `KiServiceTable` 같은 칸 (`0x7ffe0308` bit 0 면 `+0x15 INT 0x2e`). csrss 알림 `0x1001d` = 서버 1 (basesrv, 간접 증거) API `0x1d` = **`basesrv!BaseSrvCreateProcess2`** (`CsrApiRequestThread +0x4e6` 간접 → `InternalBaseSrvCreateProcess +0x21b` → `CsrCreateProcess +0x17c` → `CsrInsertProcess`, csrss 등록). ProcessFlags bit 9 = `CreateProcessInternalW +0x800` → `NtCreateUserProcess` 7번째 인자 (마스크 `0xff317838` 밖) → `PspAllocateProcess` 9번째 `[RSP+0x90]` → **`+0x707`**: 켜짐(`CREATE_SUSPENDED` 없음) = `OwnerProcessId` 부모 PID 그대로, 꺼짐 = `\|2`. run33 `PspProcessClose` 짐작 정정 |
 | `sample/` 소스 | 의존 관계, 모듈별 TLS 콜백, `/MT` 빌드 |
 
 - run3 ~ run5는 타깃에서 빌드한 test.exe, run6 ~ run8은 디버거 VM에서 빌드해 옮긴 test.exe (같은 소스).
@@ -3422,3 +3516,4 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run31 | `_workspace/sast/26_image-section` | 없음 | 정적만 (대기열 Q33, 단계 3 "작은 정적부터 몰아서" 의 바퀴. Q32 는 run12 로 이미 답해 바퀴 없이 닫음). 요청 depth 1 대신 depth 0 21개 (callee 100개 가까이라 이름으로 골라 더 내려감, `MiBuildImageControlArea`·`MiRelocateImage` 포함). Q33 끝. 동적 확인거리 D1~D5 → 새 **Q61**, D6 → Q35, `MmCreateSpecialImageSection` 횟수 → Q34 |
 | run32 | `_workspace/sast/27_params-initblock` | 없음 | 정적만 (대기열 Q36, 단계 3 "작은 정적부터 몰아서" 의 바퀴). 요청 depth 1 대신 depth 0 9개 (두 대상 + 칸 출처 3개 + 원본 쪽 3개 + 스위치 1개). Q36 끝. 동적 확인거리 1~4 → **Q35** 에 출처로 (스위치 전역, `PspPrepareSystemDllInitBlock` 입구 자리, 복사 직후·채운 뒤 값). 새 정적 공백 → **Q63** 하나로 ((a)~(d), (d) ntdll 새로 읽기는 차례 때 사용자와). 요청서 "호출 9"·"caller 3" 은 실제 8곳·4곳. 결과서 글자 두 곳 고쳐 읽음 (`+0xc3` 은 `PspWow64GetSharedInformation`, 종류는 `+0xb7`/`+0xbc`; `PspGetScpCfgFunctions` 호출은 `+0x196`/`+0x19b`) |
 | run33 | `_workspace/sast/28_first-resume` | 없음 | 정적만 (대기열 Q40, 단계 3 "작은 정적부터 몰아서" 의 바퀴. decompiler 첫 시도 로그인 오류로 한 번 다시 부름). 요청 대상 `KiApcInterrupt` + 읽는 줄 확인용 depth 0 여러 개, 전체 훑기·`.pdata` 는 임시 도구 (`ms/ghidra/_tmp_sast28/`). Q40 끝. 동적 확인거리 → **Q19** (bit 15 켜지는 순간), **Q42** (`KiApcInterrupt+0x3ab` 콜스택), 새 **Q64** (`PspProcessClose` 가 `main` 전에 서나). 새 정적 공백 → **Q65** (`OwnerProcessId` bit 9, `NtSetInformationProcess +0x1ecd`, `ObCloseHandleTableEntry +0x7a9` 인자) |
+| run34 | `_workspace/sast/29_parent-leftovers` | 없음 | 정적만 (대기열 Q41 + Q65 의 bit 9 부분, 단계 3 "작은 정적부터 몰아서" 의 바퀴). basesrv·csrsrv 처음 analyze (함수 156·129), cmd.exe 는 PDB 이름만 받아 `objdump` 참고. PE 표(IAT·API-set·`KiServiceTable`·`BaseServerApiDispatchTable`)는 임시 스크립트. Q41 끝. 동적 확인거리 → **Q19** 에 출처 (부모 스택 `k`, 7번째 인자 bit 9, `OwnerProcessId` 값, SYSCALL/INT 2e, 낮음: csrss 쪽). **Q65** 좁힘 (남은 것 `NtSetInformationProcess +0x1ecd`, `ObCloseHandleTableEntry +0x7a9` 인자) |

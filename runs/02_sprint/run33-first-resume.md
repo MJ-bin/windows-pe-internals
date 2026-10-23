@@ -1,5 +1,7 @@
 # 2026-10-23 run33 — 첫 풀어줌 표시: **`ProcessFirstResume` 를 읽는 곳은 둘** (`PsMultiResumeThread +0x45`, `PspProcessClose +0xf`), 조각 `FUN_1406b2db3` = **`KiApcInterrupt +0x273`** (정적)
 
+> **정정 (run34)**: 아래 "일반 생성에서는 이 비교(`OwnerProcessId` == 닫는 쪽 PID)가 맞기 어려워 보인다" 는 틀렸다. `[RSP+0x90]` bit 9 는 KERNELBASE 가 **`CREATE_SUSPENDED` 가 없을 때** 켜는 ProcessFlags bit 9 라서, 보통 생성에선 `|2` 가 안 붙고 `OwnerProcessId` = 부모 PID 그대로다 (`|2` 는 `CREATE_SUSPENDED` 때만). 나머지(읽는 곳 둘, Q64 짐작)는 그대로. → `run34-parent-leftovers.md` "정정"
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 작성일.
