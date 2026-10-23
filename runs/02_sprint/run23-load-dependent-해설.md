@@ -3,6 +3,8 @@
 > 이 글은 [run23 문서](run23-load-dependent.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
+> **정정 (run24)**: 2.6 "병렬 로딩이 켜졌는지는 안 본다" 2번의 `[추측]` ("`LdrpQueueWork` 가 그 자리에서 다 올렸으면 `+0x12df` 에서 자식 `State ≥ 2` → 병렬 켜기 앞뒤 차이") 과 2.8 표의 "`State ≥ 2` (그 자리에서 올라옴)" 줄은 틀렸다. `LdrpQueueWork` 는 넣기만 하고 자식 `State = 2` 는 같은 잠금 안에서만 써지므로, 새로 일감에 넣은 자식은 `+0x12df` 에서 늘 `State < 2` 다 → [run24 해설](run24-work-queue-해설.md) 2.8. (본문은 그대로 둠)
+
 - 대기열: **Q12b** — 2.5·2.6 의존 DLL 하나를 처리하는 `ntdll!LdrpLoadDependentModuleInternal` (9250바이트, 호출 75곳): 간선(의존 관계)을 만드는 곳, 이미 있는 DLL·KnownDll·새로 올리기 갈림 (`_workspace/plan.md`, 이번에 **끝**)
 - 근거:
   - run 문서 [`run23-load-dependent.md`](run23-load-dependent.md) (가장 중요)

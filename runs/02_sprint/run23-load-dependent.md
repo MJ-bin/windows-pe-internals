@@ -1,5 +1,7 @@
 # 2026-10-23 run23 — `LdrpLoadDependentModuleInternal`: import 이름 하나를 다듬고 → 이미 있나 보고 → 없으면 새 항목 + KnownDll 시도 → 락 안에서 간선(`+0xf69`/`+0xf8b`)을 쓰고 일감(`+0x182c LdrpQueueWork`)으로 넘긴다 (정적)
 
+> **정정 (run24)**: "일감 vs 바로" 절의 `[추측]` "`LdrpQueueWork` 가 그 자리에서 다 올렸으면 `+0x12df` 에서 자식 `State ≥ 2` → 병렬 켜기 앞뒤 차이가 여기 나타날 수 있다" 는 틀렸다. `LdrpQueueWork` 는 큐에 넣기만 하고, 자식 `State = 2` 는 같은 `LdrpModuleDatatableLock` 안(`LdrpProcessMappedModule +0x1c2`)에서만 써지므로 새로 일감에 넣은 자식은 `+0x12df` 에서 늘 `State < 2` 다. 부모 카운터의 그 몫은 나중에 `LdrpSignalModuleMapped +0x45` 가 줄인다 → run24.
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 작성일.
