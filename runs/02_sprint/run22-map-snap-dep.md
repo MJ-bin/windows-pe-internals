@@ -1,5 +1,7 @@
 # 2026-10-23 run22 — `LdrpMapAndSnapDependency`: import 마다 `LdrpLoadDependentModuleInternal`, 끝에 한 번 snap 또는 일감 넘기기. `LdrpAllocateModuleEntry` 는 항목과 그래프 노드를 한 쌍으로 만든다 (정적)
 
+> **정정 (run35)**: caller 표의 `LdrpInitializeNtdllDataTableEntry` 줄 `+0x67` 은 ret 가 아니라 **call** 자리다. ret 는 **`+0x6c`** (`_calls.tsv`, `.asm`). → `run35-ntdll-entry.md` "정정"
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 작성일.

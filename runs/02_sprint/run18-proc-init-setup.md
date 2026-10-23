@@ -1,6 +1,8 @@
 # 2026-10-22 run18 — `LdrpInitializeProcess` 앞쪽(`+0x0 ~ +0x12dd`): PEB.Ldr → IFEO → 프로세스 힙 → `\KnownDlls` → ntdll 모듈 항목. 이 구간은 아무것도 메모리에 올리지 않는다 (정적)
 
 > **정정 (run19)**: 묶음 10 의 "exe 폴더 잘라 두기(`[RSP+0x130]`)" 는 틀렸다. `ImagePathName` 의 마지막 `\` **뒤** (= 파일 이름 부분) 를 잘라 두는 것이고, 뒤쪽 `+0x1408` 이 exe 항목 `BaseDllName`(test.exe) 에 넣는다. 입구 `RCX` 의 "로더 문맥" 은 정확히는 CONTEXT 레코드 (첫 스레드의 맡긴 문맥, `+0x18b4`) 다. → `run19-proc-init-modules.md` "정정"
+>
+> **정정 (run35)**: 첫째 `LdrpInitializeNtdllDataTableEntry` 의 R9 는 문자열이 아니라 **`UNICODE_STRING` 칸의 주소**(`&[RSP+0xc0]`)이고 폴더 상수는 대문자 **`\SYSTEM32\`** 다. 초기화 순서 목록 `+0x1283 ~ +0x12d7` 은 둘 다 머리 끼우기라 **패치 항목은 ntdll 앞**이다. "적재·메모리 순서 목록은 첫째 호출 안 `[추측]`"·"핫패치 때 패치 ntdll 하나 더 `[추측]`" 은 `[정적]` 이 됐다 (`+0xf2 LdrpInsertDataTableEntry`). → `run35-ntdll-entry.md` "정정"
 
 ## 환경
 

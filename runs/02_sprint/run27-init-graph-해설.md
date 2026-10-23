@@ -2,6 +2,8 @@
 
 > 이 글은 [run27 문서](run27-init-graph.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **정정 (run35)**: 2.5 와 4절의 "ntdll 카드 도장은 9 로 짐작 `[추측]`" 은 `[정적]` 이 됐다. `LdrpInitializeNtdllDataTableEntry +0x150` 이 ntdll 카드 `State` 를 **9** (`LdrModulesReadyToRun`) 로 쓴다. run7 `[관찰]` 과 맞는다. 본문은 그대로 두었다 → [run35 해설 2.8](run35-ntdll-entry-해설.md#28-질문-4--마무리-점검을-같이-받고-도장은-9)
 
 - 대기열: **Q15** — 2.7 `LdrpInitializeGraphRecurse`, `LdrpInitializeNode` 본문 (`_workspace/plan.md`, 이번에 **끝**)
   - 새 항목 하나: **Q54** (작은 정적) — 항목 `Flags.ProcessStaticImport` 를 켜는 곳, 간선 칸 `+0x18` 비트 0 의 뜻.

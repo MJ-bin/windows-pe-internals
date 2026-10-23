@@ -4,6 +4,8 @@
 > 근거와 태그는 run 문서·결과서를 따른다.
 >
 > **정정 (run19)**: 2.4 의 "exe 폴더(`[RSP+0x130]`)" 는 틀렸다. exe **파일 이름 부분**(`BaseDllName`, test.exe)이다. 4절의 "`RCX`(로더 문맥)" 은 정확히는 **CONTEXT 레코드**(사물함에 맡긴 원래 메모)다. 본문은 그대로 두었다 → [run19 해설 2.1](run19-proc-init-modules-해설.md#21-run18-정정-하나--exe-폴더가-아니라-exe-파일-이름) · [2.2](run19-proc-init-modules-해설.md#22-run18-정정-둘--입구-rcx-는-context-레코드)
+>
+> **정정 (run35)**: 2.3 줄 2 의 넷째 인자(R9)는 "`<NtSystemRoot>\System32\` 문자열" 이 아니라 **`UNICODE_STRING` 칸의 주소**(`&[RSP+0xc0]`)이고, 폴더 상수는 대문자 **`\SYSTEM32\`** 다. 2.7 의 둘째 항목(패치 ntdll)은 초기화 순서 목록에서 ntdll **앞**이다 (머리 끼우기 둘, 패치가 나중). 2.7 의 `[추측]` 둘 — 적재·메모리 순서 목록에 넣는 곳(`+0xf2 LdrpInsertDataTableEntry`), 둘째 호출이 만드는 것(패치 ntdll 항목) — 은 `[정적]` 이 됐다. 둘째 호출을 test.exe 에서 실제로 타는지는 여전히 `[추측]` (Q44). 본문은 그대로 두었다 → [run35 해설 2.4](run35-ntdll-entry-해설.md#24-이름-두-개--그리고-run18-정정-하나) · [2.6](run35-ntdll-entry-해설.md#26-질문-2--명부-두-권에-꽂는-곳--0xf2--예) · [2.9](run35-ntdll-entry-해설.md#29-질문-5--둘째-호출--패치된-ntdll-줄--예)
 
 - 대기열: **Q9a** — 2.4 `ntdll!LdrpInitializeProcess` 앞쪽 `+0x0 ~ +0x12dd` callee, 입구에서 RCX·RDX 쓰는 곳 (`_workspace/plan.md`)
   - 원래는 Q9 한 줄이었다. 함수가 너무 커서 **그 자리에서 둘로 나눴다** (Q9a 앞쪽 / Q9b 뒤쪽). 이유는 2.1.
