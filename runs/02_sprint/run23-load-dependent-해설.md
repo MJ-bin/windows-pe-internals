@@ -7,6 +7,8 @@
 
 > **정정 (run36)**: 2.7 "`0x103` 길은 다른 caller 몫으로 보인다 `[추측]`" 의 `LdrpSnapModule +0x5df` 쪽은 맞다 `[정적]` — snap 이 부를 땐 체크판이 이미 0 이라, forwarder 대상이 아직 `State < 2` 면 이 갈래가 타고 snap 은 0 으로 일단 끝난 뒤 같은 thunk 부터 다시 한다. `LdrpLoadDependentModuleW +0xae` 쪽은 그대로 `[추측]`. 본문은 그대로 두었다 → [run36 해설 2.7](run36-snap-module-해설.md#27-안내문-대상이-아직-안-왔으면--잠깐-멈췄다-이어서)
 
+> **정정 (run37)**: 2.5 "남은 `[추측]` 셋" 중 둘째 "그게 `KERNELBASE.dll` 로 풀리나" 는 같은 OS 의 별명 사전 파일로는 kernel32 별명 102개 중 99개 kernelbase · 3개 ntdll 이다 `[정적: PE 표]` (첫째 "정말 api-set 이름인가" 는 run25 에서 닫힘). 그리고 kernelbase 를 **처음** 들이는 바퀴는 별명 줄이 아니라 목록 #3 본명 `KERNELBASE.dll` 이라, 그 바퀴는 사슬 그림의 `+0x2ff` 를 안 탈 것이다 `[추측: run23 조건]`. 실행 때 사전 값·KnownDll 여부는 그대로 Q20. 본문은 그대로 두었다 → [run37 해설 2.3](run37-k32-import-order-해설.md#23-질문-답--처음-들이는-줄은-3번-본명-그대로)
+
 - 대기열: **Q12b** — 2.5·2.6 의존 DLL 하나를 처리하는 `ntdll!LdrpLoadDependentModuleInternal` (9250바이트, 호출 75곳): 간선(의존 관계)을 만드는 곳, 이미 있는 DLL·KnownDll·새로 올리기 갈림 (`_workspace/plan.md`, 이번에 **끝**)
 - 근거:
   - run 문서 [`run23-load-dependent.md`](run23-load-dependent.md) (가장 중요)

@@ -3,6 +3,8 @@
 > 이 글은 [run36 문서](run36-snap-module.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
+> **정정 (run37)**: 2.12 의 "kernel32·kernelbase import 도 api-set 호스트를 KernelBase 로 **가정해** 세 보니" 의 가정은 거의 맞지만 정확하진 않다 — kernel32 별명 3줄(#0·#1·#101, 함수 14개)과 kernelbase 별명 2줄(#2·#3, 함수 2개)은 **ntdll** 로 풀린다 `[정적: PE 표]`. 이 16개 함수가 안내문(forwarder)인지는 아무도 안 셌으니 결론("안내문 대상은 NTDLL 뿐")을 바꿀 근거도 받칠 근거도 없다 → 그대로 Q68. 본문은 그대로 두었다 → [run37 해설 2.9](run37-k32-import-order-해설.md#29-run36-셈에-보탬-하나)
+
 - 대기열: **Q50** — 2.5·2.6 주소 연결 `ntdll!LdrpSnapModule` (4052바이트, 36곳): IAT 에 import 함수 주소를 적는 곳, `LdrpLoadDependentModuleInternal` 을 부르는 `+0x5df` 갈래(지연 import·forwarder?), 부모 카운터와의 관계 (`_workspace/plan.md`, 이번에 **끝**)
   - 새 항목 둘: **Q68** (동적, snap 실행 값), **Q69** (작은 정적, `State = -3` 을 처음 쓰는 곳). **Q47** 에는 출처를 더했다.
   - 다음 항목: **Q51** (kernel32 import 서술자 순서, 작은 정적).
