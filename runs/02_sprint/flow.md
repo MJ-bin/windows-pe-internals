@@ -7,11 +7,13 @@
   - kernelbase.pdb: `72CCE506944DE0267C172AD64287F9BD1` (run14, run25)
   - kernel32.pdb: `AE9E9D8F7AC1467A645320FDC23235D01` (run25)
   - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20, run21, run22, run23, run24, run26, run27, run28, run29)
+  - test.pdb: `C66E7084C5CA4874B1677F6F1C36A0511` (run30. MS 것이 아니라 sample 빌드의 로컬 pdb, 사용자가 VM 에서 돌린 `sample/bin/` 파일)
 - 디버거: WinDbg 커널 디버깅 (KDNET)
 - 부모: `cmd.exe`에서 `test.exe` 실행
 - 근거 로그: `runs/01_sprint/` run3 ~ run8 (디버거)
-- 정적 근거: `runs/02_sprint/` run9 ~ run29 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀)
+- 정적 근거: `runs/02_sprint/` run9 ~ run30 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀)
   - PE 헤더·import·export 표는 `pefile` 로 읽었다 (run25). KERNELBASE·kernel32·ntdll 의 TLS 디렉터리도 PE 파일에서 읽었다 (run28). Ghidra 는 PE 진입점 함수를 PDB 이름 대신 `entry` 로 잡는다 (run25). 글에선 PDB 이름을 쓴다.
+  - test.exe 는 sample 빌드라 MS 심볼 서버가 아니라 `sample/bin/` 의 exe·pdb 를 썼다 (run30). 진입점 rva `0x1d40` = run5 `[관찰]`, run7 `[관찰]` 의 `…67723` 도 맞는다. 단 run3 ~ run5 와 run6 ~ run8 은 따로 빌드한 exe 라 (5장) 올라온 파일이 어느 쪽인지까지는 모른다.
   - Ghidra 가 함수로 안 잡은 곳은 원본 바이트(`objdump`)로, 구조체 칸 이름은 PDB 타입 레코드(`llvm-pdbutil`)로 읽었다. 그런 곳은 글에 그렇다고 밝혔다.
   - 예외 착지점(`__except` 안쪽)은 Ghidra 가 코드로 안 따라간다. 그런 곳은 PE 의 unwind 범위 표(`pefile`)와 원본 바이트로 읽었다 (run27, run28).
   - 전역 변수 이름(`PsNtdllExports` 등)은 PDB 공개 심볼 + PE 구역표로 맞췄다 (run16).
@@ -128,6 +130,11 @@
 - 그 뒤 **`NtContinueEx` 가 반환하지 않고 직접 `IRETQ`** 로 유저에 간다 (`KiKvaShadow` 켜졌으면 `KiKernelExit` 거쳐). 그래서 굵은 화살표 두 갈래가 `RtlUserThreadStart` 로 들어간다.
 - 시스템 호출 처리기(`KiSystemServiceCopyEnd`)는 그림 1 에서 본 이름을 빌린 추측 상자다 (이번엔 본문을 안 읽음).
 - `RtlUserThreadStart` → `BaseThreadInitThunk` 화살표는 그대로 `?` 다. 호출 자리(`+0x27`, ret `+0x2c`)는 코드로 봤지만 대상이 칸 `Kernel32ThreadInitThunkFunction` 값이라서다 (Q48).
+
+그림 2 의 `test.exe` 상자를 **진입점 경계 상자 하나**로 정리했다 (run30 `[정적]`, 2.10. 지도 범위는 2026-10-23 사용자 결정 "진입점 = 경계, CRT 한 상자").
+- exe 진입점(PE `AddressOfEntryPoint` = rva `0x1d40` = `test!mainCRTStartup`)은 커널이 헤더 값을 `Rcx` 로 넘길 뿐이다. 그 안은 컴파일러가 넣은 CRT 코드라 OS 초기화 지도 밖이다.
+- 그래서 CRT 안 함수는 그림에 안 넣는다. 남긴 건 CRT 가 `main` 전에 **ntdll 로더를 다시 부르는 것**(`LoadLibraryExW` ×3, run7 `[관찰]`)과 `main` 둘이다. 두 화살표 모두 `?` 다 (사이에 CRT 함수가 끼고, 콜스택으로 caller 를 본 적이 없다).
+- `LoadLibraryExW` 를 부른 자리(`…67723`)가 CRT 안이라는 것과 `main` 의 콜스택에 `mainCRTStartup` 이 안 남는다는 것(꼬리 `JMP`)은 2.10 "CRT 안쪽 (참고)" 에 적었다.
 
 > 왜 2장인가: 서로 화살표로 이어지지 않은 덩어리는 머메이드가 위아래 순서를 마음대로 정한다 (실험해보니 ③ → ② → ① 거꾸로 나왔다). 두 스레드 사이엔 호출 관계가 없어서 화살표로 이을 수 없으니, 그림을 나누고 **문서 순서로 시간 순서**를 보인다.
 
@@ -305,7 +312,7 @@ flowchart LR
     class cb1,cb2,cb3,cb4 unkg
 ```
 
-### 그림 2 — test.exe 메인 스레드 (run4 ~ run8, run13, run14 메모, run15, run16, run17, run18, run19, run20, run21, run22, run23, run24, run25, run26, run27, run28, run29)
+### 그림 2 — test.exe 메인 스레드 (run4 ~ run8, run13, run14 메모, run15, run16, run17, run18, run19, run20, run21, run22, run23, run24, run25, run26, run27, run28, run29, run30)
 
 ```mermaid
 flowchart LR
@@ -544,7 +551,7 @@ flowchart LR
         subgraph T2EXE["test.exe"]
             direction LR
             e1["test!ExeTls (이유 1)"]:::exe
-            m1["test!mainCRTStartup<br/>(추측: 스레드 시작 주소)"]:::exeg
+            m1["exe 진입점 = PE AddressOfEntryPoint<br/>(rva 0x1d40, test!mainCRTStartup)<br/>— 여기부터 컴파일러 CRT (OS 아님, 정적 run30).<br/>커널은 헤더 값을 Rcx 로 넘길 뿐. 받은 PEB 는 안 씀.<br/>main 전에 LoadLibraryExW ×3 을 부름 (관찰 run7,<br/>부른 자리 test+0x57723 = CRT 안, 정적 run30).<br/>CRT 안쪽은 2.10 참고 (지도 범위 밖)"]:::exeg
             m3["test!main"]:::exe
         end
         subgraph T2CB["모듈 모름 — 간접 호출 (대상은 실행 때)"]
@@ -2602,10 +2609,11 @@ dll1:  TLS(… → Internal → ImageTlsCallbackCaller → Dll1Tls?) → (… �
 - `[추측]` CRT가 자기 준비를 끝낸 뒤 우리 `DllMain`을 불러주는 구조. `LoadLibraryExW` 3번도 CRT 준비 과정.
   - `/MT`라서 CRT 코드가 각 DLL **안에** 들어 있다. 그래서 `LoadLibraryExW`를 부른 곳이 ucrtbase 같은 별도 DLL이 아니라 DLL 자기 주소였던 것으로 보인다.
   - 단, run7은 DLL 주소가 빗나간 run이라 "어느 DLL의 주소였는지"는 확정 못 함 (run7 정정 참고).
+  - (run30) exe 쪽 같은 `LoadLibraryExW` ×3 은 UCRT `try_get_function_slow +0x73` 이었다 `[정적]` (2.10). DLL 도 `/MT` 라 같은 UCRT 함수일 것 `[추측]` — dll1·dll2 바이너리는 아직 안 봤다 (정적 Q55, 한 줄 확인).
 
 ---
 
-### 2.9 `ntdll` → `test.exe` TLS 콜백 (run7, run8, run19, run27, run28)
+### 2.9 `ntdll` → `test.exe` TLS 콜백 (run7, run8, run19, run27, run28, run30)
 
 ```
 LdrpInitializeProcess+0x1c99
@@ -2628,12 +2636,14 @@ LdrpInitializeProcess+0x1c99
 - `[정적]` (run19) **순서**: import DLL 초기화(`+0x1bbb`) 가 끝나고 로더 락을 푼 **뒤**다. run7·run8 `[관찰]` "DLL 초기화가 전부 끝난 뒤" 와 같다.
 - `[정적]` (run19) **TLS 뒤에 `LdrpInitializeProcess` 가 하는 일**: shim 후처리(`g_ShimsEnabled` 일 때만) → `PEB.PostProcessInitRoutine` 간접 호출(`+0x1d1b`, 값이 있을 때만) → 핸들 2개 닫기 → CPU 기능·SymCrypt → `+0x1e2d` 정상 반환 (2.4). exe TLS 와 `main` 사이에 유저 코드를 부를 수 있는 자리는 이 함수 안에선 `PostProcessInitRoutine` 하나다 `[정적]` (값을 누가 넣는지는 Q48).
 - ~~`[공백]` `ImageTlsCallbackCaller` → `test!ExeTls` 사이.~~ → (run28 `[정적]`) `ImageTlsCallbackCaller +0x16` 이 CFG 중개(`JMP` 뿐)를 거쳐 콜백을 부른다. 사이에 프레임을 남기는 함수는 없다. 실행으로는 미관찰 (Q28).
+- `[정적]` (run30, test.exe PE 파일) **TLS 콜백 배열은 `[ExeTls, 0]` 하나뿐이다.** `_tls_used` (rva `0x79500`) 의 `AddressOfCallBacks` = rva `0x6e380`, `[0]` = `ExeTls` (`0x1400012a0`), `[1]` = 0. 그래서 `LdrpCallTlsInitializers` (배열을 0 까지 돎, run28) 는 `ExeTls` 한 번 부르고 멈출 것이다.
+  - `[소스]` `test.c` 가 `.CRT$XLB` 에 넣은 그 콜백이다. CRT 는 TLS 배열에 따로 넣은 게 없다. CRT 의 `__dyn_tls_init_callback` 은 시작값 0 이고 배열이 아니라 `__scrt_common_main_seh +0x9e` 에서 따로 검사한다 (2.10).
 
 ---
 
-### 2.10 로더 끝 → `test.exe` 진입점 → `main` (run5, run7, run16, run19, run20, run25, run29)
+### 2.10 로더 끝 → `test.exe` 진입점 → `main` (run5, run7, run16, run19, run20, run25, run29, run30)
 
-코드로 본 사슬 (run29 `[정적]`. 실행은 아직 못 봄 — Q29·Q30):
+코드로 본 사슬 (run29·run30 `[정적]`. 실행은 아직 못 봄 — Q29·Q30·Q31):
 
 ```
 [유저 ntdll]  LdrInitializeThunk
@@ -2656,8 +2666,11 @@ LdrpInitializeProcess+0x1c99
 [유저 ntdll]  RtlUserThreadStart(rcx = 진입점, rdx = PEB)
  └─ +0x2c  ? 칸 Kernel32ThreadInitThunkFunction(0, 진입점, PEB)      CFG 중개 JMP, 프레임 없음
       = KERNEL32!BaseThreadInitThunk 추정 (칸 값 Q48)
-        └─ +0x17  ? 진입점(PEB) = test!mainCRTStartup 추정            run25, Q18·Q30
-             └─ … main
+        └─ +0x17  ? 진입점(PEB) = test!mainCRTStartup                 run25. 진입점 값은 run30, 실제 대상은 Q30
+[test.exe]  exe 진입점 = PE AddressOfEntryPoint (rva 0x1d40, mainCRTStartup)   [정적] run30
+            ── 여기부터 컴파일러 CRT (OS 아님, 지도 밖 — 아래 "CRT 안쪽 (참고)")
+ ├─ (1) ?  KERNELBASE!LoadLibraryExW ×3 → ntdll 로더 (LdrpLoadDll)      [관찰] run7
+ └─ (2) ?  main
 ```
 
 - 비유: 오리엔테이션(로더)이 끝나면 사물함 쪽지(맡긴 문맥)를 들고 **관리사무소(커널)에 "이 쪽지대로 보내 주세요"** 하고 낸다. 관리사무소는 쪽지를 복사해 검사한 뒤 **책상 쪽지(트랩 프레임)를 그걸로 바꿔 붙이고**, 대답 없이 바로 본업 자리(`RtlUserThreadStart`)로 순간 이동시킨다. 그래서 "관리사무소에 갔다 돌아오는" 일이 없다.
@@ -2731,13 +2744,14 @@ LdrpInitializeProcess+0x1c99
   - `[정적]` (run11) 이 값은 커널 `PspAllocateThread` 가 첫 스레드 CONTEXT 의 `Rcx` 를 옮겨 적은 것이다 (2.1). `[추측]` 그래서 `mainCRTStartup` 주소는 `RtlUserThreadStart` 에 넘기는 첫 인자 자리(`rcx`)로 간다.
   - `[정적]` (run16) 그 `Rcx` 는 `PspCreateUserContext` 가 넣은 exe 진입점(`_SECTION_IMAGE_INFORMATION.TransferAddress`)이고, 같은 문맥의 `Rip` 는 `RtlUserThreadStart` 다 (2.1). 이 문맥은 유저 스택에 맡겨져 `LdrInitializeThunk +0x18` 의 `NtContinue` 로 넘어간다 (2.4). 문맥대로 돌아간다면 `RtlUserThreadStart` 의 `rcx` = 진입점이 된다 — ~~이 마지막 단계(커널 `NtContinue` 안)만 `[추측]`.~~ → **(run29) `[정적]`**: 커널이 맡긴 문맥의 `Rcx` 를 트랩 프레임 `+0x38` 에 쓰고 `NtContinueEx +0x3ea` 가 `IRETQ` 직전에 되살린다 (위). 실제 값은 동적 (Q29).
 - `[관찰]` (run7) `ExeTls` 다음, `main` 전에 **test.exe 안 코드**(`0x7ff70ee67723`)에서 `LoadLibraryExW`가 3번 불렸다.
-- `[추측]` 그 코드가 test.exe의 어느 함수인지(`mainCRTStartup` 쪽인지)는 이름으로 확인하지 않았다 (그림의 `?`).
+- ~~`[추측]` 그 코드가 test.exe의 어느 함수인지(`mainCRTStartup` 쪽인지)는 이름으로 확인하지 않았다 (그림의 `?`).~~ → (run30 `[정적]`) **`test!try_get_function_slow +0x73`** (rva `0x57723`). `mainCRTStartup` 안이 아니라 CRT 준비 함수들 아래다 (아래 절).
 - `[관찰]` 그다음 `test!main`.
 - `[추측]` 로더 일이 끝나면 `ntdll!NtContinue`로 실행이 `ntdll!RtlUserThreadStart`로 넘어가고, `RtlUserThreadStart` → `KERNEL32!BaseThreadInitThunk` → `test!mainCRTStartup` 순서로 불린다.
   - **(run29) 판정**:
     - 앞 절반 "`NtContinue` 로 `RtlUserThreadStart` 로 넘어간다" → **코드로는 맞음 `[정적]`** (위 사슬). 실행은 동적 (Q29). 갈림 둘: CET 검사 (Q57), `KiKvaShadow` (Q42).
     - "`RtlUserThreadStart` → `BaseThreadInitThunk`" → **호출 자리는 `[정적]`** (`+0x27`, ret `+0x2c`, 인자 `(0, 진입점, PEB)`). 대상이 `BaseThreadInitThunk` 인지는 칸 값이라 여전히 `[추측]` (동적 Q48). 그림 화살표도 그래서 `?` 그대로.
     - "`BaseThreadInitThunk` → `mainCRTStartup`" → 그대로 `[추측]` (정적 Q18 · 동적 Q30).
+      - (run30) 정적 Q18 끝: 넘어가는 진입점 값이 `mainCRTStartup` (rva `0x1d40`) 인 건 `[정적]` (PDB 이름) + run5 `[관찰]` (시작 주소). 그 값으로 실제로 들어가는지는 동적 Q30.
   - 근거: Worker 스레드 종료 때 콜스택에 `RtlUserThreadStart+0x2c` → `BaseThreadInitThunk+0x20`이 보였다. 메인 스레드에선 직접 보지 않았다.
   - `[정적]` (run19, `refs` 만) `RtlUserThreadStart +0x7` 은 전역 `Kernel32ThreadInitThunkFunction` 을 읽는다. 그 칸은 `LdrpInitializeKernel32Functions +0xe4` 가 채운다 (2.5). 같은 칸을 `LdrpInitializeProcess +0x1b5e` 도 `(1,0,0)` 으로 한 번 부른다 (2.4). `[추측]` 그 칸의 값이 `KERNEL32!BaseThreadInitThunk` 이고, `RtlUserThreadStart` 가 그걸 부른다 (~~`RtlUserThreadStart` 본문은 안 봄 — 정적 Q17~~ → run29 `[정적]` `+0x27` 에서 `(0, 시작 주소, 파라미터)` 로 부름, 값은 동적 Q48·Q30).
     - `[정적]` (run20) **칸을 채우는 곳 = `LdrpInitializeKernel32Functions` ret `+0xff` `LdrGetProcedureAddressForCaller(kernel32 베이스, "BaseThreadInitThunk", …)`** (`+0xe4` 는 그 결과 칸 주소를 싣는 줄). 이름 문자열은 원본 바이트로 확인. 그러니 "칸의 값 = kernel32 에서 `BaseThreadInitThunk` 라는 이름으로 찾은 주소" 까지는 코드로 맞다. 남은 `[추측]`: 그 주소가 정말 `KERNEL32!BaseThreadInitThunk` 본체인지 (forwarder 면 다른 곳), ~~`RtlUserThreadStart` 가 그 값을 부르는지 (동적 Q48 `ln`, 정적 Q17)~~ → (run29 `[정적]`) 부른다 (`+0x27`, ret `+0x2c`).
@@ -2745,13 +2759,94 @@ LdrpInitializeProcess+0x1c99
     - `[정적]` (run29) 같은 칸을 두 곳이 다른 첫 인자로 부른다: `LdrpInitializeProcess +0x1b5e` 는 `(1,0,0)`, `RtlUserThreadStart +0x2c` 는 `(0, 진입점, 파라미터)`. run25 `BaseThreadInitThunk` 의 두 갈래(첫 인자 0 아님 / 0)와 맞는다.
   - `[정적]` (run25) **`BaseThreadInitThunk` 안** (depth 1, 이름만. 인자: `ECX` 첫 인자, `RDX` 시작 주소, `R8` 파라미터):
     - 첫 인자 0 이면: `+0x12` (ret `+0x17`) CFG 스텁(`0x180087010`)을 거쳐 `RDX` 를 `RCX = R8` 로 간접 호출 → `+0x19` (ret `+0x20`) ntdll `RtlExitUserThread`.
-      - ret `+0x20` 은 01_sprint 의 Worker 스레드 종료 콜스택 `BaseThreadInitThunk+0x20` `[관찰]` 과 같은 자리다 (시작 함수가 돌아온 뒤 `RtlExitUserThread` 안). 간접 호출 대상이 `test!mainCRTStartup` 인지는 그대로 `[추측]` (Q18 정적, Q30 동적).
+      - ret `+0x20` 은 01_sprint 의 Worker 스레드 종료 콜스택 `BaseThreadInitThunk+0x20` `[관찰]` 과 같은 자리다 (시작 함수가 돌아온 뒤 `RtlExitUserThread` 안). 간접 호출 대상이 `test!mainCRTStartup` 인지는 그대로 `[추측]` (Q18 정적, Q30 동적). (run30: 진입점 = `mainCRTStartup` `[정적]`, 실행은 Q30)
       - (run29 `[정적]`) 그 CFG 스텁은 `JMP` → `JMP [칸]` 뿐이라 프레임이 없다. 그래서 `mainCRTStartup` 에서 `k` 를 찍으면 바로 위가 `BaseThreadInitThunk+0x17`, 그 위가 `RtlUserThreadStart+0x2c` 일 것 (Q30).
     - 첫 인자 0 이 아니면 (`+0xa JNZ`): `+0x26` (ret `+0x2d`) ntdll `RtlGetSuiteMask` → `AL & 0x10` 이면 `+0x36` (ret `+0x3b`) `BasepInitializeTermsrvFpns` (터미널 서비스 쪽 준비, 시작 함수는 안 부름).
       - `[추측]` `LdrpInitializeProcess +0x1b5e` 의 `(1,0,0)` 호출(2.4)이 이 갈래다 (칸 값이 `BaseThreadInitThunk` 라면, Q48).
-  - (run16) 앞부분이 `[정적]` 으로 바뀌었다: `LdrInitializeThunk +0x18` → `NtContinue(맡긴 문맥)`, 맡긴 문맥 `Rip` = `RtlUserThreadStart`. ~~**남은 `[추측]`**: 커널 `NtContinue` 가 그 `Rip` 로 보내는 부분 (`[공백]`, Q17 정적·Q29 동적), 그 뒤 `BaseThreadInitThunk` → `mainCRTStartup` (Q18·Q30).~~ → (run29) 커널 부분은 `[정적]` (위). **남은 `[추측]`**: 칸 값 (Q48), `BaseThreadInitThunk` → `mainCRTStartup` (Q18·Q30). 실행 전체는 Q29·Q30.
+  - (run16) 앞부분이 `[정적]` 으로 바뀌었다: `LdrInitializeThunk +0x18` → `NtContinue(맡긴 문맥)`, 맡긴 문맥 `Rip` = `RtlUserThreadStart`. ~~**남은 `[추측]`**: 커널 `NtContinue` 가 그 `Rip` 로 보내는 부분 (`[공백]`, Q17 정적·Q29 동적), 그 뒤 `BaseThreadInitThunk` → `mainCRTStartup` (Q18·Q30).~~ → (run29) 커널 부분은 `[정적]` (위). **남은 `[추측]`**: 칸 값 (Q48), `BaseThreadInitThunk` → `mainCRTStartup` (Q30. 정적 Q18 은 run30 에서 끝). 실행 전체는 Q29·Q30.
 - `[소스]` `test.c`에는 `main`만 있고 `mainCRTStartup`은 없다. `/MT` 빌드로 CRT가 test.exe 안에 넣어준 함수다.
 - `[추측]` `mainCRTStartup`은 CRT 준비(`LoadLibraryExW` 3번 포함)를 하고 `main`을 부른다. `mainCRTStartup` 실행 자체에는 멈춤점을 걸지 않았다.
+  - **(run30) 판정**: 방향은 맞지만 **함수가 다르다.** `mainCRTStartup` 은 쿠키만 섞고 `JMP` 로 넘긴다. CRT 준비와 `main` 호출은 **`__scrt_common_main_seh`** 가 한다 `[정적]`. `LoadLibraryExW` 3번은 그 아래에 길이 셋 있다까지 `[정적]`, 그 셋이 관찰된 세 번이라는 건 `[추측]` (Q31).
+
+#### CRT 안쪽 (참고 — 지도 범위 밖, 2026-10-23 사용자 결정)
+
+- **경계**: exe 진입점은 PE 헤더의 `AddressOfEntryPoint` 값일 뿐이다. 커널이 그 값을 첫 스레드 문맥 `Rcx` 로 넘기고(2.1, run16), `RtlUserThreadStart` → `BaseThreadInitThunk` 가 그 주소로 들어간다. 그 안은 **컴파일러가 넣은 CRT 코드**(OS 아님)다.
+- 그래서 nt·ntdll 초기화 지도(그림 2)엔 **CRT 가 ntdll 로더를 다시 부르는 것(`LoadLibraryExW` ×3)과 `main`** 만 남긴다. 아래는 run30 에서 읽은 CRT 안쪽을 참고로 둔 것이다. 동적 확인(Q30·Q31)도 CRT 안 프레임은 참고로만 본다.
+
+##### `test!mainCRTStartup` (rva `0x1d40`, 18바이트, run30 `[정적]`)
+
+- 비유: 현관 안내원이 출입증에 도장(쿠키)만 찍고, 자기 자리를 비운 채 담당자 방으로 **바로 들여보낸다.** 그래서 나중에 "누가 데려왔나" 를 거꾸로 따라가면 안내원은 안 나온다.
+- `[정적]` `+0x4` (ret `+0x9`) `__security_init_cookie` (인자 없음) → `+0x9 ADD RSP,0x28` 로 자기 프레임을 걷고 → **`+0xd JMP __scrt_common_main_seh`** (꼬리 점프). 돌아올 자리가 안 남는다.
+- `[정적]` **받은 인자(`rcx` = PEB, run25·run29)는 안 쓴다.** 네 줄 모두 `rcx`·`rdx`·`r8` 을 안 읽고, `__scrt_common_main_seh` 도 첫 줄들에서 `rcx` 를 안 읽는다 (결과서).
+- `[정적]` 같은 모양 18바이트 `__scrt_common_main` (rva `0x1ae0`) 과 `invoke_main` (rva `0x1cb0`, `+0x31 JMP main`) 은 **부르는 곳이 없다** (`.pdata` 참조뿐). CRT 에 딸려 온 안 쓰는 사본으로 본다. 왜 남았는지는 `[추측]`.
+
+##### `test!__scrt_common_main_seh` (rva `0x1b00`, 348바이트, run30 `[정적]`)
+
+- `[정적]` CRT 준비 → `main` → 끝내기를 한 함수에서 한다. 대표 호출 (ret):
+  - `+0x19` `__scrt_initialize_crt(1)` — UCRT 초기화 표 `__acrt_initializers` 를 돈다 (길 A·B).
+  - `+0x2e` 시작 잠금 → **`+0x61` `_initterm_e`** (`.CRT$XI` 표, 길 C) → `+0x82` `_initterm` (`.CRT$XC` 표) → `+0x9e` 잠금 풀기.
+  - `+0xa3` `__scrt_get_dyn_tls_init_callback` — 값이 0 이면 `+0xaa` 에서 건너뜀. 0 아니면 `+0xc5` (ret `+0xcb`) CFG 간접 호출. test.exe 는 시작값 0 (`thread_local` 안 씀).
+  - `+0xf2`·`+0xfa`·`+0x102` 환경·`argv`·`argc` 준비.
+  - **`+0x10a` (ret `+0x10f`) `main`.** `main` 을 부르는 실제 줄은 이것 하나다 (`_refs/main.tsv`).
+  - `main` 뒤 `+0x116` `__scrt_is_managed_app` → 아니면 **`+0x171` (ret `+0x176`) `exit(main 반환값)`**. (`_cexit` `+0x11f` 는 관리 코드 앱일 때만.)
+- `[정적]` 반환값은 `+0x10f MOV EBX,EAX` 로 담았다가 `+0x16f MOV ECX,EBX` 로 `exit` 에 넘긴다. `[소스]` `test.c` 의 `main` 은 `return 0` 이니 `exit(0)` 일 것이다 (`main` 이후는 이번 범위 밖).
+
+##### `test!try_get_function_slow` (rva `0x576b0`, 433바이트, run30 `[정적]`) — run7 의 `…67723`
+
+- `[정적]` + `[관찰]` run7 의 돌아올 주소 `0x7ff70ee67723` = rva **`0x57723`** = **`+0x73`** (call `+0x6d` `CALL [IAT LoadLibraryExW]`). test.exe 안 `LoadLibraryExW` 호출 9곳 중 아래 16비트가 `7723` 인 ret 은 이것 하나뿐이다. 그 rva 로 뺀 베이스 `0x7ff70ee10000` 은 run5 `[관찰]` 시작 주소 `0x7ff70ee11d40 − 0x1d40` 과도 같다.
+- 비유: 가게(UCRT)가 "이 연장(API) 있나요?" 할 때 **연장통(DLL) 후보**를 앞에서부터 열어 보는 함수다. 한 번 연 연장통은 선반(캐시)에 올려 두고 다시 안 연다.
+- `[정적]` 하는 일:
+  1. 후보 모듈 id 목록을 앞에서부터 돈다. 모듈 캐시(rva `0x83ef0`)가 비었으면 `+0x6d` `LoadLibraryExW(이름, NULL, 0x800)` (`0x800` = 시스템 폴더에서만).
+  2. 성공하면 캐시에 넣고 `+0x19e` (ret `+0x1a4`) `GetProcAddress`. 그 모듈에 API 가 없어도 다음 후보로 안 간다.
+  3. 실패하면 (에러 `0x57` 이고 `api-ms-`/`ext-ms-` 이름이 아닐 때만 `+0xc1` (ret `+0xc7` = rva `0x57777`) 에서 플래그 0 으로 한 번 더) 캐시에 `-1`, 다음 후보로.
+  4. 찾은 주소를 섹션 `.fptable` (rva `0x8a000`) 의 함수 포인터 표에 적는다 (앞뒤로 `VirtualProtect`). CFG 와 상관없는 이름이다.
+- `[정적]` `main` 전에 이 함수로 가는 API 셋과 후보 모듈 (이름은 원본 바이트):
+
+| 길 | API | 후보 모듈 (순서대로) | 부르는 쪽 |
+|---|---|---|---|
+| A | `FlsGetValue2` | `api-ms-win-core-fibers-l1-1-2` → `kernelbase` | `__acrt_tls2_supported +0x37` |
+| B | `LCMapStringEx` (없으면 `LocaleNameToLCID`, 후보 같음) | `api-ms-win-core-localization-l1-2-1` → `kernel32` | `__acrt_LCMapStringEx +0x4f` |
+| C | `AreFileApisANSI` | `kernel32` 하나뿐 | `__acrt_AreFileApisANSI +0x32` |
+
+- `[추측]` **세 번 = 세 길이 각자 첫 후보를 한 번씩 로드.** 같은 모듈은 캐시 때문에 한 번만 로드하니 "목록을 돌며 하나씩" 이 아니라 서로 다른 API 셋이 한 번씩이라고 읽는 게 가장 자연스럽다. 세 이름이 모두 첫 시도에 풀려야 맞는 짐작이다 (`api-ms-…` 가 24H2 에서 어디로 풀리는지는 정적으로 모름) → Q31.
+- `[정적]` / `[확인 필요]` test.exe 가 import 하는 건 **`KERNEL32.dll` 의 `LoadLibraryExW`** (IAT `0x6e250`, run30 `[정적]`) 인데, run7 `[관찰]` 에 찍힌 이름은 **`KERNELBASE!LoadLibraryExW`** 다. 둘을 잇는 근거(kernel32 export 가 forwarder 인가, 짧은 스텁인가)는 아직 없다 → `[확인 필요]` Q60.
+- `[추측]` run7 표는 세 번을 한 줄 "← `0x7ff70ee67723`" 로 적었다. 세 번 다 그 자리였다면 `+0xc1` (다시 시도) 길은 안 탔다 (run7 원본 로그가 레포에 없어 요약 표로만 판단).
+
+##### `main` 앞 세 길 (run30 `[정적]`, 괄호 없는 숫자는 ret)
+
+```
+__scrt_common_main_seh
+ ├─ +0x19  __scrt_initialize_crt
+ │          └─ +0x22  __acrt_initialize ══▶ +0xe JMP (꼬리)  __acrt_execute_initializers
+ │                     └─ +0x2a  표 항목 CFG 간접 (중개 = jmp rax, 프레임 없음)
+ │                          ├─ [8번째]  __acrt_initialize_ptd  +0x9  __acrt_tls2_supported  +0x37  try_get_function_slow   길 A
+ │                          └─ [11번째] __acrt_initialize_multibyte  +0x52  setmbcp_internal  +0x16d  _setmbcp_nolock
+ │                                       +0x296  setSBUpLow  +0x108  __acrt_LCMapStringA  +0x71  __acrt_LCMapStringA_stat
+ │                                       +0x169  __acrt_LCMapStringEx  +0x4f  try_get_function_slow                      길 B
+ └─ +0x61  _initterm_e
+            └─ +0x22  표 항목 CFG 간접 (.CRT$XI 첫 항목)  pre_c_initialization  +0x55  _configure_narrow_argv
+                       +0x5a  __acrt_GetModuleFileNameA  +0xb2  __acrt_AreFileApisANSI  +0x32  try_get_function_slow      길 C
+```
+
+- `[정적]` 세 길 모두 `main` 호출(`+0x10a`) 보다 앞이다. 실행 순서는 표를 앞에서부터 도니 A → B → C 일 것 `[추측]`.
+- `[정적]` `__acrt_initialize_multibyte` 는 깃발(rva `0x83864`)로 **처음 한 번만** 일한다. `_configure_narrow_argv +0x43` 도 같은 함수를 부르지만 두 번째라 일을 안 할 것 `[추측]`.
+- `[정적]` 다른 표 항목(`__acrt_initializers` 나머지, `.CRT$XI` 나머지 5개, `.CRT$XC`, `__vcrt_initialize`)에선 `try_get_function_slow` 로 가는 정상 길이 없었다 (지도. 표 안 더 깊은 간접 호출은 못 봄).
+- 이 CRT 함수들은 그림 2 에 안 넣었다 (지도 범위 밖). 그림은 진입점 경계 상자 → `?` → `LoadLibraryExW` ×3 하나로 줄였다.
+
+##### `main` 에서 `k` 예상 (run30 `[정적]`, 위가 가장 안쪽)
+
+- `test!main` → `test!__scrt_common_main_seh+0x10f` → `KERNEL32!BaseThreadInitThunk+0x17` → `ntdll!RtlUserThreadStart+0x2c`.
+  - **`mainCRTStartup` 은 안 보일 것이다** (꼬리 `JMP`). 이렇게 안 나오면 꼬리 점프 가정이 틀린 것 → Q30.
+  - run29 문서의 예상 "`… → test!mainCRTStartup+? → … → test!main`" 은 이것으로 고친다 (run29 맨 위 정정 한 줄).
+- `test!mainCRTStartup` 입구에선: 바로 위 `BaseThreadInitThunk+0x17`, 그 위 `RtlUserThreadStart+0x2c` (run29 그대로, Q30).
+- `LoadLibraryExW` 에서 (길 A 예): `test!try_get_function_slow+0x73` → `__acrt_tls2_supported+0x37` → `__acrt_initialize_ptd+0x9` → `__acrt_execute_initializers+0x2a` → `__scrt_initialize_crt+0x22` → `__scrt_common_main_seh+0x19` → `BaseThreadInitThunk+0x17` → `RtlUserThreadStart+0x2c`. 길 B·C 는 위 나무의 ret 들 (Q31).
+- `[추측]` 디버거 VM 의 심볼 경로에 `test.pdb` 가 없으면 이 이름들이 `test+0x1c0f` 처럼 rva 로만 보인다.
+
+##### test.exe 안 CFG (run30 `[정적]`, PE 파일)
+
+- `[정적]` **CFG 함수 표는 없다.** `DllCharacteristics = 0x8160` (`GUARD_CF` 비트 없음), `GuardCFFunctionTable = 0`·`Count = 0`, `GuardFlags = 0x100`. `[소스]` `build.bat` 에 `/guard:cf` 가 없다.
+- `[정적]` 그래도 `__guard_dispatch_icall_fptr` (rva `0x6e2f8`) 는 있다. 값 = `_guard_dispatch_icall_nop` (`jmp rax`). test.exe 안 간접 호출(CRT 표 항목 등)은 **검사 없이 그냥 점프**하고 프레임도 안 남긴다.
+- `[추측]` kernel32 `BaseThreadInitThunk +0x12` 의 CFG 검사가 함수 표 없는 exe 진입점을 통과시키는 방법은 "함수 표가 없는 이미지는 전부 유효로 처리" 로 알려져 있으나 이 빌드에선 확인 안 함 → Q30.
 
 ---
 
@@ -2903,7 +2998,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.5 | 이름·뜻 못 정한 것 (run21): `LdrpFastpthReloadedDll`·`LdrpFindOrPrepareLoadingModule`·`LdrpProcessWork` 의 역할 (이름·callee 이름으로만 `[추측]`), `LoadContext +0x20` 비트 0·`+0xc8` 칸 이름 (`_LDRP_LOAD_CONTEXT` 는 PDB 에 칸 정보 없음), 노드 상태 7 일 때 알림·shim 을 건너뛰는 이유, `Prepare` 첫 검사(`LdrpDllNotificationLock` 주인)의 뜻, 로드 락 풀기 `EDX` 2 / 9 의 뜻, `LdrpQueueWork` 일감이 병렬 로딩 전엔 어디서 도나 (Q47·Q20). (일부, 정적) → run22: `LdrpMapAndSnapDependency +0x4f7 LdrpQueueWork` 는 "부모가 있는 문맥의 snap 넘기기" 자리 (문맥 `+0x30 ≠ 0` 이고 남은 자식 0). 병렬 로딩 전 어디서 도는지는 그대로 Q47·Q20. (일부, 정적) → run23: `LdrpLoadDependentModuleInternal +0x182c LdrpQueueWork` 는 "새 항목이 KnownDll 아니고 경로 직접 아님" 일 때, 락 독점 안. `+0x1cae LdrpProcessWork` 는 경로를 직접 준 이름만. 둘 다 병렬 여부 안 읽음. 어디서 도는지는 그대로 Q47·Q20 (본문 Q12c). (일부, 정적) → run24: `LdrpProcessWork` 역할 = 노드 `State` 0 이면 올리기(`+0x6a LdrpMapDllSearchPath` 등), 아니면 `+0x131 LdrpSnapModule`. 병렬 로딩 전 일감은 `LdrpMapAndSnapWork == 0` 이라 일꾼을 안 깨우고 `LdrpLoadDllInternal +0x21a Drain(1)` 이 혼자 비움 (코드상). 실행은 Q47·Q20 |
 | 2.5 | `LdrpInitializeKernel32Functions` 실행 값 (run20 `[정적]` 갈림의 실제 값): `+0xa4` 가 "못 찾음" 인가, 두 `LdrLoadDll` 결과·베이스, `+0x130` 출력 칸 = `TermsrvGetWindowsDirectoryW` 인가, `+0x1aa` 직전 `rax` = `KERNELBASE!KernelbasePostInit` 인가 (run25 `[정적]` 예측: `TermsrvGetWindowsDirectoryW` = `kernel32+0x35f10`, `KernelbasePostInit` = `kernelbase+0xf4780`, 둘 다 forwarder 아님), **`LdrpCodeAuthzInitialize` 안에서 `LdrLoadDll("ADVAPI32.DLL")` 이 불리나** (레지스트리 값에 달림) — 동적 (Q49) |
 | 2.5 | 이름·뜻 못 정한 것 (run20): `PEB.ProcessParameters.Flags` `0x20000000` 비트 (이미 있을 때 kernel32 쪽을 건너뜀), `LdrLoadDll` 첫 인자 `0x4000` 의 이름 (`[추측]` `LOAD_LIBRARY_SEARCH_SYSTEM32_NO_FORWARDER`), `LdrpLoadDllInternal` 넷째 인자 `4` 가 "적재 이유" 인지 ((해결됨, 정적) → run21: `== 9`(`PatchImage`) 비교 6곳·항목 `LoadReason` 대조로 적재 이유 자리. 4 의 이름 `DynamicLoad` 만 `[추측]`), `LdrpSnapKernelBaseExtensions`·`KernelbasePostInit` 이 하는 일 ((일부) run25 `[정적]`: `KernelbasePostInit` 이 부르는 건 `BasepGetLongPathAwareRegistryState`·`BasepIsProcessLongPathAwareByManifest` 둘, 긴 경로 설정 `[추측: 이름]`), `LdrLoadDll` "경로 해제" 바이트 `[RSP+0xbc]` 를 켜는 곳 (정적 Q11 → run21: `LdrpLoadDllInternal` 안엔 없음, 경로 구조체는 `+0x1f2 FindOrPrepare` 로만 감. 그 아래일 것 `[추측]`) |
-| 2.5 · 2.10 | `LoadLibraryExW` 가 `LdrLoadDll` 에 싣는 인자 (`RCX` 경로/플래그, `RDX` `DllCharacteristics`). 같은 본문이고 인자로만 갈린다는 건 run20 `[정적]` — 동적 Q31 또는 kernelbase 정적 |
+| 2.5 · 2.10 | `LoadLibraryExW` 가 `LdrLoadDll` 에 싣는 인자 (`RCX` 경로/플래그, `RDX` `DllCharacteristics`). 같은 본문이고 인자로만 갈린다는 건 run20 `[정적]` — 동적 Q31 또는 kernelbase 정적. (run30) test.exe 쪽 `LoadLibraryExW` 에 들어가는 인자는 `(이름, NULL, 0x800)` `[정적]` (`try_get_function_slow +0x67`) |
 | 2.6 | dll1·dll2가 메모리에 올라오는 순간. (일부, 정적) → run19 `[정적]`: 자리는 `+0x17c1 ~ +0x1aed` (2.6 `[추측]` "`+0x12de` 뒤 `+0x1bb6` 앞" 맞음), 후보 1순위 `+0x1aa4 LdrpMapAndSnapDependency` (첫 인자 = 로드 문맥). 남은 것: 실제로 그 호출에서 올라오는지, 이 스레드인지 일꾼인지 — 정적 Q14, 동적 Q23. run21 `[정적: 지도]`: 같은 `LdrpMapAndSnapDependency` 가 kernel32 를 올리는 길 안(`LdrpMapDllWithSectionHandle +0x1c8`)에도 있어 "kernel32 와 같은 방식" 이 이름으로 맞음. 그 아래 `LdrpQueueWork`(`+0x4f7`) 가 일꾼 쪽 갈래 후보 (Q47). (일부, 정적) → run22: 바깥 고리 = `LdrpMapAndSnapDependency` `+0x1d0 ~ +0x3a3`, import 마다 `+0x34e LdrpLoadDependentModuleInternal` 을 **직접** (일감과 갈리지 않음), snap 은 고리 밖 한 번. dll1 은 exe 고리의 한 바퀴, dll2 는 dll1 을 매핑한 `LdrpMapDllWithSectionHandle +0x1c8` 이 **같은 함수를 dll1 에 대해 다시** 불러서 나오는 코드 모양 (`[dll1·dll2 추정]`). 남은 것: `LdrpLoadDependentModuleInternal` 안 (정적 Q12b), 실제 (동적 Q23), 스레드 (Q47). Q14 는 일부 — Q12b 뒤에 다시 봄. (일부, 정적) → run23: 한 바퀴 안 = 이름 다듬기 → `+0x16ee` 이미 있나 → 못 찾으면 새 문맥·항목(`+0x115c`) → `+0x1792 LdrpLoadKnownDll` → 아니면 락 안 간선(`+0xf69`/`+0xf8b`) + `+0x182c LdrpQueueWork`. dll1·dll2 (맨 이름) 는 이 일감 길일 것 `[추측]`. 일감 뒤 실제 맵은 정적 Q12c, 실행 Q23·Q47. Q14 는 여전히 일부. (일부, 정적) → run24: 일감을 꺼내 올리는 쪽 = 책임자 `LdrpInitializeProcess +0x1ab1 Drain(1)` 안 `+0x187 LdrpProcessWork` 또는 풀 일꾼, → `+0x6a LdrpMapDllSearchPath` → (지도) … → `LdrpMapDllWithSectionHandle`. 코드 길은 끝까지 이어짐. 어느 스레드인지 실행 Q23·Q47. Q14 는 여전히 일부. (일부, 정적) → run26: 파일로 올리는 본문 = `LdrpMapDllSearchPath +0x25c` → `LdrpMapDllNtFileName` (`+0x137 NtOpenFile` → `+0x194 NtCreateSection` `SEC_IMAGE`) → `+0x28c LdrpMapDllWithSectionHandle` (`+0x4e` 매핑 → **`+0x146 LdrpInsertDataTableEntry` = PEB.Ldr 명부에 들어가는 순간** → `+0x151` 색인 → `+0x24f CompleteMap` → `+0x26c ProcessMapped` → 마지막 `+0x1c8 MapAndSnap`). Q14 끝. 남은 것: 실제로 dll1·dll2 가 이 길·이 순서로 가나, 어느 스레드인가 — 동적 Q23·Q47 |
 | 2.6 | (해결됨, 정적) 간선(누가 누구에 기대나)을 적는 자리와 "이미 올라옴 / KnownDll / 새로 올리기" 갈림, 그때 인자 5 칸(`&부모문맥.58[i]`)에 무엇이 들어가나. run22 `[정적]`: `LdrpMapAndSnapDependency`·`LdrpAllocateModuleEntry` 에는 간선 줄이 없다. 부모 정보 = `+0x34e LdrpLoadDependentModuleInternal` 인자 2(부모 문맥)·3(부모 항목) → 새 자식 문맥 `+0x30` (`Internal +0x1100 ~ +0x1108`). 새 문맥·항목·노드는 `Internal +0x10db` 힙 → `+0x115c LdrpAllocateModuleEntry` (그 갈래 조건은 `[추측]`) — 정적 Q12b → run23 `[정적]`: 간선 = `LdrpLoadDependentModuleInternal +0xf69`/`+0xf8b` (락 독점 안). 갈림 순서 = ① 찾기(`+0x16ee` 맨 이름 / 해시 훑기 전체 이름) → 못 찾으면 ③ 새 문맥·항목(`+0x115c`) → 그 항목으로 ② `+0x1792 LdrpLoadKnownDll` (KnownDll 은 ③ 안, 나란한 세 갈래 아님). 인자 5 칸 = 찾은 항목(`+0xcf6` 또는 callee) / 새 항목(`+0x1164`) / 교체되면 문맥 쪽 항목(`+0x1341`) / 실패·순환 0 |
 | 2.6 | (해결됨, 정적) 남은 자식 수(문맥 `+0x6c`, "자식 수 + 1")가 0 이 되는 때, 0 이 아니라서 `LdrpMapAndSnapDependency` 가 snap 없이 끝났을 때 누가 이어받나 (run22 `[정적]`: 끝맺음 `+0x49a`). 단서 (줄만): `LdrpLoadDependentModuleInternal +0x12df ~ +0x12f7` 이 부모 `+0x6c` 를 줄임, `+0x1606 ~ +0x1634` 부모 노드 `State = 3`·반환 `0x103` — 정적 Q12b, 동적 Q23 (`ntdll+0x21506` 에서 `dd @rbx+0x6c L1`). → run23 `[정적]`: `+0x12f7` 은 "새 간선 안 생김 또는 자식 `State ≥ 2`" 일 때만 1 줄임. 새로 이었는데 자식이 `< 2` 면 그대로 (부모 몫으로 남김). 카운터가 이미 0 이면 `+0x162d` 부모 노드 `State = 3`·`+0x1634` 반환 `0x103` — `MapAndSnap` 고리에선 "+1" 때문에 안 나옴, caller 는 음수만 실패로 봄. 남은 것: 안 끝난 자식이 나중에 올라왔을 때 부모 카운터를 줄이고 snap 으로 잇는 코드 (두 함수에 없음) → 정적 Q12c, 동적 Q23·Q47. (해결됨, 정적) → run24: 그 코드 = **`LdrpSignalModuleMapped +0x40 ~ +0x5e`**. 자식이 Mapped (`LdrpProcessMappedModule +0x1c2`, 락 안) 가 되면 부모마다 `+0x6c` −1, 0 이면 부모 `State = 4` + `+0x5e LdrpQueueWork(부모 문맥)` → `LdrpProcessWork` 가 `State ≠ 0` 이라 `LdrpSnapModule`. 줄이는 곳 셋 중 마지막이 부모 snap 을 시작. 실행 확인 Q23 |
@@ -2933,10 +3028,13 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.8 · 2.9 | 콜백 호출 실행 값 (run28): `ntdll+0xe83f6`(`ImageTlsCallbackCaller +0x16`) 에서 `ln @rax` = `Dll2Tls` → `Dll1Tls` → `ExeTls`, `rcx` = DllBase, `rdx` = 1, `r8` = 0, `RtlAcquireSRWLockExclusive` 갈래(`ntdll+0xe8406`)에 안 서는지, 콜백 입구 `k` 다섯 프레임 — 동적 Q26 (dll)·Q28 (exe) |
 | 2.7 · 2.8 | 진입점 길 실행 값 (run28): `ntdll+0x11ead5` 에서 `rax` 가 진입점일 때 `r8` = `poi(ntdll!LdrpProcessInitContextRecord)` 인가, `ntdll+0x10c33`(`LdrpCallInitRoutine +0x93`) 의 `al`. CFG 칸 `ntdll+0x1e6000` 값이 `_guard_dispatch_icall_nop`(`+0x166480`) 인가 `LdrpDispatchUserCallTarget`(`+0x124580`) 인가. ETW 갈래 `ntdll+0x10d55`·`ntdll+0x10db3`·`ntdll+0x10e1c` 에 안 서는지 (`db 7ffe0384 L2`, `dd @$peb+0x378 L1`) — 동적 Q27 |
 | 2.7 | 이름·뜻 못 정한 것 (run28): TLS 목록 항목(0x48바이트) 칸 이름 (PDB 타입 없음, PE 규격으로 `+0x28` = `AddressOfCallBacks`), TEB `+0x1850` 8칸 표 (PDB 이름 `SchedulerSharedDataSlot` 은 쓰임새와 안 맞음), 추적 칸 맨 위 비트를 켜는 곳 (`RtlpAcquireSRWLockSharedContended` 안 `[추측]`), `ImageTlsCallbackCaller` 의 `RtlAcquireSRWLockExclusive` 직접 호출 갈래가 있는 이유 (컴파일러 갈래 `[추측]`), `LdrShutdownProcess +0x168` 앞 `[RDI+0x58] ≠ 0` 조건. 뒤 넷 — 정적 Q56 (TLS 락 세부) |
-| 2.10 | 로더 끝 → `mainCRTStartup` 연결, `mainCRTStartup` 안쪽. (일부 해결) 로더 끝 `LdrInitializeThunk +0x18` → `NtContinue(맡긴 문맥)`, 맡긴 문맥 `Rip` = `RtlUserThreadStart`, `Rcx` = 진입점 → run16 `[정적]`. ~~남은 것: 커널 `NtContinue` 안, `RtlUserThreadStart` 뒤~~ → (일부 해결) run29 `[정적]`: 커널 `NtContinue` 안 (위 줄), `RtlUserThreadStart` 안 (`+0x27` ret `+0x2c` 칸 `Kernel32ThreadInitThunkFunction(0, 진입점, PEB)` CFG 간접, 칸 0 이면 진입점 직접 → `RtlExitUserThread`, `__except` → `NtTerminateProcess`). 남은 것: 칸 값 (Q48), `BaseThreadInitThunk` → `mainCRTStartup` (Q18·Q30), `mainCRTStartup` 안쪽 |
-| 2.10 | `BaseThreadInitThunk` 안쪽 (run25 `[정적]` depth 1 이름만): 첫 인자 0 이면 `+0x12` CFG 스텁 거쳐 `RDX(R8)` 간접 호출 → `+0x19` `RtlExitUserThread` (ret `+0x20` = 01_sprint Worker 종료 콜스택 `[관찰]` 과 같은 자리), 아니면 `+0x26` `RtlGetSuiteMask` → `+0x36` `BasepInitializeTermsrvFpns`. 남은 것: 간접 호출 대상이 `test!mainCRTStartup` 인가 (정적 Q18 · 동적 Q30), `BasepInitializeTermsrvFpns` 안쪽 (Q18) |
+| 2.10 | 로더 끝 → `mainCRTStartup` 연결, `mainCRTStartup` 안쪽. (일부 해결) 로더 끝 `LdrInitializeThunk +0x18` → `NtContinue(맡긴 문맥)`, 맡긴 문맥 `Rip` = `RtlUserThreadStart`, `Rcx` = 진입점 → run16 `[정적]`. ~~남은 것: 커널 `NtContinue` 안, `RtlUserThreadStart` 뒤~~ → (일부 해결) run29 `[정적]`: 커널 `NtContinue` 안 (위 줄), `RtlUserThreadStart` 안 (`+0x27` ret `+0x2c` 칸 `Kernel32ThreadInitThunkFunction(0, 진입점, PEB)` CFG 간접, 칸 0 이면 진입점 직접 → `RtlExitUserThread`, `__except` → `NtTerminateProcess`). 남은 것: 칸 값 (Q48), `BaseThreadInitThunk` → `mainCRTStartup` (Q18·Q30), `mainCRTStartup` 안쪽 → (일부 해결) run30 `[정적]`: `mainCRTStartup` 안쪽 = `+0x9` 쿠키 → `+0xd` 꼬리 `JMP` `__scrt_common_main_seh` (CRT 준비 `+0x19`·`+0x61`, `main` call `+0x10a` ret `+0x10f`), 받은 PEB 안 씀. 진입점 값이 `mainCRTStartup` 인 것도 `[정적]` (Q18 끝). 남은 것: 칸 값 (Q48), 실제 진입 (Q30) |
+| 2.10 | `BaseThreadInitThunk` 안쪽 (run25 `[정적]` depth 1 이름만): 첫 인자 0 이면 `+0x12` CFG 스텁 거쳐 `RDX(R8)` 간접 호출 → `+0x19` `RtlExitUserThread` (ret `+0x20` = 01_sprint Worker 종료 콜스택 `[관찰]` 과 같은 자리), 아니면 `+0x26` `RtlGetSuiteMask` → `+0x36` `BasepInitializeTermsrvFpns`. 남은 것: 간접 호출 대상이 `test!mainCRTStartup` 인가 (정적 Q18 · 동적 Q30), `BasepInitializeTermsrvFpns` 안쪽 (Q18) → (일부 해결) run30 `[정적]`: 넘기는 진입점 값 = `test!mainCRTStartup` (rva `0x1d40`, PDB 이름). 실제로 그리 들어가는지는 동적 Q30. `BasepInitializeTermsrvFpns` 안쪽은 Q18 범위를 test.exe 로 바꾸면서 안 봤다 — 정적 Q59 |
 | 2.10 | 로더 끝 `NtContinue` 길 실행 (run29 결과서 D1~D4): `nt!NtContinue` 입구 `rcx`(맡긴 CONTEXT)·`dl`=1·CONTEXT 의 `Rip`/`Rcx`/`Rdx`/`ContextFlags`, `KiContinuePreviousModeUser +0x422`/`+0x427` 앞뒤 복사본·트랩 프레임 (`ContextFlags` 가 `0x10001b` 인가), `NtContinueEx +0x403`/`+0x426`/`+0x40c` 중 어디로 나가나, `RtlUserThreadStart` 입구 `rcx`=진입점·`rdx`=PEB·`k` — 동적 Q29 |
-| 2.10 | `RtlUserThreadStart` 뒤 실행 (run29 결과서 D4·D7·D8): `+0x27` (`ntdll+0xacae7`) 에서 `ln @rax`·`rcx`=0·`rdx`=진입점·`r8`=PEB, `test!main` 에서 `k` (`BaseThreadInitThunk+0x17` → `RtlUserThreadStart+0x2c`, CFG 중개 프레임 없음 예상) — 동적 Q30 |
+| 2.10 | `RtlUserThreadStart` 뒤 실행 (run29 결과서 D4·D7·D8): `+0x27` (`ntdll+0xacae7`) 에서 `ln @rax`·`rcx`=0·`rdx`=진입점·`r8`=PEB, `test!main` 에서 `k` (`BaseThreadInitThunk+0x17` → `RtlUserThreadStart+0x2c`, CFG 중개 프레임 없음 예상) — 동적 Q30. (run30, 2026-10-23 좁힘: **진입점 도착까지 + CFG 통과**) `BaseThreadInitThunk +0x17` 이 부르는 대상이 `AddressOfEntryPoint` (`test+0x1d40`) 인가 — 입구 `k` 바로 위가 `BaseThreadInitThunk+0x17` 인가, kernel32 CFG 검사가 CFG 표 없는 test.exe 진입점을 통과시키는 방법. `main` 입구 `k` 의 CRT 프레임(`__scrt_common_main_seh+0x10f`, `mainCRTStartup` 없음)은 참고로만 |
+| 2.10 | (해결됨, 정적) run7 `[관찰]` `LoadLibraryExW` ×3 을 부른 test.exe 안 코드 `0x7ff70ee67723` 이 어느 함수인가 → run30 `[정적]`: **`test!try_get_function_slow +0x73`** (rva `0x57723`, call `+0x6d`). `LoadLibraryExW` 호출 9곳 중 아래 16비트가 맞는 유일한 ret. UCRT 의 늦게 묶는 API 찾기 함수 |
+| 2.10 | `LoadLibraryExW` ×3 이 **ntdll 로더에서 무엇을 올리나** (2026-10-23 좁힘: 이름과 `LdrpLoadDll` 결과만, CRT 안 사슬은 범위 밖): `test+0x5771d` (call) 에서 `du @rcx` 이름 (`api-ms-win-core-fibers-l1-1-2` / `api-ms-win-core-localization-l1-2-1` / `kernel32` 예상, run30 `[정적]`), `LdrpLoadDll` 결과·`test+0x57723` (ret) `rax`. 참고: 세 번이 넘거나 `test+0x57777` 에 서면 "세 길이 각자 첫 후보" `[추측]` 틀림 — 동적 Q31 |
+| 2.10 | `KERNEL32!LoadLibraryExW` → `KERNELBASE!LoadLibraryExW` 연결 (run30): test.exe 는 `KERNEL32.dll` 의 `LoadLibraryExW` 를 import (IAT `0x6e250`, `[정적]`) 하는데 run7 `[관찰]` 은 `KERNELBASE!LoadLibraryExW`. kernel32 export 가 forwarder 인가, 짧은 스텁인가 `[확인 필요]` — 정적 Q60 |
 | 2.10 · 2.3 | `NtContinueEx` 출구의 `KiKvaShadow` 갈림 (run29 결과서 D3) — 2.3 `KiStartUserThread` 출구와 같은 변수, 동적 Q42 |
 | 2.10 · 2.4 | 칸 `Kernel32ThreadInitThunkFunction` 값 (run29 결과서 D7): `ln` = `KERNEL32!BaseThreadInitThunk` (rva `0x2cd70`) 인가 — 동적 Q48 |
 | 2.10 | `NtContinue` 길의 CET·유저 APC 실제 값 (run29 결과서 D5·D6): 스레드 `+0x74` bit20, 프로세스 `+0x754` bit17·18·`+0x88` bit5, `KiVerifyContextIpForUserCet` 결과 (0 / `c000060a`) 와 그림자 스택 칸이 `RtlUserThreadStart` 인가, `NtContinueEx +0x148` 유저 APC 대기 비트·`KiInitiateUserApc` 가 걸리나 — 동적 Q57 |
@@ -3026,8 +3124,8 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 그림 2 (2) | `LdrpInitializeGraphRecurse` 재귀 단계 ↔ 모듈 대응 (`[dll1/dll2 추정]`. 맨 바깥 `[test.exe]` 는 run27 에서 "추정" 뗌) | dll1 2단계, dll2 3단계 이상. 맨 바깥 호출(`LdrpInitializeProcess +0x1bb6`)의 첫 인자 = exe 항목 `DdagNode` (run19 `[정적]`). run27 `[정적]`: 프레임 하나 = 부모 `Dependencies` 의 `State 7` 자식 하나 (`+0x91`/ret `+0x96`), 이미 켜진 노드는 프레임을 안 만듦 → "한 단계 = 아직 안 켜진 노드 하나" 는 코드로 맞음. 어느 노드가 dll1/dll2 인지만 실행 값 | GR 입구 `ntdll+0x87d60`·Node 입구 `ntdll+0xe5d0` 에서 `dt ntdll!_LDR_DATA_TABLE_ENTRY (poi(@rcx)-0xa0) BaseDllName` + `k 8` 이상. `ntdll+0x8dfba`(`+0x1bb6`) 에서 `r rcx` = `poi(poi(ntdll+0x1d2828)+0x98)` 인지 (Q24·Q46) |
 | 그림 2 (2) | `LdrpInitializeGraphRecurse` [test.exe] → (2) `LdrpInitializeNode` [test.exe] (`(정적)` 상자, run27) | 코드의 call 자리·흐름 순서 (run27 `[정적]`): 맨 바깥 GR 이 자식 한 바퀴를 끝낸 뒤 `+0x65` (ret `+0x6a`). Node 는 항목 == `LdrpImageEntry` 면 `+0x9e` 에서 통째로 건너뛰어 `State` 8 → 9 만. run8 표에 없는 건 멈춤점이 `LdrpCallTlsInitializers`·`LdrpCallInitRoutine` 이었기 때문 (exe 노드는 거기까지 안 감) | Node 입구 `ntdll+0xe5d0` 에서 GR 1겹 + 이름 `test.exe`, 그 뒤 `ntdll+0xe736`·`ntdll+0xe767` 에 안 서는지, 끝 `ntdll+0xe88a` 의 `ecx` = 9 (Q24) |
 | 그림 2 로더 끝 → 진입점 | `LdrInitializeThunk` → `NtContinue` → `RtlUserThreadStart` | PELdr 기록. `LdrInitializeThunk +0x18` → `NtContinue(맡긴 문맥, TRUE)` 는 run16 `[정적]` (`(2) ?` → `(2) +0x18`). ~~`NtContinue` ==> `RtlUserThreadStart` 는 맡긴 문맥 `Rip` 값만 `[정적]`, 넘어가는 건 `[추측]`~~ → run29 `[정적]`: 굵은 화살표 하나를 `SYSCALL 0x43` ==> 커널 `(2) 로더 끝 NtContinue` 상자 ==> `IRETQ` 두 갈래로 바꿈 (아래 줄). 실행은 미관찰 | `ntdll!LdrInitializeThunk` 입구 `r rcx rdx rsp`, `dq @rsp L2`, `dt ntdll!_CONTEXT @rcx Rip Rcx`. `+0x13` 에서 `@rbx` = 입구 `@rcx` 인지. `NtContinue`에서 `k`, `RtlUserThreadStart` 입구 `@rcx` (= 진입점) (Q29) |
-| 그림 2 로더 끝 → 진입점 | `RtlUserThreadStart` → `BaseThreadInitThunk` → `mainCRTStartup` | Worker 스레드 종료 콜스택에서만 봄. run25 `[정적]`: `BaseThreadInitThunk` (`0x2cd70`, forwarder 아님) 는 첫 인자 0 이면 `+0x12` 간접 호출 `RDX(R8)` → `+0x19` `RtlExitUserThread` (ret `+0x20` = 관찰 프레임 자리). run29 `[정적]`: `RtlUserThreadStart +0x27` (ret `+0x2c` = 관찰 프레임 자리) 이 칸 `Kernel32ThreadInitThunkFunction` 을 `(0, 진입점, PEB)` 로 CFG 간접 호출. 대상이 칸 값이라 두 화살표 모두 `?` 그대로 | `mainCRTStartup`에서 `k` (예상 `BaseThreadInitThunk+0x17` → `RtlUserThreadStart+0x2c`. ~~`[추측]`: 스텁이 프레임을 안 남긴다면~~ → run29 `[정적]` 두 CFG 중개 모두 `JMP` 뿐이라 프레임 없음). `ntdll+0xacae7` 에서 `ln @rax` (Q30, Q48) |
-| 그림 2 로더 끝 → 진입점 | `mainCRTStartup` → `LoadLibraryExW` ×3, → `main` | test.exe 안 주소에서 부른 것, `main`이 불린 것 | `LoadLibraryExW`에서 `k`, `main`에서 `k` |
+| 그림 2 로더 끝 → 진입점 | `RtlUserThreadStart` → `BaseThreadInitThunk` → `mainCRTStartup` | Worker 스레드 종료 콜스택에서만 봄. run25 `[정적]`: `BaseThreadInitThunk` (`0x2cd70`, forwarder 아님) 는 첫 인자 0 이면 `+0x12` 간접 호출 `RDX(R8)` → `+0x19` `RtlExitUserThread` (ret `+0x20` = 관찰 프레임 자리). run29 `[정적]`: `RtlUserThreadStart +0x27` (ret `+0x2c` = 관찰 프레임 자리) 이 칸 `Kernel32ThreadInitThunkFunction` 을 `(0, 진입점, PEB)` 로 CFG 간접 호출. 대상이 칸 값이라 두 화살표 모두 `?` 그대로. run30 `[정적]`: 넘기는 진입점 값 = `test!mainCRTStartup` (PDB 이름, run5 `[관찰]` 시작 주소와 같음). 그래도 간접 호출이라 `?` 그대로 | `mainCRTStartup`(`test+0x1d40`)에서 `k` (예상 `BaseThreadInitThunk+0x17` → `RtlUserThreadStart+0x2c`. ~~`[추측]`: 스텁이 프레임을 안 남긴다면~~ → run29 `[정적]` 두 CFG 중개 모두 `JMP` 뿐이라 프레임 없음). `ntdll+0xacae7` 에서 `ln @rax` (Q30, Q48) |
+| 그림 2 로더 끝 → 진입점 | 진입점 경계 상자 (`mainCRTStartup`, 여기부터 CRT) → (1) `?` `LoadLibraryExW` ×3, → (2) `?` `main` | run7 `[관찰]`: test.exe 안 `…67723` 에서 `LoadLibraryExW` ×3, 그다음 `main`. run30 `[정적]`: `…67723` = `try_get_function_slow +0x73` (CRT 안이라 그림엔 이름을 안 넣고 화살표는 `?`). `mainCRTStartup +0xd` 꼬리 `JMP`. `__scrt_common_main_seh` 에서 `try_get_function_slow` 까지 길 셋 (A `+0x19` → … `__acrt_tls2_supported +0x37`, B `+0x19` → … `__acrt_LCMapStringEx +0x4f`, C `+0x61` → … `__acrt_AreFileApisANSI +0x32`, 2.10). `main` 은 `+0x10a` (ret `+0x10f`). **그림은 2026-10-23 결정(진입점 = 경계, CRT 한 상자)으로 CRT 함수를 빼고 진입점 경계 상자 → (1) `?` `LoadLibraryExW` ×3, (2) `?` `main` 만 둠** (사이에 CRT 함수가 끼어서 `?`) | `test+0x5771d` 에서 `du @rcx` 이름, `LdrpLoadDll` 결과 (Q31). 진입점 `test+0x1d40` 도착 (Q30). CRT 안 프레임은 참고로만 |
 
 (해결됨) dll1 ↔ dll2 import 관계 → `sample/dll1.c`로 확인: dll1이 dll2를 import
 
@@ -3062,9 +3160,11 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run27 | (정적, ntdll) 그래프 켜기 두 함수 (`LdrpInitializeGraphRecurse` 2곳, `LdrpInitializeNode` 12곳 + 예외 조각 2곳, 곁 `LdrpRecordModuleDependency`): GR = `Dependencies` 를 따라 **`State 7` 자식만 `+0x96` 재귀 → 다 끝난 뒤 `+0x6a` 자기 노드** (후위 순서, 같은 노드 두 번 막기는 `State` 하나), 자식 8 이면 지연 갈래, 실패면 `State = -4` (`LdrModulesInitError`) 로 위로 전파 → Node = `State 8` → 초기화 순서 목록(`PebLdr+0x30`)에 끼움 → 모듈마다 활성화 → `TlsIndex ≠ 0` 이면 `+0x16b` TLS(1, 항목) → `EntryPoint ≠ 0` 이면 `+0x19c` 진입점(EntryPoint, DllBase, 1, **정적 import 면 CONTEXT 포인터**) → 끄기 → `ProcessAttachCalled` → `State 9`. DllMain FALSE·예외 → `0xc0000142`. **exe 항목은 Node 가 통째로 건너뜀** (State 8 → 9 만) → exe TLS 가 따로 도는 이유. 관찰 dll2 → dll1 → exe·재귀 깊이와 같은 모양 |
 | run28 | (정적, ntdll) TLS 콜백 길 네 함수 (`LdrpCallTlsInitializers` 6곳 + 필터, `LdrpCallInitRoutine` 8곳 + `__finally`, `LdrpCallInitRoutineInternal` 1곳, `ImageTlsCallbackCaller` 2곳, 곁 TLS 항목 만드는 함수·부르는 자리 depth 0): `LdrpCallTlsInitializers` = `LdrpTlsLock` 공유로 **`LdrpTlsList` 에서 그 모듈의 항목을 찾아** (락은 이때만) `+0x28` 콜백 배열을 0 까지, **콜백마다 `+0x19b LdrpCallInitRoutine(ImageTlsCallbackCaller, DllBase, 이유, 콜백)`**, 안 부르는 조건 셋, 고리 전체가 한 `__try` (예외면 남은 콜백 건너뜀, 위로 안 알림) → `LdrpCallInitRoutine` = 인자 그대로 `+0x93 Internal`, `AL` 그대로 돌려줌, ETW 세 조건·FALSE+이유 1 오류 로그·`__finally` → **`LdrpCallInitRoutineInternal` 이 한 칸 밀기** (대상 = `rcx`, 인자 = `rdx, r8d, r9`), CFG 중개는 `JMP` 뿐 → `ImageTlsCallbackCaller` 가 콜백을 **`(DllBase, 이유, 0)`** 으로 부르고 늘 TRUE. `TlsIndex = 0xffff` 를 쓰는 곳 `LdrpHandleTlsData +0x3a8`·`LdrpInitializeTls +0x102`. KERNELBASE 콜백 배열 첫 칸 0, kernel32·ntdll TLS 디렉터리 없음 (PE 파일). run27 정정 (TLS 콜백 예외는 Node 까지 안 감) |
 | run29 | (정적, ntoskrnl·ntdll) 로더 끝 → 진입점: ntdll `NtContinue` `+0x3 EAX = 0x43` → `+0x12 SYSCALL`, 서비스 표 `[0x43]` = `nt!NtContinue` → `+0x3` 꼬리 `JMP` `NtContinueEx` (둘째 인자 `0xff` 이하 = TestAlert BOOLEAN, 크면 `_KCONTINUE_ARGUMENT` 포인터) → `+0x86` `KiContinueEx` (`+0x5e` `PreviousMode` 갈림, 정렬·쓰기 검사, 전체 `__try`) → 유저 길 `+0xce` `KeTestAlertThread(1)` · `+0xf0` `KiContinuePreviousModeUser` (커널 복사 `+0x1ce` `RtlpReadExtendedContext`, `ContextFlags` 검사·깎기, `SegCs = 0x33`, `Rsp` 검사, CET 일 때만 `+0x39e` `KiVerifyContextIpForUserCet` 가 그림자 스택 칸과 `Rip` 대조 = run16 `KePopulateContinuationContext` 목적 뒷받침) → **`+0x427` `KeContextToKframes`** (run16 후보 둘 중 유저 길, `KiContinueEx +0x1e0` 은 커널 길) → `NtContinueEx` 가 반환 없이 유저 APC 고리(`+0x160` `KiInitiateUserApc`) → 휘발 레지스터를 트랩 프레임에서 (`+0x3ea` `RCX`) → **`+0x426 IRETQ`** / `+0x40c` `KiKernelExit`. `RtlUserThreadStart`: `+0x27` (ret **`+0x2c`**, 01_sprint Worker 관찰 자리와 같음) 칸 `Kernel32ThreadInitThunkFunction(0, 진입점, PEB)` CFG 간접 (프레임 없음), 칸 0 이면 진입점 직접 → `RtlExitUserThread`, `__try +0x7~+0x4a` → `NtTerminateProcess`. 2.10 `[추측]` 앞 절반 코드로 맞음, 실행은 동적 |
+| run30 | (정적, test.exe — sample 빌드, 로컬 pdb `C66E7084…0511`) 진입점 → `main`: rva `0x1d40` = `mainCRTStartup` (18바이트, 받은 PEB 안 씀) → `+0x9` `__security_init_cookie` → **`+0xd` 꼬리 `JMP` `__scrt_common_main_seh`** (프레임 안 남음) → `+0x19` `__scrt_initialize_crt` · `+0x61` `_initterm_e` · **`+0x10a` (ret `+0x10f`) `main`** · `+0x176` `exit`. `invoke_main`·`__scrt_common_main` 은 안 쓰는 사본. run7 `…67723` = **`try_get_function_slow +0x73`** (`LoadLibraryExW(이름, NULL, 0x800)`, 모듈 캐시, 9곳 중 유일), `main` 전 세 길 A `FlsGetValue2` · B `LCMapStringEx` · C `AreFileApisANSI` (세 번 = 세 길은 `[추측]`). test.exe CFG 함수 표 없음, 중개 `jmp rax` 뿐. TLS 배열 `[ExeTls, 0]`. `main` 에서 `k` 예상에 `mainCRTStartup` 없음 → run29 예상 정정 |
 | `sample/` 소스 | 의존 관계, 모듈별 TLS 콜백, `/MT` 빌드 |
 
 - run3 ~ run5는 타깃에서 빌드한 test.exe, run6 ~ run8은 디버거 VM에서 빌드해 옮긴 test.exe (같은 소스).
+  - run30 정적은 사용자가 `sample/bin/` 에 올린 빌드다. 진입점 rva(run5)와 `…7723`(run7) 둘 다 맞아서 어느 쪽 빌드인지는 못 가린다.
 - run3 ~ run8 문서는 `runs/01_sprint/`, run9부터는 `runs/02_sprint/`.
 
 ### 02_sprint 요청서 번호
@@ -3092,3 +3192,4 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run27 | `_workspace/sast/22_init-graph` | 없음 | 정적만 (대기열 Q15, 두 함수 2·12곳 + 곁 `LdrpRecordModuleDependency` depth 0). Q15 끝. 새 대기열 항목 Q54 (정적: `Flags.ProcessStaticImport` 를 켜는 곳, 간선 칸 `+0x18` 비트 0 의 뜻). 동적은 새 항목 없음 — 재귀 단계·Node 입구 모듈·지연 갈래·`State` 쓰기·초기화 순서 목록 → Q24, TLS 호출 인자 → Q25, 진입점 넷째 인자(`lpReserved`)·반환 `al` → Q27. `LdrpCallTlsInitializers`·`LdrpCallInitRoutine` 인자 뜻은 정적 Q16 으로 넘김. `_calls.tsv` 가 예외 착지점 호출 `+0x1fe` 를 빠뜨림 (요청서 "11곳" → 실제 12곳). 결과서 `+0x348 JMP +0x875` 는 `+0x2a5` 로 고쳐 읽음 |
 | run28 | `_workspace/sast/23_tls-init-call` | 없음 | 정적만 (대기열 Q16, 네 함수 — `LdrpCallInitRoutineInternal` 은 지도에서 찾아 범위에 더함, `ImageTlsCallbackCaller` 는 지도 밖이라 이름으로 — depth 1 17개 + 곁 depth 0). Q16 끝. 새 대기열 항목 Q55 (정적, sample dll: `_DllMainCRTStartup` → `DllMain` 이 `lpReserved` 를 그대로 넘기나), Q56 (정적, ntdll TLS 락 세부: TEB `+0x1850` 표, 추적 칸 비트, `RtlAcquireSRWLockExclusive` 갈래, `[RDI+0x58]`). 동적은 새 항목 없음 (오케스트레이터 결정) — 결과서 D1·D3·D4·D6 (TLS 인자·콜백 배열·KernelBase 여부·락 경합) → Q25, D2 (콜백 호출) → Q26·Q28, D5·D7·D8 (CFG 칸 값·진입점 `r9`/`al`·ETW 꺼짐) → Q27. 결과서와 `.asm` 대조 어긋남 없음 (`ImageTlsCallbackCaller` 크기 `_index.tsv` 55 vs `.asm` 마지막 `RET` `+0x37`, `_calls.tsv` 같은 줄 중복 하나는 run28 도구 메모) |
 | run29 | `_workspace/sast/24_continue-start` | 없음 | 정적만 (대기열 Q17, ntoskrnl 네 함수 depth 1 31개 + ntdll 두 함수 depth 1 6개, 지도 안 돌림. 서비스 표·unwind 표는 PE 파일에서). Q17 끝. 동적 확인거리 D1~D8 → D1~D4 Q29, D4·D7·D8 Q30, D3 Q42, D7 Q48, D5·D6 새 **Q57** (CET·유저 APC). 정적 남은 것(유저 SSP 되돌리기, `KiInitiateUserApc` 본문, `ContextFlags` 가정, `RtlLeaveCriticalSection` 특례)은 새 **Q58** (4장) |
+| run30 | `_workspace/sast/25_exe-crt-start` | 없음 | 정적만 (대기열 Q18 — 사용자 결정으로 kernel32 `BaseThreadInitThunk` 에서 test.exe `mainCRTStartup` → `main` 까지 넓힘. test.exe 첫 analyze, 함수 3356, 사슬 + `LoadLibraryExW` 길 depth 0 41개, CRT 표 항목은 뿌리를 따로 줘서 지도). Q18 끝 = **단계 2 처음 항목(Q8 ~ Q18) 끝**. 동적 확인거리 → Q30 (`mainCRTStartup`·`main` 입구 `k`, CFG 통과), Q31 (`LoadLibraryExW` 길 A·B·C, 이름). `BasepInitializeTermsrvFpns` 안쪽은 이번에 안 봄 → 새 **Q59** (정적). dll1·dll2 `LoadLibraryExW` ×3 → Q55 출처. 지도 범위 결정 "진입점 = 경계, CRT 한 상자" (2026-10-23) 로 그림의 CRT 함수를 빼고 Q30·Q31 을 좁힘 |

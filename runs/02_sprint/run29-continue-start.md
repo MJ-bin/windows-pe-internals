@@ -1,5 +1,7 @@
 # 2026-10-23 run29 — 로더 끝 → 진입점: `NtContinue` 는 **SYSCALL `0x43`** 으로 커널 `NtContinueEx` 에 가고, 유저 길 **`KiContinuePreviousModeUser +0x422`** 가 맡긴 CONTEXT 를 트랩 프레임에 옮겨 적은 뒤 **`NtContinueEx` 가 반환 없이 직접 `IRETQ`** 로 `RtlUserThreadStart` 에 보낸다. `RtlUserThreadStart` 는 칸 `Kernel32ThreadInitThunkFunction` 을 **`(0, 진입점, PEB)`** 로 부른다 (ret `+0x2c`) (정적)
 
+> **정정 (run30)**: 아래 "`main` 에서 `k` 예상" 의 `test!mainCRTStartup+?` 프레임은 안 보일 것이다. `mainCRTStartup` 은 `+0xd` 에서 `JMP` 로 `__scrt_common_main_seh` 에 넘겨 프레임이 없다 (run30 `[정적]`). 예상은 `test!main` → `test!__scrt_common_main_seh+0x10f` → `BaseThreadInitThunk+0x17` → `RtlUserThreadStart+0x2c`.
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 작성일.
