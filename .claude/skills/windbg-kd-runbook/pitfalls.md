@@ -24,6 +24,10 @@ runbook을 만들 때 이번 계획에 해당하는 것만 골라 넣는다. 번
 | P18 | test.exe 끝난 뒤 Break | `lm m test`가 빈칸 | 모듈 정보는 test.exe가 살아 있을 때(멈춤점 안에서) 본다 | run5 |
 | P19 | **별칭 무리** 함수에 이름으로 `bp` (한 주소에 함수 이름이 여러 개 — 링커가 같은 코드를 합친 ICF) | 그 주소를 쓰는 **다른 함수들의 호출에도** 멈춤. 콜스택·`ln` 에 이름이 하나만(엉뚱한 것) 보일 수 있음 `[추측]` | runbook 만들 때 `pdb_aliases.py --lookup <모듈> <이름>` 으로 확인. 무리면 그 함수 입구 대신 **caller 의 call 자리**(`caller+call_off`)에 걸거나, 입구에 `.if (poi(@rsp) == <caller+ret_off 주소>) {...} .else {gc}` 조건. 로그의 이름이 무리면 판정 문단에 "별칭 무리"라고 적는다 | sast/03 (정적, 관찰 전) |
 | P20 | 커널 → 유저로 넘어가는 `IRETQ` 줄 자체에 멈춤점 (`nt!KxStartUserThread+0x3e1`, `nt!KiKernelExit+0xa5`) | 바로 앞에서 `SWAPGS`(GS 가 유저 값)·CR3 전환을 이미 해서 디버거가 이상하게 굴 수 있음 `[추측]`, 관찰 전 | 유저로 들어가기 직전 값은 `nt!KiStartUserThread+0x28` 에서 `dq @rbp+0xe8 L5` (Rip·CS·EFlags·Rsp·SS) 로 읽는다. 유저 쪽 첫 자리는 `ntdll!LdrInitializeThunk` 입구에서 | sast/10·run15 (정적, 관찰 전) |
+| P21 | 이름이 두 주소에 걸친 함수에 **이름으로** `bp` (`ntdll!LdrpInitialize` = rva `0xe1448` 과 `0x8bf8c`(`_LdrpInitialize`, 콜스택 표시 이름)) | 엉뚱한 쪽에 서거나 콜스택 이름과 멈춘 곳이 안 맞음 `[추측]`, 관찰 전 | `ntdll+<rva>` 로 건다. 먼저 `x ntdll!*LdrpInitialize`·`ln ntdll+0x8c0f8` 로 WinDbg 가 무슨 이름으로 보이는지 본다 | sast/12·run17 (정적, 관찰 전) |
+| P22 | **call 자리와 ret 자리를 섞음** | 멈춤점이 한 명령 어긋나거나, 콜스택 `caller+0x..` 와 문서 라벨이 안 맞음 (run18: `LdrpInitializeProcess +0x1bb6` call / `+0x1bbb` ret) | 라벨·콜스택 비교는 `_calls.tsv` 의 ret_off, "호출 직전 값"을 볼 땐 call_off 에 건다. 명령 길이가 다르다: `CALL RAX` 2바이트(`LdrpInitializeProcess +0x17fc` → ret `+0x17fe`), `CALL rel32` 5바이트, `CALL [rip+X]` 6바이트 — 손으로 더하지 말고 `_calls.tsv` 를 본다. 확인은 `ub <caller+ret> L1` | run18·run19·run20 (정적) |
+| P23 | CFG 검사 thunk 를 거치는 간접 호출의 대상을 call 줄에서 찾음 | `ln` 에 검사 함수(`__guard_dispatch_icall_fptr` 등)만 보임 | call 자리에 멈춰 `ln @rax` — 진짜 대상은 호출 직전 `rax` (예: `LdrpInitializeKernel32Functions +0x1aa` → `KERNELBASE!KernelbasePostInit` 예상) | sast/15·run20 (정적, 관찰 전) |
+| P24 | **주소로만 넘겨지는 콜백** 입구에만 멈춤점 (`ntdll!LdrpWorkCallback`) | 일이 돌았는데 안 섬 — 스레드 풀이 같은 반복문 복사본을 직접 돌 수 있음 (`TppWorkpExecuteCallback +0x1b4` 에서 콜백 주소 비교) `[정적]`, 관찰 전 | 복사본 쪽 ret `ntdll+0x19050`(`TppWorkpExecuteCallback +0x2e0`)이나 그 안에서 부르는 `LdrpProcessWork` 입구(`ntdll+0x17140`)에도 같이 건다 | sast/19·run24 (정적, 관찰 전) |
 
 ## 값 읽는 법 (자주 씀)
 
