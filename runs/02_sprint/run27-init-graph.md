@@ -1,5 +1,7 @@
 # 2026-10-23 run27 — import DLL 켜기의 틀: `LdrpInitializeGraphRecurse` 는 **자식 먼저(후위 순서)**, `LdrpInitializeNode` 는 **State 8 → TLS → 진입점 → 9**, exe 노드는 **통째로 건너뜀**, `lpReserved` = CONTEXT 포인터 (정적)
 
+> **정정 (run28)**: "TLS 콜백이든 DllMain 이든 예외를 던지면 Node 의 `__except` 가 잡는다" 에서 **TLS 콜백 쪽은 틀렸다.** TLS 콜백 예외는 안쪽 `LdrpCallTlsInitializers` 의 `__try` (`+0x12b ~ +0x1a2`, 필터 늘 1) 가 먼저 잡아 그 모듈의 남은 콜백만 건너뛰고 아무것도 위로 안 올린다. Node 의 `__except` 로 가는 건 DllMain(진입점) 예외다.
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 작성일.
