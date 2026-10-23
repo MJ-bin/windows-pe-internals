@@ -5,6 +5,8 @@
 
 > **정정 (run36)**: 2.10 이야기 그림의 "dll2 의 import = ?" 와 4절 "dll2 의 import (동적 Q23)" 은 채워졌다 — `KERNEL32.dll` 하나 `[정적+샘플]`. 끝 그림·4절의 "`LdrpSnapModule` 안 — IAT 쓰기·도장 5 쓰는 곳은 모름 (Q50)" 은 `+0x3e7` (IAT 칸 쓰기)·`+0xb87` (도장 5) `[정적]` 로 풀렸다. 본문은 그대로 두었다 → [run36 해설 2.3](run36-snap-module-해설.md#23-질문-1--주소록-칸을-채우는-줄은-딱-하나) · [2.8](run36-snap-module-해설.md#28-질문-3--도장-5-는-한-곳-끝맺음-뒤) · [2.12](run36-snap-module-해설.md#212-testexe-에서는--파일을-세어-본-값)
 
+> **정정 (run38)**: 2.3 표·4절의 "`LdrpMinimalMapModule +0x296` 이 버튼(`LdrpMapAndSnapWork`)을 읽는 이유" 가 보였다 `[정적]` — 맵 결과가 경고 코드 (`0x40000003`·`0x40000036`) 일 때, 지시서 `+0xb0 == 0` 이고 버튼 `≠ 0` 이면 `+0x2a9 LdrpCheckForRetryLoading` 을 부르는 조건 검사다 (run38 `refs` 의 `+0x296` 줄 = 버튼을 0 과 비교). 본문은 그대로 두었다 → [run38 해설 2.6](run38-map-module-해설.md#26-창구의-대답-가르기-정적)
+
 - 대기열: **Q12c** — 2.5·2.6·3장 일감 흐름(`LdrpQueueWork`·`LdrpProcessWork`·`LdrpDrainWorkQueue`)과 그래프 정리(`LdrpCondenseGraph` → `LdrpCondenseGraphRecurse` → `LdrpMergeNodes`) (`_workspace/plan.md`, 이번에 **끝**)
   - 이걸로 **Q12 (a·b·c) 가 모두 끝났다** (run22 ~ run24).
   - 새 대기열 항목은 **없다.** 동적으로 볼 것은 이미 있던 **Q23·Q47**, 정적으로 남은 주소 연결은 **Q50** 에 출처를 더했다.

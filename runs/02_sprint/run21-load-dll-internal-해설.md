@@ -5,6 +5,8 @@
 
 > **정정 (run36)**: 2.6 도장 번호표의 5 `Snapped` "함수 주소 잇기 끝" `[추측: 이름]` 은 `[정적]` 이 됐다. `LdrpSnapModule +0xb87` 이 IAT 칸을 다 쓰고 `LdrpDoPostSnapWork` 가 성공한 뒤에만 5 를 쓴다. 본문은 그대로 두었다 → [run36 해설 2.8](run36-snap-module-해설.md#28-질문-3--도장-5-는-한-곳-끝맺음-뒤)
 
+> **정정 (run38)**: 2.4 두 길의 끝 "`LdrpMinimalMapModule +0x179 → NtMapViewOfSection`" `[정적: 지도]` 는 본문으로 `[정적]` 이 됐다 — call `+0x174` / ret `+0x179`. 확장 인자가 있을 때만 `+0x36c NtMapViewOfSectionEx` 로 가는데 그것도 `+0x179` 로 합쳐서, `ntdll+0xa399` 하나로 둘 다 잡힌다. 칸 4 "최소한의 매핑" `[추측: 이름]` 이 실제로 하는 일 (창구 한 번으로 붙이기 + 결과 코드 가르기) 도 코드로 보였다. 본문은 그대로 두었다 → [run38 해설 2.3](run38-map-module-해설.md#23-질문-1--창구는-ntmapviewofsection-하나-ex-는-곁길-정적)
+
 - 대기열: **Q11** — 2.5 `LdrpLoadDllInternal` (`+0x284` 앞 = 올리기 쪽), `LdrpPrepareModuleForExecution` callee (`_workspace/plan.md`, 이번에 **끝**)
 - 근거:
   - run 문서 [`run21-load-dll-internal.md`](run21-load-dll-internal.md) (가장 중요)

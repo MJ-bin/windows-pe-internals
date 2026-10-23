@@ -3,6 +3,8 @@
 > 이 글은 [run26 문서](run26-map-dll-file.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
+> **정정 (run38)**: 2.3 걸음 4 의 "`DllBase`·지시서 `+0xa8` 을 `LdrpMinimalMapModule` 이 채운다 `[추측]`" 은 `[정적]` 으로 조금 다르게 닫혔다 — `LdrpMinimalMapModule` 은 두 칸의 **주소**를 `+0x174 NtMapViewOfSection` (ret `+0x179`) 에 넘기고, **시스템 콜이 직접** 채운다. `+0xa8` 은 ViewSize 칸이다 (2.8 표 "맵 크기일 것 `[추측]`" 도 확정). 4절 "재배치 후보 둘 `[추측]`" 은 **첫째가 맞았다** — `LdrpCompleteMapModule +0x31b LdrpRelocateImage`, 맵 결과가 정확히 `0x40000003` 일 때만 `[정적]`. 둘째 (`LdrpIsExecutableRelocatedImage`) 는 안 봤다. 본문은 그대로 두었다 → [run38 해설 2.5·2.8](run38-map-module-해설.md#25-dllbase-는-관리사무소가-직접-적는다--run26-의-추측-이-닫혔다-정적)
+
 - 대기열: **Q14** — 2.6 dll1·dll2 를 **파일로** 올리는 길의 본문: `LdrpMapDllSearchPath` → `LdrpMapDllNtFileName` (`NtOpenFile`·`NtCreateSection`) → `LdrpMapDllWithSectionHandle` (`_workspace/plan.md`, 이번에 **끝**)
   - 원래 Q14 는 더 넓은 질문이었는데, 2026-10-23 사용자 결정으로 "파일 길 본문" 으로 좁혔다.
   - 새 항목 둘 (둘 다 정적):
