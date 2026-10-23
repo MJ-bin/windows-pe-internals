@@ -3,6 +3,8 @@
 > 이 글은 [run22 문서](run22-map-snap-dep.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
+> **정정 (run36)**: 2.5 이야기 그림·남은 질문과 4절의 "dll2 의 import `?`" 는 채워졌다 — `KERNEL32.dll` 하나(88개) `[정적+샘플]` (샘플 PE 표를 센 값). 2.8 "IAT 쓰기 가능"(덮개 열기)의 짝인 되돌리기는 `LdrpDoPostSnapWork +0x3e` 다 `[정적]`. 본문은 그대로 두었다 → [run36 해설 2.12](run36-snap-module-해설.md#212-testexe-에서는--파일을-세어-본-값) · [2.9](run36-snap-module-해설.md#29-질문-4--끝맺음-ldrpdopostsnapwork)
+
 - 대기열: **Q12a** — 2.5·2.6 import 를 하나씩 도는 바깥 고리 `ntdll!LdrpMapAndSnapDependency` (호출 23곳) + 노드·항목을 만드는 `LdrpAllocateModuleEntry` (5곳) (`_workspace/plan.md`, 이번에 **끝**)
 - 근거:
   - run 문서 [`run22-map-snap-dep.md`](run22-map-snap-dep.md) (가장 중요)

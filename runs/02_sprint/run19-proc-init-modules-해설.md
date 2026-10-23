@@ -3,6 +3,8 @@
 > 이 글은 [run19 문서](run19-proc-init-modules.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
+> **정정 (run36)**: 2.7 의 새 말 snap "IAT 칸마다 상대 DLL 함수의 실제 주소를 채워 넣는 일로 알려져 있다 `[추측]`" 은 `[정적]` 이 됐다. `LdrpSnapModule +0x3e7` 한 줄이 IAT 칸마다 상대 DLL 함수 주소를 쓴다 (이름·서수·forwarder 가 다 이 줄로 모임). 본문은 그대로 두었다 → [run36 해설 2.3](run36-snap-module-해설.md#23-질문-1--주소록-칸을-채우는-줄은-딱-하나)
+
 - 대기열: **Q9b** — 2.4 `ntdll!LdrpInitializeProcess` 뒤쪽 `+0x12de ~ 끝` callee (호출 75곳 — 모듈 목록·디버거·WOW64·kernel32·import·그래프·TLS) (`_workspace/plan.md`)
   - run18 에서 Q9 를 둘로 나눈 **뒤쪽**이다. 앞쪽(Q9a)은 run18.
 - 근거:

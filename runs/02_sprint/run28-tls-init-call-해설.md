@@ -3,6 +3,8 @@
 > 이 글은 [run28 문서](run28-tls-init-call.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
+> **정정 (run36)**: 2.3 표 "DLL 쪽 `LdrpHandleTlsData`" 를 부르는 곳이 나왔다 `[정적]` — `LdrpDoPostSnapWork +0x8e` (ret `+0x93`), 항목 `TlsIndex == 0` 일 때만 (snap 끝, 도장 5 바로 앞). 2.5 의 "일꾼이 같은 자물쇠를 `LdrpHandleTlsData` 에서 독점으로 잡을 수 있는지는 정적으로 못 정한다" 는 "snap 일감을 일꾼이 맡으면 **길은 코드상 있다** `[정적: 길]`" 로 좁혀졌다. 실제로 그런지는 그대로 동적 Q25·Q47. 본문은 그대로 두었다 → [run36 해설 2.9](run36-snap-module-해설.md#29-질문-4--끝맺음-ldrpdopostsnapwork)
+
 - 대기열: **Q16** — 2.7 `LdrpCallTlsInitializers`, `LdrpCallInitRoutine`, `ImageTlsCallbackCaller` 본문 (`_workspace/plan.md`, 이번에 **끝**)
   - 새 항목 둘 (둘 다 작은 정적):
     - **Q55** — sample dll 의 `_DllMainCRTStartup` → `DllMain` 이 `lpReserved`(셋째 인자)를 그대로 넘기나.

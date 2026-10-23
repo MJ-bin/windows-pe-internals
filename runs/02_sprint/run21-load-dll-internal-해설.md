@@ -3,6 +3,8 @@
 > 이 글은 [run21 문서](run21-load-dll-internal.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
+> **정정 (run36)**: 2.6 도장 번호표의 5 `Snapped` "함수 주소 잇기 끝" `[추측: 이름]` 은 `[정적]` 이 됐다. `LdrpSnapModule +0xb87` 이 IAT 칸을 다 쓰고 `LdrpDoPostSnapWork` 가 성공한 뒤에만 5 를 쓴다. 본문은 그대로 두었다 → [run36 해설 2.8](run36-snap-module-해설.md#28-질문-3--도장-5-는-한-곳-끝맺음-뒤)
+
 - 대기열: **Q11** — 2.5 `LdrpLoadDllInternal` (`+0x284` 앞 = 올리기 쪽), `LdrpPrepareModuleForExecution` callee (`_workspace/plan.md`, 이번에 **끝**)
 - 근거:
   - run 문서 [`run21-load-dll-internal.md`](run21-load-dll-internal.md) (가장 중요)

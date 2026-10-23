@@ -5,6 +5,8 @@
 
 > **정정 (run24)**: 2.6 "병렬 로딩이 켜졌는지는 안 본다" 2번의 `[추측]` ("`LdrpQueueWork` 가 그 자리에서 다 올렸으면 `+0x12df` 에서 자식 `State ≥ 2` → 병렬 켜기 앞뒤 차이") 과 2.8 표의 "`State ≥ 2` (그 자리에서 올라옴)" 줄은 틀렸다. `LdrpQueueWork` 는 넣기만 하고 자식 `State = 2` 는 같은 잠금 안에서만 써지므로, 새로 일감에 넣은 자식은 `+0x12df` 에서 늘 `State < 2` 다 → [run24 해설](run24-work-queue-해설.md) 2.8. (본문은 그대로 둠)
 
+> **정정 (run36)**: 2.7 "`0x103` 길은 다른 caller 몫으로 보인다 `[추측]`" 의 `LdrpSnapModule +0x5df` 쪽은 맞다 `[정적]` — snap 이 부를 땐 체크판이 이미 0 이라, forwarder 대상이 아직 `State < 2` 면 이 갈래가 타고 snap 은 0 으로 일단 끝난 뒤 같은 thunk 부터 다시 한다. `LdrpLoadDependentModuleW +0xae` 쪽은 그대로 `[추측]`. 본문은 그대로 두었다 → [run36 해설 2.7](run36-snap-module-해설.md#27-안내문-대상이-아직-안-왔으면--잠깐-멈췄다-이어서)
+
 - 대기열: **Q12b** — 2.5·2.6 의존 DLL 하나를 처리하는 `ntdll!LdrpLoadDependentModuleInternal` (9250바이트, 호출 75곳): 간선(의존 관계)을 만드는 곳, 이미 있는 DLL·KnownDll·새로 올리기 갈림 (`_workspace/plan.md`, 이번에 **끝**)
 - 근거:
   - run 문서 [`run23-load-dependent.md`](run23-load-dependent.md) (가장 중요)

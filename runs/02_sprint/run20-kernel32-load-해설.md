@@ -3,6 +3,8 @@
 > 이 글은 [run20 문서](run20-kernel32-load.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
+> **정정 (run36)**: 2.5 의 새 말 전달 항목(forwarder) "`[추측]` (일반적으로 알려진 설명)" 은 ntdll 이 실제로 그렇게 다루는 코드가 보였다 `[정적]`: `LdrpSnapModule` 이 찾은 주소가 export 디렉터리 안이면 `"다른DLL.함수"` 문자열로 보고 `+0x4e5` 에서 잘라 그 DLL 에서 다시 찾는다 (대상이 `NTDLL` 이면 올리지 않음). 본문은 그대로 두었다 → [run36 해설 2.6](run36-snap-module-해설.md#26-질문-2--다른-dll-에-있다는-안내문-forwarder)
+
 - 대기열: **Q10** — 2.5 `LdrpInitializeKernel32Functions`, `LdrLoadDll`, `LdrpLoadDll` callee (`_workspace/plan.md`, 이번에 **끝**)
 - 근거:
   - run 문서 [`run20-kernel32-load.md`](run20-kernel32-load.md) (가장 중요)
