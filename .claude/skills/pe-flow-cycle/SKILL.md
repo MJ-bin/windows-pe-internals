@@ -56,7 +56,7 @@ allowed-tools: Read Write Edit Glob Grep Bash Agent AskUserQuestion SendMessage
 | 단계 | 범위 (flow.md 절) | 주로 | 끝났다고 보는 때 |
 |---|---|---|---|
 | 1. nt 지도 | 부모 cmd 스레드의 `NtCreateUserProcess`부터, test.exe 첫 스레드가 `ntdll!LdrInitializeThunk`에 도착할 때까지 (2.1 ~ 2.3) | 정적 (ntoskrnl) | 그림의 nt 함수마다 정적 callee 목록(depth 1)이 run 문서에 있고, 2.2·2.3이 `[공백]`이 아니다 (최소 `[정적]`) |
-| 2. ntdll 지도 | `LdrInitializeThunk`부터 `test!main`까지 (2.4 ~ 2.10) | 정적 (ntdll) | 그림의 ntdll 함수마다 같은 작업. 2.5·2.6의 "올리기"와 의존 관계 그래프 만들기가 최소 `[정적]`으로 채워짐 |
+| 2. ntdll 지도 | `LdrInitializeThunk`부터 exe 진입점까지 (2.4 ~ 2.10, 진입점 뒤 CRT는 한 상자) | 정적 (ntdll) | 그림의 ntdll 함수마다 같은 작업. 2.5·2.6의 "올리기"와 의존 관계 그래프 만들기가 최소 `[정적]`으로 채워짐 |
 | 3. 빈 곳 채우기 | 그때 남아 있는 flow.md 4장 공백 목록, 4.1 `?` 표 | 동적 | 대기열이 빌 때 |
 
 - 단계 안에서도 시간 순서: flow.md 절 번호 순서, 같은 절이면 그림에서 왼쪽(caller)부터.
