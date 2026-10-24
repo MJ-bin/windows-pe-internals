@@ -1,6 +1,6 @@
 ---
 name: flow-doc
-description: 정적·동적 분석 결과를 run 문서(runs/NN_sprint/runN-키워드.md)로 정리하고, 전체 흐름도 문서(runs/NN_sprint/flow.md)에 새 사실을 넣고 틀린 곳을 고친 뒤 머메이드 그림을 다시 그리는 절차. 표시 태그([관찰]/[정적]/[소스]/[추측]/[공백]), run 문서 양식, 01_sprint 시행착오로 정한 머메이드 규칙과 검사 스크립트(check_mermaid.sh)가 들어 있다. "run 문서 써줘", "정리본", "flow.md 업데이트", "흐름도 고쳐줘", "머메이드 다시 그려", "그림이 이상해", "공백 목록 갱신" 같은 말이 나오면 쓴다.
+description: 정적·동적 분석 결과를 run 문서(runs/NN_sprint/runN-키워드.md)로 정리하고, 전체 흐름도 문서(runs/NN_sprint/flow.md)에 새 사실을 넣고 틀린 곳을 고친 뒤 머메이드 그림을 다시 그리는 절차. 짐 지도 바퀴(03_sprint~)면 짐 지도(runs/NN_sprint/baggage.md)도 양식(baggage-template.md)대로 고친다. 표시 태그([관찰]/[정적]/[소스]/[추측]/[공백]), run 문서 양식, 01_sprint 시행착오로 정한 머메이드 규칙과 검사 스크립트(check_mermaid.sh)가 들어 있다. "run 문서 써줘", "정리본", "flow.md 업데이트", "흐름도 고쳐줘", "머메이드 다시 그려", "그림이 이상해", "공백 목록 갱신", "짐 지도 고쳐줘", "baggage.md" 같은 말이 나오면 쓴다.
 allowed-tools: Read Write Edit Glob Grep Bash
 ---
 
@@ -34,6 +34,9 @@ allowed-tools: Read Write Edit Glob Grep Bash
    - "기준"의 근거 로그 범위, 2장 해당 절, 3장(다른 스레드), 4장 공백 목록·4.1 추측 표, 5장 근거 run 표.
    - 채워진 공백은 지우지 말고 `(해결됨) … → runN` 으로 남긴다.
    - 태그를 바꾼 곳(추측 → 관찰 등)은 run 번호를 붙인다.
+4-1. **짐 지도 고치기** (오케스트레이터가 "짐 지도 바퀴"라고 했을 때): `runs/NN_sprint/baggage.md` — [baggage-template.md](baggage-template.md) 양식. 없으면 양식으로 새로 만든다.
+   - 사진(`ms/logs`·판정)·결과서·run 문서에 있는 칸만 쓴다. 3장 표를 먼저 고치고, 2장 요약 숫자를 3장 줄 수에 맞춘 뒤, 1장 그림을 고친다.
+   - 이번 바퀴에서 새 호출 관계가 나왔으면 flow.md 도 4·5번대로 고친다 (흐름도는 대표 지점 규칙 그대로).
 5. **그림 다시 그리기**: [mermaid-rules.md](mermaid-rules.md) 규칙대로. 4번에서 바뀐 호출 관계만 반영한다 (`?` → `+0x..`, 새 노드, 점선 테두리 해제 등).
 6. **검사**:
    ```bash
@@ -41,10 +44,11 @@ allowed-tools: Read Write Edit Glob Grep Bash
    ```
    - `== 결과: 통과 ==` 가 나올 때까지 고친다 (최대 3번). 그래도 안 되면 위반 내용을 그대로 보고한다.
    - `SKIP` (node 없음)이면 lint만 통과한 것이라고 보고한다.
-7. **보고**: run 문서 경로, flow.md에서 바뀐 절 목록, 태그가 바뀐 줄 수, 새로 생긴 공백, 검사 결과.
+7. **보고**: run 문서 경로, flow.md에서 바뀐 절 목록, 태그가 바뀐 줄 수, 새로 생긴 공백, 검사 결과. 짐 지도 바퀴면 baggage.md 에서 바뀐 절과 2장 요약 숫자도.
 
 ## 하지 않는 것
 
 - 로그나 결과서에 없는 함수 이름·오프셋을 쓰지 않는다. 기억나는 Windows 지식은 `[추측]`으로만.
 - 디컴파일 코드를 문서에 길게 붙이지 않는다 (MS 코드. 몇 줄 요약 + 파일 경로만, 그 파일은 커밋되지 않는다).
+- 덤프 원본(`ms/dump/`)을 문서에 붙이지 않는다. 칸 이름과 값 요약만 쓴다.
 - 그림을 보기 좋게 하려고 노드를 합치거나 빼지 않는다 ([mermaid-rules.md](mermaid-rules.md) R7).

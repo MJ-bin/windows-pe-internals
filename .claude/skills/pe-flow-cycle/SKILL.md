@@ -25,6 +25,8 @@ allowed-tools: Read Write Edit Glob Grep Bash Agent AskUserQuestion SendMessage
 | `ms/logs/NN_키워드_result.md` (판정 한 문단) | dast-mentor | orchestrator, flow-writer |
 | `runs/NN_sprint/runN-키워드.md` | flow-writer | 사람 |
 | `runs/NN_sprint/flow.md` | flow-writer | 사람, 모든 에이전트 |
+| `runs/NN_sprint/baggage.md` (짐 지도, 03_sprint~) | flow-writer | 사람, 모든 에이전트 |
+| `ms/dump/NN_키워드/` (상태 사진 덤프 원본, 커밋 안 함) | 사용자 (runbook 대로) | dast-mentor, decompiler |
 | `runs/NN_sprint/runN-키워드-해설.md` (해설서) | explainer | 사람 (근거로 쓰지 않는다) |
 | git 커밋 | committer | 사용자 (push는 사용자가 직접) |
 | `_workspace/plan.md` (분석 진행표) | orchestrator | orchestrator, 사용자 |
@@ -58,9 +60,11 @@ allowed-tools: Read Write Edit Glob Grep Bash Agent AskUserQuestion SendMessage
 | 1. nt 지도 | 부모 cmd 스레드의 `NtCreateUserProcess`부터, test.exe 첫 스레드가 `ntdll!LdrInitializeThunk`에 도착할 때까지 (2.1 ~ 2.3) | 정적 (ntoskrnl) | 그림의 nt 함수마다 정적 callee 목록(depth 1)이 run 문서에 있고, 2.2·2.3이 `[공백]`이 아니다 (최소 `[정적]`) |
 | 2. ntdll 지도 | `LdrInitializeThunk`부터 exe 진입점까지 (2.4 ~ 2.10, 진입점 뒤 CRT는 한 상자) | 정적 (ntdll) | 그림의 ntdll 함수마다 같은 작업. 2.5·2.6의 "올리기"와 의존 관계 그래프 만들기가 최소 `[정적]`으로 채워짐 |
 | 3. 빈 곳 채우기 | 그때 남아 있는 flow.md 4장 공백 목록, 4.1 `?` 표 | 동적 | 대기열이 빌 때 |
+| 4. 짐 지도 (03_sprint~) | 초기화 동안(프로세스 생성 → `NtContinue`) nt·ntdll이 두 공간(유저/커널)에 세팅하는 짐 | 정적 + 사진(동적) | `baggage.md` 2장 "아직 모름" 이 0 (모든 칸이 쓴 자리·경로 / 0 그대로 / 다른 DLL / 입력 중 하나) |
 
 - 단계 안에서도 시간 순서: flow.md 절 번호 순서, 같은 절이면 그림에서 왼쪽(caller)부터.
 - 항목 하나 = 한 바퀴 = 함수 1 ~ 5개, depth 1. 모듈을 통째로 뽑지 않는다.
+  - 단계 4(짐 지도)는 칸 묶음 하나(예: 한 구조체) = 한 바퀴. 줄기는 끝까지 (CLAUDE.md "자세함").
 
 ### 대기열 규칙
 
@@ -119,6 +123,7 @@ allowed-tools: Read Write Edit Glob Grep Bash Agent AskUserQuestion SendMessage
    - 실행 때만 정해지는 값 (주소, `rcx`/`rdx`/`r8`, 모듈 이름)
    - 스레드 사이의 시간 순서
    - 정적 결과서의 "동적분석으로 확인해야 할 것"
+   - 단계 4의 상태 사진 (짐이 빠짐없는지는 실행 때만 보인다)
    - 판단이 애매하면 사용자에게 묻는다 (VM 작업은 사용자 시간).
 5. **동적 요청 → 실행 안내 만들기**
    - "동적 요청서" 양식으로 `_workspace/dast/NN_키워드.md`. 정적 결과서의 추천 멈춤점을 옮긴다. **성공 기준**을 꼭 적는다.
@@ -135,7 +140,7 @@ allowed-tools: Read Write Edit Glob Grep Bash Agent AskUserQuestion SendMessage
      - **사용자실수** → 실수를 고친 새 동적 요청서(다음 dast NN, 같은 키워드, "재시도: 이전 NN") → 5번. 같은 질문 재시도는 **최대 2번**, 그다음은 사용자에게 어떻게 할지 묻는다.
      - **예기치못한상황발생** → 사용자에게 알리고 같이 정한다: (a) 코드로 이유를 찾을 수 있으면 새 정적 요청, (b) 계획을 바꾼 새 동적 요청, (c) 그 자체를 발견으로 기록하고 8번.
 8. **문서**
-   - `flow-writer` 를 부른다. 프롬프트에 줄 것: 이번 바퀴의 sast/dast 요청서·결과서·로그 경로 전부, `next run` 번호, 스프린트 폴더, 키워드.
+   - `flow-writer` 를 부른다. 프롬프트에 줄 것: 이번 바퀴의 sast/dast 요청서·결과서·로그 경로 전부, `next run` 번호, 스프린트 폴더, 키워드. 단계 4 바퀴면 "짐 지도 바퀴" 라고 적어 baggage.md 도 고치게 한다.
    - 돌아온 보고에서 `check_mermaid.sh` 통과 여부를 확인한다. 실패로 돌아오면 그 내용 그대로 한 번 더 부른다 (최대 1번 더).
    - 사용자에게: 새 run 문서 경로, flow.md에서 바뀐 절, 새로 생긴/채워진 공백.
    - 진행표를 고친다: 지금 항목 `끝 (runN)`, 결과서·판정·run 문서의 "아직 확인 필요"에서 나온 새 할 일은 **맨 아래에** 출처와 함께 추가 (같은 게 있으면 출처만 더함). 단계의 처음 항목이 다 끝났으면 사용자에게 알린다.

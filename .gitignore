@@ -16,6 +16,10 @@ ms/decomp/*
 ms/disassemble/*
 !ms/disassemble/.gitkeep
 
+# 상태 사진 덤프 원본 (짐 지도, 폴더만 남김)
+ms/dump/*
+!ms/dump/.gitkeep
+
 # 하네스 임시 파일
 _workspace/.commit_msg
 .claude/settings.local.json
