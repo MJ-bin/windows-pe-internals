@@ -2,6 +2,8 @@
 
 > **정정 (run30)**: 아래 "`main` 에서 `k` 예상" 의 `test!mainCRTStartup+?` 프레임은 안 보일 것이다. `mainCRTStartup` 은 `+0xd` 에서 `JMP` 로 `__scrt_common_main_seh` 에 넘겨 프레임이 없다 (run30 `[정적]`). 예상은 `test!main` → `test!__scrt_common_main_seh+0x10f` → `BaseThreadInitThunk+0x17` → `RtlUserThreadStart+0x2c`.
 
+> **정정 (run42)**: "아직 확인 필요" 정적 Q58 넷 중 셋이 풀렸다. (1) 맡긴 문맥 `ContextFlags` `0x10001b` `[추측]` → **`[정적]` 맞음** (`RtlInitializeExtendedContext2 +0xf5` 가 그대로 씀). 단 CET 스레드는 **`0x10005b`** (D2 기대값도 그렇게). (2) "유저 SSP 가 어떻게 되는지 `[공백]`" → `KiVerifyContextIpForUserCet` 가 올린 SSP 는 **아무도 MSR 에 안 쓴다** `[정적]`. XState 문맥이면 `KxContextToKframes +0x211 XRSTORS` 가 칸 값으로 되돌릴 수 있다 `[추측: CPU 지식]`. (3) "`KiInitiateUserApc` 가 APC 진입을 만든다 `[추측]`" → 자기는 `KiDeliverApc` 하나만 부르고, 원래 문맥을 **유저 스택 `CONTEXT`** 로 복사하는 건 `KiDeliverApc` → `KiInitializeUserApc +0x1fb` `[정적]`. 넷째 (`RtlLeaveCriticalSection` 특례) 는 run41. → `run42-continue-detail.md` "정정"
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 작성일.
