@@ -3,10 +3,10 @@
 ## 기준
 
 - 타깃: Windows 11 24H2, **26100.9457**
-  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32, run33, run34)
+  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32, run33, run34, run41)
   - kernelbase.pdb: `72CCE506944DE0267C172AD64287F9BD1` (run14, run25, run34)
   - kernel32.pdb: `AE9E9D8F7AC1467A645320FDC23235D01` (run25, run34)
-  - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20, run21, run22, run23, run24, run26, run27, run28, run29, run34, run35, run36, run38, run39)
+  - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20, run21, run22, run23, run24, run26, run27, run28, run29, run34, run35, run36, run38, run39, run41)
   - basesrv.pdb: `4B0951C4FAD4CCBDDFDAA284D1ED2C2E1`, csrsrv.pdb: `32C5AA2B9D0AF671C35069A02C5A0C041` (run34 — csrss 프로세스 안에서 도는 DLL, 처음 analyze)
   - cmd.pdb: `6E820A0DD74C2CA6E23F25DEBA1651261` (run34 — 부모 cmd.exe. Ghidra 로 안 걸고 `objdump` 줄에 이름만 붙임, 참고용)
   - test.pdb: `C66E7084C5CA4874B1677F6F1C36A0511` (run30. MS 것이 아니라 sample 빌드의 로컬 pdb, 사용자가 VM 에서 돌린 `sample/bin/` 파일)
@@ -14,7 +14,7 @@
 - 디버거: WinDbg 커널 디버깅 (KDNET)
 - 부모: `cmd.exe`에서 `test.exe` 실행
 - 근거 로그: `runs/01_sprint/` run3 ~ run8 (디버거)
-- 정적 근거: `runs/02_sprint/` run9 ~ run40 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ~ run33 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe, run34 kernel32·KernelBase·ntdll·ntoskrnl·basesrv·csrsrv (+ cmd.exe 참고), run35·run36 ntdll, run37 kernel32·KernelBase·apisetschema **PE 표만** (Ghidra 안 씀), run38·run39 ntdll, run40 dll1·dll2 (sample 빌드). run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀)
+- 정적 근거: `runs/02_sprint/` run9 ~ run41 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ~ run33 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe, run34 kernel32·KernelBase·ntdll·ntoskrnl·basesrv·csrsrv (+ cmd.exe 참고), run35·run36 ntdll, run37 kernel32·KernelBase·apisetschema **PE 표만** (Ghidra 안 씀), run38·run39 ntdll, run40 dll1·dll2 (sample 빌드), run41 ntdll·ntoskrnl. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀)
   - PE 헤더·import·export 표는 `pefile` 로 읽었다 (run25). KERNELBASE·kernel32·ntdll 의 TLS 디렉터리도 PE 파일에서 읽었다 (run28). Ghidra 는 PE 진입점 함수를 PDB 이름 대신 `entry` 로 잡는다 (run25). 글에선 PDB 이름을 쓴다.
   - test.exe 는 sample 빌드라 MS 심볼 서버가 아니라 `sample/bin/` 의 exe·pdb 를 썼다 (run30). run31 의 test.exe PE 헤더 값(`AddressOfEntryPoint`, `ImageBase`, 정렬 등)도 같은 파일을 직접 읽은 것이다. 진입점 rva `0x1d40` = run5 `[관찰]`, run7 `[관찰]` 의 `…67723` 도 맞는다. 단 run3 ~ run5 와 run6 ~ run8 은 따로 빌드한 exe 라 (5장) 올라온 파일이 어느 쪽인지까지는 모른다.
   - dll1·dll2 도 같은 방식으로 `sample/bin/` 의 dll·pdb 를 썼다 (run40). 진입점 rva (dll1 `0x1d60`, dll2 `0x1d50`) 의 PDB 이름 `_DllMainCRTStartup` = run8 `[관찰]` `rcx`, `DllMain` rva `0x12e0` = run6 `[관찰]`, run7 `[관찰]` `LoadLibraryExW` 돌아올 주소 둘의 아래 16비트도 이 파일의 ret 자리와 맞는다. 그래도 VM 에서 돈 파일과 같은 빌드라고 단정하진 않는다 `[추측]`.
@@ -24,6 +24,7 @@
   - Ghidra 가 한 함수를 여러 토막(`FUN_…`)으로 쪼갠 곳은 PE `.pdata` 함수 범위 표 + PDB 공개 이름으로 본래 함수를 맞췄다 (run33: `FUN_1406b2db3` = `KiApcInterrupt +0x273`).
   - "구조체 칸을 누가 읽나" 는 하네스 밖 임시 스크립트로 ntoskrnl 명령 전부를 훑었다 (run33, `_EPROCESS +0x5fc`). 범위·한계는 run33 문서.
   - ntdll `.rdata` 의 문자열 상수(`\SYSTEM32\`, `ntdll.dll`)는 PE 파일에서 직접 읽었다 (run35).
+  - "어떤 칸에 쓰는 줄이 ntdll 에 몇 곳인가", "같은 명령 꼴이 몇 곳인가" 는 ntdll.dll 전체를 `objdump` 로 풀어 꼴로 검색했다 (run41, 레포 밖 임시 파일). 숫자는 "검색한 꼴 기준" 이고, 꼴이 조금 다른 곳은 빠질 수 있다 (하한).
   - DLL 검색 순서 표(`ntdll+0x17e340`, dword 5개 × 4줄)와 문자열 상수(`PATH`, `.`, `SafeDllSearchMode`, `\system;`, `forwarders\alt;`)도 원본 바이트로 읽었다 (run39. 순서 표는 flow-writer 가 `objdump -s` 로 한 번 더 맞춤). 코드가 그 표를 **고르는 줄**은 `[정적]`, 표 값 자체는 파일 값이다.
   - test.exe·dll1·dll2 의 import 표(서술자·hint)와 이 빌드 kernel32 의 export 표(forwarder 문자열)는 스크립트로 직접 세었다 (run36). 코드 줄이 아니라 **파일 값을 센 것**이라 `[정적+샘플]` 로 따로 적는다.
   - 시스템 호출 번호 → 커널 함수는 PE 파일의 서비스 표 `KiServiceTable` (PDB 공개 이름) 을 직접 읽어 맞췄다 (run29, run34). 공개 PDB 에 없는 구조체(`_KCONTINUE_ARGUMENT`)는 `.asm` 의 오프셋+역할로 적었다 (run29).
@@ -1940,7 +1941,7 @@ PspInitPhase2 +0x177                                    (원본 바이트 훑기
 
 ---
 
-### 2.4 `ntdll` — 로더 시작 (run7, run8, run16, run17, run18, run19, run28, run29, run35, run38, run39)
+### 2.4 `ntdll` — 로더 시작 (run7, run8, run16, run17, run18, run19, run28, run29, run35, run38, run39, run41)
 
 ```
 LdrInitializeThunk                                  ← Rcx = 맡긴 원래 문맥 (run16), Rdx = 커널 PspSystemDlls[0]+0x20 값 (본문이 ntdll 시작 주소로 씀 [정적] run18)
@@ -2053,6 +2054,8 @@ LdrpInitializeProcess (0x8c404)          ← RCX = CONTEXT 레코드 → [RSP+0x
  │  +0x1766 UseWOW64 ?  켜짐 → +0x17c6 LdrpLoadWow64 → (BeingDebugged) +0x17dd LdrpDoDebuggerBreak
  │                         → LdrInitState = 3 → +0x17fe CALL g_LdrpWow64LdrpInitialize(CONTEXT) → +0x1d1b 로 점프   [뒤3]
  │                     꺼짐 → +0x1806 네이티브 길 (아래)
+ ├─ +0x183c LdrpAcquireSchedulerSharedDataSlot [뒤4] TEB+0x1850 = 락 소유 칸 표 주소 (커널 클래스 0x39, 조건 맞을 때만) [정적] run41
+ │                                             (앞 +0x182c LdrpAllocateSchedulerSharedData — 본문 안 봄. 표 뜻은 2.7)
  ├─ +0x18d0 LdrpInitializeTls                  [뒤4] (.NET 이면 +0x1852 LdrpCorInitialize, +0x1941 그래프)
  │                                             (run28 [정적]: exe TLS 디렉터리 → +0xfa LdrpAllocateTlsEntry → +0x102 exe TlsIndex = 0xffff → +0x162 LdrpAllocateTls)
  ├─ +0x1963 LdrpInitializeImportRedirection    [뒤5]
@@ -2975,7 +2978,7 @@ LdrpPrepareModuleForExecution(exe)  → (exe State 5 라면) +0x12f LdrpCondense
 
 ---
 
-### 2.7 `ntdll` — import DLL 초기화의 틀 (run7, run8, run19, run21, run24, run27, run28, run35, run36, run40)
+### 2.7 `ntdll` — import DLL 초기화의 틀 (run7, run8, run19, run21, run24, run27, run28, run35, run36, run40, run41)
 
 ```
 LdrpInitializeProcess
@@ -3160,7 +3163,9 @@ LdrpInitializeNode +0x16b  (exe 는 LdrpInitializeProcess +0x1c99)
   - **락을 쥐는 건 목록 찾기(`+0x66 ~ +0xb7`)뿐**이다. 콜백을 부르는 동안은 쥐지 않는다.
   - `+0x1e8 NtSetInformationThread`·`+0x1fe RtlRaiseStatus(0xc0000264)`·`+0x386 NtAlertThreadByThreadIdEx` 는 셋 다 락 풀기·추적 칸 정리 쪽이다. 다른 스레드와 락이 겹치지 않으면 안 탄다. 시동 때 일꾼이 같은 락을 `LdrpHandleTlsData` 에서 독점으로 잡을 수 있는지는 동적 Q25.
     - (run36 `[정적: 길]`) `LdrpHandleTlsData` 는 snap 끝(`LdrpDoPostSnapWork`)에서 불리고, snap 은 일감(`LdrpProcessWork +0x131`)으로도 돈다. 그러니 일꾼이 snap 일감을 맡으면 **일꾼에서 이 락을 독점으로 잡는 길이 코드상 있다.** 실제로 그런지는 동적 Q25·Q47.
-  - 락 앞뒤로 TEB `+0x1850` 이 가리키는 8칸 표에 락 주소를 적었다 지운다 (run23 "SRW 락 소유 추적" `[추측]` 과 같은 모양). PDB 이름(`SchedulerSharedDataSlot`)은 쓰임새와 안 맞아 `[추측]`.
+  - 락 앞뒤로 TEB `+0x1850` 이 가리키는 8칸 표에 락 주소를 적었다 지운다 (run23 "SRW 락 소유 추적" `[추측]` 과 같은 모양). ~~PDB 이름(`SchedulerSharedDataSlot`)은 쓰임새와 안 맞아 `[추측]`.~~
+    - (정정 → run41 `[정적]`) **PDB 이름이 맞다.** TEB 칸은 표의 **주소**를 담고, 표는 커널 스케줄러(AutoBoost)와 나눠 쓰는 "락 소유 칸 표" 다. 아래 "TLS 락 소유 칸 표" 절.
+  - `+0x1e8` 은 그 칸의 bit 63 이 켜져 있을 때만 탄다. ~~켜는 쪽은 `+0x113` callee 일 것 `[추측]` (run28)~~ → (정정 → run41 `[정적]`) 켜는 건 **커널** `KiAbProcessPreContextSwitch +0x26e` 이고, 락을 쥔 채 CPU 에서 내려간 때뿐이다. 그래서 시동 때 겹침이 없으면 `+0x1e8` 도 안 탈 것 `[추측]` (동적 Q25).
 - `[정적]` (run28) **예외**: `__try` 는 **`+0x12b ~ +0x1a2` = 콜백 고리 전체** 하나. 필터는 `RtlReportException` 으로 보고만 하고 늘 1. 착지점 `+0x1a2` 는 `JMP +0xe7` (끝). → 콜백 하나가 예외를 던지면 **그 모듈의 남은 콜백을 건너뛰고 그냥 돌아온다.** 위로는 아무것도 안 알린다 (그래서 `LdrpInitializeNode` 의 `__except` 는 TLS 콜백 예외로는 안 탄다 — 위 정정).
 - `[정적]` (run28) **TLS 데이터를 마련하지 않는다.** 콜백 부르기만 한다 (할당·복사 호출이 없다). 마련하는 쪽:
   - 목록 항목(디렉터리 사본·TLS 번호) = `LdrpAllocateTlsEntry` (rva `0xa6764`). DLL 은 `LdrpHandleTlsData +0x10b` (ret `+0x110`), exe 는 `LdrpInitializeTls +0xf5` (ret `+0xfa`, 이 함수는 `LdrpInitializeProcess +0x18d0`).
@@ -3178,9 +3183,32 @@ LdrpInitializeNode +0x16b  (exe 는 LdrpInitializeProcess +0x1c99)
 | `LdrpProcessDetachNode +0x135`, `LdrShutdownProcess +0x16d` / `+0x2d1` | 0 | 모듈 항목 / exe 항목 |
 | `LdrShutdownThread +0x151` / `+0x1e5` | 3 | 모듈 항목 / exe 항목 |
 
+- `[정적]` (run41) `LdrShutdownProcess` 의 두 자리는 조건이 둘이다: 그 항목 `TlsIndex`(`+0x6e`) ≠ 0 (모듈: `+0x156`/`+0x15b`, exe: `+0x196`/`+0x19b`) **그리고** `[RDI+0x58]` ≠ 0 (`+0x15d`/`+0x161`, exe `+0x267`). `RDI` 는 모듈 항목이 아니라 **TEB** (`+0x28 MOV RDI,GS:[0x30]`) 라서 `+0x58` = **`_TEB.ThreadLocalStoragePointer`**. 곧 "TLS 있는 모듈이고, 끝내는 이 스레드에 TLS 배열이 있으면" 종료 콜백(이유 0)을 부른다. 프로세스 끝 길이라 이번 범위 밖, 뜻만.
+
 - ~~`[추측]` 그래서 `LdrpCallInitRoutine` → `ImageTlsCallbackCaller`로 들어간다 (그림의 `?`).~~ → (run28 `[정적]`) 사이에 `LdrpCallInitRoutineInternal` 이 있다: `LdrpCallInitRoutine +0x93` → `Internal +0x22` → `ImageTlsCallbackCaller`. 실행은 미관찰 (Q25).
 - `[추측]` `ImageTlsCallbackCaller`가 실제 TLS 콜백을 대신 불러주는 중간 함수. 그 안은 관찰하지 않았다.
   - → (run28 `[정적]`) **맞다.** 아래 `ImageTlsCallbackCaller`.
+
+#### TLS 락 소유 칸 표 (TEB `+0x1850`, run41 `[정적]`)
+
+비유: 스레드마다 받는 **도서관 대출 카드**(8칸). 락(책)을 빌리면 빈 칸에 적고, 돌려주면 지운다. 사서(커널)는 스레드가 잠깐 자리를 비울 때 카드를 훑어서, 책을 든 채 비운 칸에 **도장(bit 63)** 을 찍고 자기 장부에도 적는다. 돌려줄 때 도장이 있으면 "장부에서도 지워 주세요" 라고 말해야 한다.
+
+- `[정적: PDB 타입]` `_TEB +0x1850` = **`SchedulerSharedDataSlot`** (`void*`), 겹친 이름 없음.
+- `[정적]` 표 주소를 TEB 에 넣는 곳은 ntdll 에 **하나뿐**: `LdrpAcquireSchedulerSharedDataSlot +0x92`. 그 앞 `+0x84 NtSetInformationThread(-2, 클래스 0x39, 버퍼, 0x18)` 로 커널에 받는다 (커널 `NtSetInformationThread +0xc2c PspSchedulerSharedDataRegionSlotAllocate`).
+  - 첫 스레드는 `LdrpInitializeProcess +0x1837` (ret `+0x183c`, 2.4 뒤4), 새 스레드는 `LdrpInitializeThread +0x50` (ret `+0x55`). 첫 스레드에선 TLS 콜백보다 훨씬 앞이다.
+  - 조건 둘 (`LdrpSchedulerSharedDataListHead` 가 차 있음, PEB `NtGlobalFlag2 & 0x10` 꺼짐) 이 안 맞으면 TEB 칸은 0 으로 남고, `LdrpCallTlsInitializers` 는 칸 적기를 건너뛴다 (`+0x36`/`+0x39`).
+- `[정적]` SRW 락 전용이 아니다. 이 표를 읽는 ntdll 함수 56개에 임계영역(`RtlEnterCriticalSection` 등)·`RtlInitializeResource` 도 있다. 커널 쪽 PDB 이름: `_KTHREAD +0x320 SchedulerSharedSystemSlot`, `+0x478 UserAbEntries`, 함수 `KiAb*`/`KeAb*`, 기능 `Feature_UserModeAutoBoost`. `Ab` = AutoBoost `[추측: 이름 풀이]`.
+- 칸 하나 (8바이트, 빈 칸 = 0, 칸 번호 = `(칸 주소 − 표 주소) / 8`):
+
+| 비트 | 뜻 | 누가 | 표시 |
+|---|---|---|---|
+| bit 2 ~ 62 | 락 주소 (`& 0x7ffffffffffffffc`, 커널 `KiAbUmPostWait +0x79` 와 ntdll `+0x204` 가 같은 마스크) | ntdll 이 적고 (`+0x63`, `RtlAbPreAcquire +0x3a`) 풀고 나서 0 (`+0x1ed`) | [정적] |
+| bit 63 | 커널이 이 칸의 자기 항목(`UserAbEntries[칸]`)을 만들어 둠 | **커널이 켬** `KiAbProcessPreContextSwitch +0x26e` (스레드가 CPU 에서 내려갈 때, 칸이 차 있고 bit 1·63 꺼져 있으면). 끄기도 커널 (`KeAbUserModeEntryFree`, `KiAbUmPostWait +0xd2`, `KiAbProcessPostContextSwitch +0x329`). ntdll 은 읽기만 (`+0x1ab`) | 위치 [정적], 뜻 [추측] |
+| bit 1 | "푸는 중" — 커널이 이 칸을 건너뜀 (`PreContextSwitch +0x202`) | ntdll 이 켬 (`+0x1a7`) | [정적] |
+| bit 0 | 모름 (커널이 읽어 항목 `+0x19` 로 옮기고 대기 끝에 지움) | 켜는 줄 못 찾음 | [공백] |
+
+- `[정적]` 풀 때 bit 63 이 켜져 있으면 `+0x1e8 NtSetInformationThread(-2, 0x38, {칸 번호, 0}, 0x10)` → 커널 `NtSetInformationThread +0x630 KeAbUserModeEntryFree` 가 항목을 풀고 bit 63 을 끈다. 클래스 0x38 의 이름은 **PDB 에 없다** (`THREADINFOCLASS` enum 이 공개 PDB 에 빠짐). 외부 헤더 기억으로는 `ThreadUpdateLockOwnership` (0x39 = `ThreadSchedulerSharedDataSlot`) `[추측]`.
+- `[정적]` `+0x113` 의 `RtlpAcquireSRWLockSharedContended` 는 이 표를 **안 건드린다**. 칸이 0 이 아니면 `+0x126 RtlAbPreAcquire(락, 칸)` 을 부르지만, 그 함수는 칸이 주어지면 그대로 돌려주고 끝난다 (`+0x3`/`+0x6` → `+0x43`). 왜 부르는지는 모름 (4장).
 
 #### `ntdll!LdrpCallInitRoutine` (rva `0x10ba0`, 667바이트, run28 `[정적]`)
 
@@ -3222,7 +3250,9 @@ LdrpInitializeNode +0x16b  (exe 는 LdrpInitializeProcess +0x1c99)
 - `[정적]` 받는 것 `(rcx, rdx, r8) = (DllBase, 이유, 진짜 콜백)`. `+0x4 RAX = R8`, `+0x13 R8 = 0`, `+0x16` CFG 중개로 `rax` 를 부름 (ret `+0x1b`).
   - 그래서 **콜백은 `(DllHandle = DllBase, Reason = 이유, Reserved = 0)` 을 받는다.**
 - `[정적]` **늘 TRUE(1) 를 돌려준다** (`+0x1b`·`+0x2e MOV EAX,1`). 콜백의 반환값은 버린다. 그래서 창구의 "FALSE · 이유 1 이면 오류 로그" 가 TLS 콜백 때문에 켜지는 일은 없다.
-- `[정적]` 갈림 하나: 콜백 주소가 `RtlAcquireSRWLockExclusive` 와 같으면 `+0x29` 에서 그 함수를 직접 부른다 (ret `+0x2e`). 컴파일러가 만든 "자주 쓰는 대상" 갈래로 보인다 `[추측]`. sample 콜백(`Dll2Tls`·`Dll1Tls`·`ExeTls`)은 이 주소가 아니니 `+0x16` 쪽 `[소스]` + `[정적]`.
+- `[정적]` 갈림 하나: 콜백 주소가 `RtlAcquireSRWLockExclusive` 와 같으면 `+0x29` 에서 그 함수를 직접 부른다 (ret `+0x2e`). 컴파일러가 만든 "자주 쓰는 대상" 갈래로 보인다 `[추측]`.
+  - (run41 `[정적]`) **같은 꼴(`LEA 함수 / CMP / JZ / 직접 CALL`)이 ntdll 에 최소 23곳 더 있다** (`objdump` 꼴 검색, 하한). 예: `RtlpTpWorkCallback +0x234`·`+0x22d` (대상 `RtlAcquireSRWLockShared`·`RtlAcquireSRWLockExclusive`), `LdrQueryProcessModuleInformationEx +0x3a2`, `RtlUserThreadStart +0x30` (2.10). 그래서 이 함수만의 뜻 있는 갈래가 아니라 컴파일러 꼴(PGO 간접 호출 승격)이라는 짐작은 그대로 `[추측]` 이지만 근거가 늘었다.
+  - (run41) sample 콜백 셋(`Dll2Tls`·`Dll1Tls`·`ExeTls`)은 PE TLS 배열상 각 이미지 rva `0x12a0` 하나씩이고, 비교 대상은 ntdll 안 (rva `0x393d0`) 이라 실행 때 같을 수 없다 → 늘 `+0x16` 쪽 `[소스]` + `[정적+샘플]`.
 - `[정적]` PE 의 CFG 함수 표에 이 주소가 등록돼 있다 (유효한 간접 호출 대상). 호출 지도에 안 잡힌 이유(호출 참조 없이 주소만 `LdrpCallTlsInitializers +0x18f` 에서 꺼냄, sast/05) 와 맞다.
 - `[추측]` 끼우는 까닭: TLS 콜백(반환값 없음, 3 인자)도 DllMain 과 같은 창구의 ETW·`__finally`·오류 로그 틀을 쓰게 하는 어댑터. 코드에 보이는 건 "넷째 칸 → 부를 함수", "`Reserved` = 0", "늘 TRUE" 셋이다.
 
@@ -3352,7 +3382,7 @@ LdrpInitializeProcess+0x1c99
 
 ---
 
-### 2.10 로더 끝 → `test.exe` 진입점 → `main` (run5, run7, run16, run19, run20, run25, run29, run30)
+### 2.10 로더 끝 → `test.exe` 진입점 → `main` (run5, run7, run16, run19, run20, run25, run29, run30, run41)
 
 코드로 본 사슬 (run29·run30 `[정적]`. 실행은 아직 못 봄 — Q29·Q30·Q31):
 
@@ -3443,6 +3473,7 @@ LdrpInitializeProcess+0x1c99
 - `[정적]` `+0x7` 칸 `Kernel32ThreadInitThunkFunction` 을 읽고:
   - **칸 ≠ 0**: `+0x1d RDX = 시작 주소`, `+0x1a R8 = 파라미터`, `+0x25 ECX = 0` → **`+0x27` CFG 간접 호출 (ret `+0x2c`)**. run25 `BaseThreadInitThunk` 의 "첫 인자 0" 갈래와 인자 모양이 맞는다.
   - 칸 값이 `RtlLeaveCriticalSection` 주소와 같으면 `+0x30` (ret `+0x35`) 직접 호출하는 특례가 있다. 이유는 `[추측]` (컴파일러가 흔한 대상을 직접 호출로 바꾼 모양).
+    - (run41 `[정적]`) 같은 꼴이 ntdll 에 최소 23곳 더 있다 (`ImageTlsCallbackCaller` 포함, 2.7). 비교 주소 rva `0x128f0` 은 PDB 이름이 `RtlLeaveCriticalSection` 하나뿐이다 (`pdb_aliases.py --lookup`). 칸 값(kernel32 의 시작 함수)이 이 주소와 같아질 일은 없어 보인다 `[추측]`. 아래 Worker `+0x2c` 관찰은 간접 갈래 ret 라서, **Worker 에선 이 직접 갈래를 안 탔다** `[관찰]` + `[정적]`.
   - **칸 == 0**: `+0x3d` (ret `+0x42`) 시작 주소를 CFG 간접으로 직접 부르고 → `+0x44` (ret `+0x49`) `RtlExitUserThread(결과)`.
 - `[정적]` CFG 중개는 전부 `JMP` 라 콜스택에 프레임이 없다 (run28 과 같음). kernel32 `BaseThreadInitThunk +0x12` 의 중개도 `JMP` 둘뿐이다.
 - `[정적]` 전체가 `__try` (`+0x7~+0x4a`). 필터 `RtlUserThreadStart$filt$0` 가 전역 `RtlpUnhandledExceptionFilter` 를 풀어 있으면 그걸, 없으면 `RtlUnhandledExceptionFilter2` 를 부른다. 착지 `+0x4a` → `+0x50` (ret `+0x55`) `NtTerminateProcess(-1, 예외 코드)` = **처리 안 된 예외는 프로세스를 끝낸다.**
@@ -3614,6 +3645,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 - `[관찰]` `LdrpInitialize+0xa7` → `LdrpInitializeThread` → 모듈마다 TLS → DllMain(이유 2), 마지막에 `test!ExeTls`(이유 2).
   - `[정적]` (run28) 코드도 같은 모양이다: `LdrpInitializeThread` 가 모듈마다 `+0x28c` (ret `+0x291`) `LdrpCallTlsInitializers(2, 항목)` → `+0x2a0` (ret `+0x2a5`) `LdrpCallInitRoutine(진입점, DllBase, 2, 0)`, 마지막에 exe 쪽 `+0x3bb` (ret `+0x3c0`) `LdrpCallTlsInitializers(2, exe 항목)` (exe `TlsIndex ≠ 0` 이고 `PebLdr.ShutdownInProgress` 0 일 때). 그 아래 사슬은 메인 스레드와 같다 (2.7). 앞에서 `+0x82`·`+0xc4` `LdrpAllocateTls` 로 이 스레드의 TLS 벡터를 만든다.
   - `[정적]` (run17) 콜스택의 `LdrpInitialize+0xa7` = `_LdrpInitialize +0xa7` (call `+0xa2`). 전역 `LdrpProcessInitialized` 옛 값이 2 (첫 스레드 로더 일 끝남) 일 때 타는 길이다. 1 이면 `LdrpWaitForInitializationComplete` (ret `+0x278`) 에서 기다린다 (2.4).
+  - `[정적]` (run41) 새 스레드도 `LdrpInitializeThread +0x50` (ret `+0x55`) `LdrpAcquireSchedulerSharedDataSlot` 에서 **자기 몫의 락 소유 칸 표**를 받아 TEB `+0x1850` 에 넣는다 (조건 맞을 때, 2.7 "TLS 락 소유 칸 표"). 표는 스레드마다 따로다.
 - `[관찰]` 끝날 때 `RtlExitUserThread` → `LdrShutdownThread` → DllMain·ExeTls (이유 3).
   - `[정적]` (run29) 이때 콜스택의 `RtlUserThreadStart+0x2c` 는 `RtlUserThreadStart +0x27` 의 칸 `Kernel32ThreadInitThunkFunction` CFG 간접 호출이 돌아올 자리다. 그 위가 `BaseThreadInitThunk+0x20` (run25 `RtlExitUserThread` ret) 이니, **이 프로세스에서 칸 값은 `BaseThreadInitThunk` 였다** 고 읽을 수 있다 `[추측: Worker 관찰에서 메인 스레드로 옮겨 짚음, 같은 전역 칸]` (Q48).
   - `[정적]` (run28) `LdrShutdownThread +0x14c` (ret `+0x151`, 모듈) · `+0x1e0` (ret `+0x1e5`, exe) 가 `LdrpCallTlsInitializers(3, 항목)` 을 부른다.
@@ -3738,7 +3770,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.5 · 2.6 | (해결됨, 정적) 주소 연결 `LdrpSnapModule` 본문: IAT 에 함수 주소를 적는 곳, `+0x5df` 에서 `LdrpLoadDependentModuleInternal` 을 부르는 갈래 (run23: `0x103` 을 받을 수 있는 caller 후보) — 정적 Q50. run24 `[정적]`: 일감 쪽 caller 는 `LdrpProcessWork +0x131` (노드 `State ≠ 0`, 보통 `Signal`·`MapAndSnap +0x4f7` 이 `4` 로 바꾼 문맥). 노드를 `State 5` 로 쓰는 곳은 아직 모름 (`Signal` 이 5 를 건너뛰는 조건, `CondenseGraph` 가 5 → 6) — 정적 Q50 → run36 `[정적]`: IAT 칸을 쓰는 줄은 **`+0x3e7` 하나** (이름 찾기는 본문 인라인, hint 먼저 → 이분 탐색, 서술자 전부). `+0x5df` = **forwarder** (지연 import 아님, `NTDLL` 이면 지름길, 그 밖은 이유 1 로 그 자리에서 올림, 대상이 Mapped 전이면 `0x103` → 0 으로 일단 끝). **`State = 5` = `+0xb87`**, `+0xb61 LdrpDoPostSnapWork` 뒤. 부모 카운터는 안 건드림 (2.6) |
 | 2.5 · 2.6 | snap 실행 값 (run36 `[정적]` 갈림의 실제 값) — 동적 **Q68**: IAT 쓰기 `ntdll+0x3aca7` 의 `rcx`·`ln @rsi` (dll1 snap 동안, 개수 조건 — test.exe 91·dll1 89·dll2 88), NTDLL 지름길 `ntdll+0x3af09` 횟수 (모듈당 10 기대), 0번 기대 `ntdll+0x3ae9a`·`+0x3b11f`·`+0x3b74f`·`+0x3b61d`·`+0x3a9bc`, PostSnap `ntdll+0xa423e` 인자·`ntdll+0xa428e` (`LdrpHandleTlsData`) 가 어느 모듈에서 서나 (dll1·dll2 만, exe 는 안 섬 `[추측]`)·`ntdll+0xa426d` 뒤 `eax` (CFG export suppression), 값 `dq ntdll+0x1d2600 L1`·`dq ntdll+0x1ea508 L1`·`db ntdll+0x1ea4ec L1`. 어느 스레드·순서(입구 `ntdll+0x3a8c0`, `State = 5` `ntdll+0x3b447`) 는 Q47 |
 | 2.6 · 2.7 | (run36) snap 실패 길 작은 정적 — 정적 **Q69**: 노드 `State = -3` (`LdrModulesSnapError`) 를 **처음** 쓰는 곳 `[공백]` (`.asm` 모음엔 전파 `LdrpCondenseGraphRecurse +0x14e` 뿐), snap 실패 반환이 caller `*(ctx+0x28)` 뒤 어디서 State 로 바뀌나. 그 밖 run36 에서 안 본 것: `LdrpSnapModule` 의 `__try` 범위 (`.pdata` 안 읽음), `LdrpHandlePendingModuleReplaced` 안 조건 |
-| 2.6 | 이름·뜻 못 정한 것 (run23): `LdrpLoadDependentModuleInternal` 지역 flags 비트 `0x4`·`0x20`·`0x200`·`0x400`·`0x8000`·`0x800000`·`0x4000000` 의 이름 (`[추측]` SxS 로 바뀜 / 맨 이름 / 전체 이름 / 경로 직접 / 자식 문맥 / enclave / ?), 간선 칸 구조체 이름 (PDB 에 없음) 과 칸 `+0x18` 비트 0 (`[추측]` 대비용 칸 표시), `ApiSetMap` 버전 갈래 (새 / 옛 맵), `0xc000022d` (`[추측]` `STATUS_RETRY`)·`0xc0150014` 이름, TEB `+0x1850` 8칸 표 (`[추측]` SRW 락 소유 추적), 이유 9(`PatchImage`) 갈래를 누가 타나 (`[추측]` `LdrpLoadDependentModuleW`) |
+| 2.6 | 이름·뜻 못 정한 것 (run23): `LdrpLoadDependentModuleInternal` 지역 flags 비트 `0x4`·`0x20`·`0x200`·`0x400`·`0x8000`·`0x800000`·`0x4000000` 의 이름 (`[추측]` SxS 로 바뀜 / 맨 이름 / 전체 이름 / 경로 직접 / 자식 문맥 / enclave / ?), 간선 칸 구조체 이름 (PDB 에 없음) 과 칸 `+0x18` 비트 0 (`[추측]` 대비용 칸 표시), `ApiSetMap` 버전 갈래 (새 / 옛 맵), `0xc000022d` (`[추측]` `STATUS_RETRY`)·`0xc0150014` 이름, TEB `+0x1850` 8칸 표 (`[추측]` SRW 락 소유 추적 — (해결됨, 정적) → run41: PDB `SchedulerSharedDataSlot`, 커널 AutoBoost 와 나눠 쓰는 **락 소유 칸 표**. 방향은 맞고 SRW 전용은 아님 (임계영역·리소스도 씀), 2.7), 이유 9(`PatchImage`) 갈래를 누가 타나 (`[추측]` `LdrpLoadDependentModuleW`) |
 | 2.6 · 3 | 일감 흐름 실행 값 (run24 `[정적]` 갈림의 실제 값): `LdrpEnableParallelLoading` 입구 `ecx`(`LoaderThreads`)·`+0xe2` 뒤 `LdrpMapAndSnapWork`(`ntdll+0x1d2640`), `LdrpQueueWork +0x7d` `TpPostWork` 가 서나(`ntdll+0xe24c9`), `LdrpProcessWork` 입구(`ntdll+0x17140`) 를 부른 곳이 `Drain+0x187` / `TppWorkpExecuteCallback+0x2e0` / `LdrpWorkCallback+0xb8` 중 무엇인가(`~`·`k`), `Drain(1)` 이 `+0x194` 기다림까지 가나(`ntdll+0xad594`), 일감마다 올리기(`ntdll+0x171a5`)·snap(`ntdll+0x1726c`), `Signal` 카운터(`ntdll+0xe2420`, `dd @rcx+0x6c L1`)·부모 snap 일감(`ntdll+0xe2439`), exe snap 이 `MapAndSnap +0x4c2` 직접인지 일감인지, `LdrpMergeNodes`(`ntdll+0xed9f4`) 가 안 서는지 — 동적 Q47·Q23. (run36) snap 이 어느 스레드·순서로 도나: 입구 `ntdll+0x3a8c0` 에서 `poi(poi(@rcx+0x38)+0x50)`·`@$tid`, `State = 5` `ntdll+0x3b447` 에서 `poi(@rdi+0x50)`·`@$tid` — Q47 |
 | 2.6 | 정적으로 남은 것 (run24, 번호 없음): `LdrpDestroyNode` 본문, (해결됨, 정적) `LdrpMapDllSearchPath` → `LdrpMapDllWithSectionHandle` 사이 (지도 이름 `LdrpMapDllNtFileName` 만) → run26: `+0x25c LdrpMapDllNtFileName` → `+0x137 NtOpenFile` → `+0x194 NtCreateSection` → `+0x28c`, `LdrpRetryQueue` 에 넣는 쪽, `LdrpDrainWorkQueue` caller 5곳 (`LdrpFindLoadedDll`·`LdrpInitializeImportRedirection`·`LdrpInitializeThread`·`LdrUnloadDll`·`RtlQueryInformationActivationContext`) 의 인자, `LdrpMinimalMapModule +0x296` 이 `LdrpMapAndSnapWork` 를 읽는 이유, `TpPostWork` 가 콜백을 그 자리에서 돌리지 않는지 (`[추측]` 안 돌림) |
 | 2.6 | 이름·뜻 못 정한 것 (run24): `LdrpProcessWork` 인자 2 (`[추측]` "`WorkInProgress` 에 센 적 없음"), 로드 문맥 `+0x20` 비트 9·20 (`FullPath`·`Retry` 길), `LdrpProcessMappedModule` 인자 2 비트 23, `LdrpDetourExist` 가 켜지는 조건 (`LdrpDetectDetour` 본문), `RtlGetSuiteMask` 비트 16, `Drain(0)`/`Drain(1)` 의 뜻 (`[추측]` 책임자 되기 / 큐 비우고 일꾼 기다리기), 큐 칸 `ctx+0x40` 의 이름 |
@@ -3759,7 +3791,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.7 | (해결됨, 정적) `ImageTlsCallbackCaller` 안쪽 → run28: 넷째 칸으로 온 콜백을 `(DllBase, 이유, 0)` 으로 CFG 간접 호출 (`+0x16`, ret `+0x1b`), 늘 TRUE. 앞에 `LdrpCallInitRoutineInternal` 이 한 칸 밀기. 실행은 Q25·Q26·Q28 |
 | 2.8 | `Dll2Tls`·`Dll1Tls`가 실제로 불리는 순간 (소스엔 있음, 멈춤점은 아직). run28 `[정적]`: 코드 길은 `LdrpCallTlsInitializers +0x19b` → `LdrpCallInitRoutine +0x93` → `LdrpCallInitRoutineInternal +0x22` → `ImageTlsCallbackCaller +0x1b` → 콜백. 실행은 Q26 |
 | 2.5 · 2.7 | run8 kernel32 길의 "`LdrpCallTlsInitializers` 는 불렸지만 콜백 없음" 이 KERNELBASE 였나 (run28 `[정적: PE 파일]`: KERNELBASE 는 TLS 디렉터리가 있고 콜백 배열 첫 칸 0, kernel32·ntdll 은 디렉터리 없음 → 그 한 번은 KERNELBASE `[추측]`). 입구 `ntdll+0x10e50` 에서 `du poi(@rdx+0x60)`·`ecx`, `ntdll+0x10f76`(`+0x126`) 에서 `dq @rbx L1` = 0 — 동적 Q25 |
-| 2.7 | TLS 길 실행 값 (run28 `[정적]` 의 실제 값): `ntdll+0x10fe6`(`LdrpCallTlsInitializers +0x196`) 에서 `rcx` = `ntdll+0xe83e0`·`rdx` = DllBase·`r8` = 이유·`ln @r9` = 콜백, `ntdll+0x11ead5`(`Internal +0x1d`) 에서 한 칸 밀린 모양, 배열 고리 `ntdll+0x10f76`·`ntdll+0x10f82` 횟수 (모듈마다 콜백 1개 `[소스]`), 락 경합 길 `ntdll+0x10f63`·`ntdll+0x11038`·`ntdll+0x111d6` 에 안 서는지 — 동적 Q25 |
+| 2.7 | TLS 길 실행 값 (run28 `[정적]` 의 실제 값): `ntdll+0x10fe6`(`LdrpCallTlsInitializers +0x196`) 에서 `rcx` = `ntdll+0xe83e0`·`rdx` = DllBase·`r8` = 이유·`ln @r9` = 콜백, `ntdll+0x11ead5`(`Internal +0x1d`) 에서 한 칸 밀린 모양, 배열 고리 `ntdll+0x10f76`·`ntdll+0x10f82` 횟수 (모듈마다 콜백 1개 `[소스]`), 락 경합 길 `ntdll+0x10f63`·`ntdll+0x11038`·`ntdll+0x111d6` 에 안 서는지 — 동적 Q25. (run41 더함) 락 소유 칸: `ntdll!LdrpAcquireSchedulerSharedDataSlot+0x92` 의 `rax` (메인 스레드 표 주소, 0 이면 조건 불만족), `LdrpCallTlsInitializers +0x1ab` (`ntdll+0x10ffb`) 에서 `dq @rsi L1` — bit 63 이 꺼져 있으면 `+0x1e8` (`ntdll+0x11038`) 안 섬 `[추측]`. 커널 `KiAbProcessPreContextSwitch+0x26e` 는 컨텍스트 스위치마다 걸려 시동 길엔 비추천 |
 | 2.8 · 2.9 | 콜백 호출 실행 값 (run28): `ntdll+0xe83f6`(`ImageTlsCallbackCaller +0x16`) 에서 `ln @rax` = `Dll2Tls` → `Dll1Tls` → `ExeTls`, `rcx` = DllBase, `rdx` = 1, `r8` = 0, `RtlAcquireSRWLockExclusive` 갈래(`ntdll+0xe8406`)에 안 서는지, 콜백 입구 `k` 다섯 프레임 — 동적 Q26 (dll)·Q28 (exe) |
 | 2.7 · 2.8 | 진입점 길 실행 값 (run28): `ntdll+0x11ead5` 에서 `rax` 가 진입점일 때 `r8` = `poi(ntdll!LdrpProcessInitContextRecord)` 인가, `ntdll+0x10c33`(`LdrpCallInitRoutine +0x93`) 의 `al`. CFG 칸 `ntdll+0x1e6000` 값이 `_guard_dispatch_icall_nop`(`+0x166480`) 인가 `LdrpDispatchUserCallTarget`(`+0x124580`) 인가. ETW 갈래 `ntdll+0x10d55`·`ntdll+0x10db3`·`ntdll+0x10e1c` 에 안 서는지 (`db 7ffe0384 L2`, `dd @$peb+0x378 L1`) — 동적 Q27 |
 | 2.8 | (해결됨, 정적) `_DllMainCRTStartup` → `DllMain` 사이에 다른 함수가 있나, `lpReserved` 를 그대로 넘기나, `DllMain` 이 CRT 준비 뒤인가 (run7 `[확인 필요]`, run28, 정적 Q55) → run40 `[정적]`: 진입점 = PDB `_DllMainCRTStartup` (dll2 `0x1d50`, dll1 `0x1d60`). `+0x1c` 쿠키 → **`+0x38` 꼬리 `JMP` `dllmain_dispatch`** → `+0x76` (ret `+0x7b`) CRT 준비 → **`+0x91` (ret `+0x96`) `DllMain`**. `R8` 은 `RDI`·`RSI` 에 맡겼다 되실릴 뿐 안 바뀜. 콜스택상 `DllMain` 의 부모 = `dllmain_dispatch`, `_DllMainCRTStartup` 프레임 없음. 실행은 Q27 |
@@ -3767,11 +3799,12 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.8 | dll 진입점 사슬 실행 값 (run40 `[정적]` 의 실제 값) — 동적 **Q27** (새 항목 없이 출처로): `lm` 으로 그때 베이스를 얻어 `dllN+rva` 로 (run7 처럼 고정 주소는 빗나감). `dll1+0x1d60` / `dll2+0x1d50` (`_DllMainCRTStartup` 입구) `r8` = ntdll 이 넘긴 `r9` 원본인가·`edx` = 1·`k` 위 `LdrpCallInitRoutineInternal+0x22`, `dll1+0x1ba0` / `dll2+0x1b90` (`dllmain_dispatch` 입구) `r8` 같은가, `dll1+0x1c31` / `dll2+0x1c21` (`DllMain` call) `r8`·`edx`·`rcx`, `dll1+0x12e0` / `dll2+0x12e0` (`DllMain` 입구) `r8` 같은가·`k` 에 `dllN!dllmain_dispatch+0x96` 이 있고 `_DllMainCRTStartup` 은 없나, `dll1+0x1c36` / `dll2+0x1c26` `eax` = 1, 선택 `dq dllN+0x84078 L1` = 0 |
 | 2.8 · 2.10 | dll 쪽 `LoadLibraryExW` ×3 이 무엇을 올리나 (run40) — 동적 **Q31** (새 항목 없이 출처로): `KERNELBASE!LoadLibraryExW` 입구에서 `poi(@rsp)` 가 `dll2+0x4f5fb` / `dll1+0x4f60b` 인 것만 세고 `du @rcx` 이름 셋, 순서 dll2 → dll1, `dll1+0x1c1b` / `dll2+0x1c0b` (CRT 준비 끝, `DllMain` 앞) 가 세 번 **뒤**인가 |
 | 2.8 | 정적으로 남은 것 (run40) — 정적 **Q73**: (a) `FlsGetValue2` 길 (함수 포인터 표 `__acrt_execute_initializers`) 이 dll 에서도 `try_get_function_slow` 로 가나 (지도가 표를 못 따라감, 한 상자 원칙이라 Q31 이름으로 갈음할 수도), (b) `__scrt_uninitialize_crt(ECX = (lpReserved ≠ 0), EDX = 0)` 안쪽 (이유 0 에서 무엇이 달라지나), (c) `dllmain_crt_dispatch` 이유 2·3 길 `__scrt_dllmain_crt_thread_attach/detach` 안쪽 (범위 밖) |
-| 2.7 | 이름·뜻 못 정한 것 (run28): TLS 목록 항목(0x48바이트) 칸 이름 (PDB 타입 없음, PE 규격으로 `+0x28` = `AddressOfCallBacks`), TEB `+0x1850` 8칸 표 (PDB 이름 `SchedulerSharedDataSlot` 은 쓰임새와 안 맞음), 추적 칸 맨 위 비트를 켜는 곳 (`RtlpAcquireSRWLockSharedContended` 안 `[추측]`), `ImageTlsCallbackCaller` 의 `RtlAcquireSRWLockExclusive` 직접 호출 갈래가 있는 이유 (컴파일러 갈래 `[추측]`), `LdrShutdownProcess +0x168` 앞 `[RDI+0x58] ≠ 0` 조건. 뒤 넷 — 정적 Q56 (TLS 락 세부) |
+| 2.7 | 이름·뜻 못 정한 것 (run28): TLS 목록 항목(0x48바이트) 칸 이름 (PDB 타입 없음, PE 규격으로 `+0x28` = `AddressOfCallBacks`) — 남음. 뒤 넷 — 정적 Q56 (TLS 락 세부) → **(해결됨, 정적) run41**: (a) TEB `+0x1850` 8칸 표 (~~PDB 이름 `SchedulerSharedDataSlot` 은 쓰임새와 안 맞음~~ → PDB 이름이 맞음. 넣는 곳 `LdrpAcquireSchedulerSharedDataSlot +0x92` 하나, AutoBoost 용 락 소유 칸 표), (b) 추적 칸 맨 위 비트를 켜는 곳 (~~`RtlpAcquireSRWLockSharedContended` 안 `[추측]`~~ → 커널 `KiAbProcessPreContextSwitch +0x26e`), (c) `ImageTlsCallbackCaller` 의 `RtlAcquireSRWLockExclusive` 직접 호출 갈래 (같은 꼴 ntdll 에 최소 23곳 → 컴파일러 꼴 `[추측]` 은 그대로, sample 은 안 탐), (d) `LdrShutdownProcess +0x168` 앞 `[RDI+0x58] ≠ 0` (`RDI` = TEB → `ThreadLocalStoragePointer`) |
+| 2.7 | 정적으로 남은 것 (run41) — 정적 **Q74**: (a) 락 소유 칸 **bit 0** 을 켜는 곳 (커널은 읽고 지우기만, ntdll 쪽 줄 못 찾음), (b) `RtlpAcquireSRWLockSharedContended +0x11b ~ +0x126` 의 `RtlAbPreAcquire(락, 칸)` 이 칸 ≠ 0 일 때만 불리는데 그땐 아무것도 안 함 — 왜 부르나, (c) `LdrpAcquireSchedulerSharedDataSlot` 의 두 조건 (`LdrpSchedulerSharedDataListHead` 를 누가 채우나 — `LdrpAllocateSchedulerSharedData` `[추측]`, PEB `NtGlobalFlag2 & 0x10` 뜻), (d) `THREADINFOCLASS` 0x38·0x39 공식 이름 (PDB 에 enum 없음, `[추측]` `ThreadUpdateLockOwnership`·`ThreadSchedulerSharedDataSlot`) |
 | 2.10 | 로더 끝 → `mainCRTStartup` 연결, `mainCRTStartup` 안쪽. (일부 해결) 로더 끝 `LdrInitializeThunk +0x18` → `NtContinue(맡긴 문맥)`, 맡긴 문맥 `Rip` = `RtlUserThreadStart`, `Rcx` = 진입점 → run16 `[정적]`. ~~남은 것: 커널 `NtContinue` 안, `RtlUserThreadStart` 뒤~~ → (일부 해결) run29 `[정적]`: 커널 `NtContinue` 안 (위 줄), `RtlUserThreadStart` 안 (`+0x27` ret `+0x2c` 칸 `Kernel32ThreadInitThunkFunction(0, 진입점, PEB)` CFG 간접, 칸 0 이면 진입점 직접 → `RtlExitUserThread`, `__except` → `NtTerminateProcess`). 남은 것: 칸 값 (Q48), `BaseThreadInitThunk` → `mainCRTStartup` (Q18·Q30), `mainCRTStartup` 안쪽 → (일부 해결) run30 `[정적]`: `mainCRTStartup` 안쪽 = `+0x9` 쿠키 → `+0xd` 꼬리 `JMP` `__scrt_common_main_seh` (CRT 준비 `+0x19`·`+0x61`, `main` call `+0x10a` ret `+0x10f`), 받은 PEB 안 씀. 진입점 값이 `mainCRTStartup` 인 것도 `[정적]` (Q18 끝). 남은 것: 칸 값 (Q48), 실제 진입 (Q30) |
 | 2.10 | `BaseThreadInitThunk` 안쪽 (run25 `[정적]` depth 1 이름만): 첫 인자 0 이면 `+0x12` CFG 스텁 거쳐 `RDX(R8)` 간접 호출 → `+0x19` `RtlExitUserThread` (ret `+0x20` = 01_sprint Worker 종료 콜스택 `[관찰]` 과 같은 자리), 아니면 `+0x26` `RtlGetSuiteMask` → `+0x36` `BasepInitializeTermsrvFpns`. 남은 것: 간접 호출 대상이 `test!mainCRTStartup` 인가 (정적 Q18 · 동적 Q30), `BasepInitializeTermsrvFpns` 안쪽 (Q18) → (일부 해결) run30 `[정적]`: 넘기는 진입점 값 = `test!mainCRTStartup` (rva `0x1d40`, PDB 이름). 실제로 그리 들어가는지는 동적 Q30. `BasepInitializeTermsrvFpns` 안쪽은 Q18 범위를 test.exe 로 바꾸면서 안 봤다 — 정적 Q59 |
 | 2.10 | 로더 끝 `NtContinue` 길 실행 (run29 결과서 D1~D4): `nt!NtContinue` 입구 `rcx`(맡긴 CONTEXT)·`dl`=1·CONTEXT 의 `Rip`/`Rcx`/`Rdx`/`ContextFlags`, `KiContinuePreviousModeUser +0x422`/`+0x427` 앞뒤 복사본·트랩 프레임 (`ContextFlags` 가 `0x10001b` 인가), `NtContinueEx +0x403`/`+0x426`/`+0x40c` 중 어디로 나가나, `RtlUserThreadStart` 입구 `rcx`=진입점·`rdx`=PEB·`k` — 동적 Q29 |
-| 2.10 | `RtlUserThreadStart` 뒤 실행 (run29 결과서 D4·D7·D8): `+0x27` (`ntdll+0xacae7`) 에서 `ln @rax`·`rcx`=0·`rdx`=진입점·`r8`=PEB, `test!main` 에서 `k` (`BaseThreadInitThunk+0x17` → `RtlUserThreadStart+0x2c`, CFG 중개 프레임 없음 예상) — 동적 Q30. (run30, 2026-10-23 좁힘: **진입점 도착까지 + CFG 통과**) `BaseThreadInitThunk +0x17` 이 부르는 대상이 `AddressOfEntryPoint` (`test+0x1d40`) 인가 — 입구 `k` 바로 위가 `BaseThreadInitThunk+0x17` 인가, kernel32 CFG 검사가 CFG 표 없는 test.exe 진입점을 통과시키는 방법. `main` 입구 `k` 의 CRT 프레임(`__scrt_common_main_seh+0x10f`, `mainCRTStartup` 없음)은 참고로만 |
+| 2.10 | `RtlUserThreadStart` 뒤 실행 (run29 결과서 D4·D7·D8): `+0x27` (`ntdll+0xacae7`) 에서 `ln @rax`·`rcx`=0·`rdx`=진입점·`r8`=PEB, `test!main` 에서 `k` (`BaseThreadInitThunk+0x17` → `RtlUserThreadStart+0x2c`, CFG 중개 프레임 없음 예상) — 동적 Q30. (run41) `+0x23 JZ` (`ntdll+0xacae3`, `RtlLeaveCriticalSection` 직접 갈래) 를 안 타는지 — Worker 는 `+0x2c` 관찰로 이미 안 탐. (run30, 2026-10-23 좁힘: **진입점 도착까지 + CFG 통과**) `BaseThreadInitThunk +0x17` 이 부르는 대상이 `AddressOfEntryPoint` (`test+0x1d40`) 인가 — 입구 `k` 바로 위가 `BaseThreadInitThunk+0x17` 인가, kernel32 CFG 검사가 CFG 표 없는 test.exe 진입점을 통과시키는 방법. `main` 입구 `k` 의 CRT 프레임(`__scrt_common_main_seh+0x10f`, `mainCRTStartup` 없음)은 참고로만 |
 | 2.10 | (해결됨, 정적) run7 `[관찰]` `LoadLibraryExW` ×3 을 부른 test.exe 안 코드 `0x7ff70ee67723` 이 어느 함수인가 → run30 `[정적]`: **`test!try_get_function_slow +0x73`** (rva `0x57723`, call `+0x6d`). `LoadLibraryExW` 호출 9곳 중 아래 16비트가 맞는 유일한 ret. UCRT 의 늦게 묶는 API 찾기 함수 |
 | 2.10 | `LoadLibraryExW` ×3 이 **ntdll 로더에서 무엇을 올리나** (2026-10-23 좁힘: 이름과 `LdrpLoadDll` 결과만, CRT 안 사슬은 범위 밖): `test+0x5771d` (call) 에서 `du @rcx` 이름 (`api-ms-win-core-fibers-l1-1-2` / `api-ms-win-core-localization-l1-2-1` / `kernel32` 예상, run30 `[정적]`), `LdrpLoadDll` 결과·`test+0x57723` (ret) `rax`. 참고: 세 번이 넘거나 `test+0x57777` 에 서면 "세 길이 각자 첫 후보" `[추측]` 틀림 — 동적 Q31 |
 | 2.10 | `KERNEL32!LoadLibraryExW` → `KERNELBASE!LoadLibraryExW` 연결 (run30): test.exe 는 `KERNEL32.dll` 의 `LoadLibraryExW` 를 import (IAT `0x6e250`, `[정적]`) 하는데 run7 `[관찰]` 은 `KERNELBASE!LoadLibraryExW`. kernel32 export 가 forwarder 인가, 짧은 스텁인가 `[확인 필요]` — 정적 Q60. (단서, run36 `[정적+샘플]`) 결과서 샘플 계산에서 test.exe 의 KERNEL32 import 중 forwarder 는 `NTDLL.Rtl…` 행 10개뿐이고 `LoadLibraryExW` 는 그 목록에 없다 → forwarder 는 아닐 것 (결과서가 이 이름을 따로 짚진 않음). 그러면 짧은 스텁 쪽 `[추측]` |
@@ -3923,6 +3956,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run38 | (정적, ntdll) DLL 을 붙이는 `LdrpMinimalMapModule` (915B, 13곳) · 마무리 `LdrpCompleteMapModule` (940B, 13곳) + depth 0 `LdrpRelocateImage`·`LdrpProcessMachineMismatch`·`LdrpProtectAndRelocateImage`: 붙이기 = **`+0x174 NtMapViewOfSection`** (ret `+0x179`, `Ex` 는 `ctx+0x20` 비트 `0x800`·`0x800000` 때만 — 켜는 줄 못 찾음), 인자 섹션 = 둘째 인자 · 기준 주소 `&E.DllBase` (시스템 콜이 씀) · ViewSize `&ctx+0xa8` (sast/21 `[추측]` 확정) · 할당 `0x800000` · 보호 `0x80`. `SizeOfImage` 는 헤더 값. 결과 `0x40000003`·`0x40000036` 은 보통 그대로, `0x4000000e` → Mismatch, 음수·`0x4000000e` 면 Unmap. kernel32 + LAA exe 갈래 (`R14B`), 큰 페이지 갈래 (`LdrpLargePageDllKeyHandle`) — test.exe 에선 안 탈 것. **재배치 = `LdrpCompleteMapModule +0x31b LdrpRelocateImage`, 맵 결과가 정확히 `0x40000003` 일 때만** → `+0x14a LdrpProtectAndRelocateImage` → `+0x8e LdrRelocateImageWithBias`. exe 재배치는 따로 `LdrpInitializeProcess +0x1430`. run26 `[추측]` 후보 둘 중 첫째가 맞음. 커널이 `0` 을 돌려주나는 동적. 헤더 값 sample `[정적+샘플]`, kernel32 `[정적: PE 표]`. 결과서 점프 목적지 일부가 주소 끝자리라 run38 문서에서 함수 오프셋으로 고쳐 적음 |
 | run39 | (정적, ntdll) DLL 검색 경로 (요청 다섯 함수 + 요청서 밖 콜백·exe 폴더·파일 확인 쪽, 순서 표는 원본 바이트): `LdrpInitializeProcess +0x1313 LdrpInitializeDllPath(0,0,&P)` 는 **`P` 를 비워 두기만** (목록은 나중) → 첫 `LdrpSearchPath` 가 `P+0` 이 0 이면 `+0x36d LdrpComputeLazyDllPath` → `+0x62 LdrpGetDllPath` → `+0xa8 RtlpGetCachedPath` (캐시 `RtlpDllSearchPath`) → `+0xbe RtlpComputeDllPath` (SafeDllSearchMode `+0x4b RtlpLookupCurDirSetting`, 순서 표 `ntdll+0x17e340`) → `+0x7a RtlpComputePath` 가 문자열을 짓는다. **첫 칸 = exe 폴더** (`+0x555 RtlpGetDirPath`, exe 항목 `FullDllName` = `ProcessParameters.ImagePathName` 사본의 마지막 `\` 앞까지). 기본 = exe 폴더 · System32 · Windows\system · Windows · `.` · `PATH`. 칸마다 `+0x244 LdrpResolveDllName` → `LdrpGetNtPathFromDosPath +0xee NtQueryAttributesFile`, **처음 찾은 칸에서 멈춤**, 끝이면 `0xc0000135`. dll1·dll2 문맥은 부모 문맥 `+0x10` 을 물려받아 `P` 하나를 같이 씀 (`LdrpLoadDependentModuleInternal +0x959` → `+0x10f8`) → 목록은 한 번 짓고, dll1·dll2 는 첫 칸에서 찾힐 것 `[추측]`. `RtlpLookupSafeCurDirList` 는 플래그 `0x2000` 없으면 안 탐. `refs` 에서 `RtlpSystemDirs` 둘째 쓰는 곳 `LdrpInitializePerUserWindowsDirectory` (`+0x1b72`, dll 올리기 뒤) 발견 — 뜻 모름 |
 | run40 | (정적, dll1·dll2 — sample 빌드, 로컬 pdb `B1FF0915…` / `FC67F681…` age 1, 첫 analyze) 진입점 → `DllMain`: rva dll1 `0x1d60` / dll2 `0x1d50` = `_DllMainCRTStartup` (61B) → `+0x1c` `__security_init_cookie` → **`+0x38` 꼬리 `JMP` `dllmain_dispatch`** (프레임 안 남음) → `+0x76` (ret `+0x7b`) `dllmain_crt_dispatch` → (꼬리 `JMP`) `dllmain_crt_process_attach` (CRT 준비, `__scrt_initialize_crt` · `_initterm_e` · `_initterm` …) → **`+0x91` (ret `+0x96`) `DllMain`**. `lpReserved` (`R8`) 는 `RDI` → `RSI` 에 맡겼다 되실릴 뿐 안 바뀜, CRT 가 그 값을 읽는 건 이유 0 (`dllmain_crt_dispatch +0x47`) 뿐. `_pRawDllMain`·동적 TLS 콜백 칸은 0. run7 `LoadLibraryExW` 자리 **7번 = dll2 `0x4f5fb`, 9번 = dll1 `0x4f60b`** (둘 다 `try_get_function_slow +0x73`) → run7 9번 "dll2 범위" 정정. 두 dll 은 명령까지 같고 시작 rva 만 `0x10` 차이 |
+| run41 | (정적, ntdll·ntoskrnl) TLS 락 세부: TEB `+0x1850` = PDB **`SchedulerSharedDataSlot`**, 넣는 곳 `LdrpAcquireSchedulerSharedDataSlot +0x92` 하나 (커널 클래스 0x39 로 받음, 첫 스레드 `LdrpInitializeProcess +0x183c`, 새 스레드 `LdrpInitializeThread +0x55`). 표 = 스레드마다 8칸 **락 소유 칸 표** (AutoBoost, SRW·임계영역·리소스 공용), 칸 = 락 주소 + bit 0·1·63. **bit 63 은 커널 `KiAbProcessPreContextSwitch +0x26e` 가 켬** (CPU 에서 내려갈 때), 풀 때 켜져 있으면 클래스 0x38 → `KeAbUserModeEntryFree`. `ImageTlsCallbackCaller` 직접 호출 꼴은 ntdll 에 최소 23곳 더 (sample 은 안 탐). `LdrShutdownProcess` 의 `RDI` = TEB, `+0x58` = `ThreadLocalStoragePointer`. run28 짐작 둘 정정 |
 | `sample/` 소스 | 의존 관계, 모듈별 TLS 콜백, `/MT` 빌드 |
 
 - run3 ~ run5는 타깃에서 빌드한 test.exe, run6 ~ run8은 디버거 VM에서 빌드해 옮긴 test.exe (같은 소스).
@@ -3966,3 +4000,4 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run38 | `_workspace/sast/33_map-module` | 없음 | 정적만 (대기열 Q52, sast/21 "다음 정적 후보 — 가치 높음"). 두 함수는 이미 있는 `.asm`·`.c` 그대로 (depth 1 callee 본문 안 읽음), `LdrpRelocateImage`·`LdrpProcessMachineMismatch` depth 0 새로 뽑음 + 요청서 밖 `LdrpProtectAndRelocateImage` depth 0, `refs` 5개. 별칭 하나 (`+0x257` = PDB `RtlQueryImageFileKeyOption`). Q52 끝. 동적 확인거리 (`ntdll+0xa399` `eax`, `ntdll+0xe3984` 서나, `ntdll+0x8d834` 안 서나 등) → 새 번호 없이 **Q20** (kernel32·kernelbase)·**Q23** (dll1·dll2·exe) 에 출처. 작은 정적 → 새 **Q70** (`ctx+0x20` 비트 켜는 줄, `0x40000036` 이름) |
 | run39 | `_workspace/sast/34_dll-search-path` | 없음 | 정적만 (대기열 Q53, sast/21 "다음 정적 후보 — 중간"). 요청 depth 1 다섯 함수 + 목록을 짓는 콜백이 함수 포인터라 요청서 밖으로 세 번 더 뽑음 (`RtlpComputeDllPath`·`RtlpComputePath`·`RtlpGetDirPath`·`LdrpGetNtPathFromDosPath`·`LdrpGetFullPath` 등), `refs` 3개, 순서 표·문자열은 원본 바이트. Q53 끝. 동적 확인거리 (실제 목록·처음 짓는 호출·첫 후보에서 찾나) 와 → 동적 Q23 (출처로 붙임), 작은 정적 넷 → 새 Q71 (4장 2.6 run39 줄). 결과서 `RtlpGetDirPath +0x48 wcsrchr` 는 call `+0x50` (run39 메모) |
 | run40 | `_workspace/sast/35_dll-crt-entry` | 없음 | 정적만 (대기열 Q55, run28·run30 flow-writer 후보. MS 바이너리가 아닌 sample dll 둘을 test.exe 때처럼 `ms/bin/`·`ms/sym/` 에 놓고 첫 analyze — 함수 3333·3332, 모듈마다 13개, 지도 하나, `refs` 4개). Q55 끝. 동적 확인거리 → 새 항목 없이 **Q27** (사슬·`r8`·`k`) · **Q31** (`LoadLibraryExW` ×3 이름·순서) 에 출처로. 새 정적 공백 셋 → 새 **Q73** (4장 2.8 run40 줄). 같은 바퀴에 Q54 를 문서로 닫은 것 (2026-10-24 사용자 결정) 을 4장 2.7 run27 줄에 반영, 남은 전수 확인은 Q72. run7 정정은 01_sprint 문서를 안 고치고 run40·flow.md 2.8 에만 |
+| run41 | `_workspace/sast/36_tls-lock-detail` | 없음 | 정적만 (대기열 Q56). ntdll 은 새로 안 뽑고 있는 `.asm`·`.c` 만, 질문 2 의 답이 커널이라 ntoskrnl 6개 depth 0 새로 뽑음 (`KiAb*`·`KeAb*`·`NtSetInformationThread`·`KeWaitForAlertByThreadId`), PDB 타입(`llvm-pdbutil`)·ntdll 전체 `objdump` 꼴 검색. Q56 끝. 요청서 `[추측]` 둘 (질문 2 후보 함수, 질문 4 `RDI`) 정정, run28 맨 위 정정 한 줄. 동적 확인거리 → 새 번호 없이 **Q25** (락 소유 칸·`+0x1e8`)·**Q30** (`RtlUserThreadStart +0x23`) 에 출처로. 작은 정적 넷 → 새 **Q74** (4장 2.7 run41 줄). 결과서 `LdrShutdownProcess +0x19b CMP` 는 `+0x196 CMP / +0x19b JNZ` (run41 메모) |

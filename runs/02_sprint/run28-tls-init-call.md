@@ -1,5 +1,7 @@
 # 2026-10-23 run28 — TLS 콜백 사슬: `LdrpCallTlsInitializers` 는 **`LdrpTlsList` 에서 콜백 배열을 꺼내 0 까지 돌고**, `LdrpCallInitRoutine` → `LdrpCallInitRoutineInternal` 이 **한 칸 밀어** 부르고, `ImageTlsCallbackCaller` 가 콜백을 **(DllBase, 이유, 0)** 으로 부른 뒤 늘 TRUE (정적)
 
+> **정정 (run41)**: 락 경합 갈래의 "`+0x1e8` 앞 추적 칸 맨 위 비트를 켜는 쪽은 `+0x113` callee(`RtlpAcquireSRWLockSharedContended`) 일 것 `[추측]`" 은 틀렸다. 그 함수는 표를 건드리지 않고, 켜는 곳은 **커널 `KiAbProcessPreContextSwitch +0x26e`** (스레드가 CPU 에서 내려갈 때) 다. "TEB `+0x1850` 의 PDB 이름 `SchedulerSharedDataSlot` 은 쓰임새와 안 맞음" 도 틀렸다: 그 칸은 커널(AutoBoost, 클래스 0x39)이 준 **락 소유 칸 표의 주소**를 담고, PDB 이름 그대로가 맞다. → `run41-tls-lock-detail.md` "정정"
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 작성일.
