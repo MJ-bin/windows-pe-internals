@@ -9,12 +9,15 @@ allowed-tools: Read Write Edit Glob Grep
 사람이 VM 두 대를 직접 만지는 일을 **틀리지 않게** 안내하고, 결과 로그를 판정한다.
 Claude는 VM에 못 들어간다. 그래서 안내가 곧 실험 설계다.
 
-## 고정 환경 (01_sprint에서 확인)
+## 고정 환경 (01_sprint에서 확인, 2026-10-25 갱신)
 
 | 항목 | 값 |
 |---|---|
-| 타깃 VM | Windows 11 24H2 **26100.9457**, 192.168.100.133, NIC e1000e, Secure Boot·BitLocker·자동 업데이트 꺼짐 |
-| 디버거 VM | WinDbg, KDNET 192.168.100.132 port 50000 |
+| 호스트 | 이 분석 서버 (Ubuntu 22.04), VMware Workstation 17.6.3. VM 폴더 `/home/mjbin/vmware/<VM>/` |
+| 타깃 VM | `bob_baseline_vm` ("BOB Windows 11 24H2"), Windows 11 24H2 **26100.9457**, 192.168.100.133 (DHCP), NIC e1000e, Secure Boot·BitLocker·자동 업데이트 꺼짐, 가상 TPM 없음·암호화 해제 (2026-10-25), `mainMem.partialLazySave = "FALSE"` |
+| 디버거 VM | `Windows 11 x64`, WinDbg, KDNET port 50000, 192.168.100.130 (DHCP — 바뀌면 타깃 `bcdedit /dbgsettings` 의 hostip 와 안 맞음. 안 붙으면 `ipconfig` 먼저) |
+| 공유 폴더 | 디버거 VM: `dump` = 서버 `ms/dump` (읽기 전용), `logs` = 서버 `ms/logs` (쓰기) → `.logopen "\\vmware-host\Shared Folders\logs\..."` |
+| 건드리지 않는 VM | `WIN11-26H1-HDAUDIO` (사용자의 다른 작업) |
 | 커널 pdb | ntkrnlmp.pdb `C29EBFB06B78B3C020DCA66D99713F9E1` |
 | 심볼 | `srv*C:\symbols*https://msdl.microsoft.com/download/symbols` + `.sympath+ C:\windows-pe-internals\sample\bin` (test/dll pdb) |
 | test.exe | 디버거 VM에서 빌드 → 타깃에 복사 (방법 B, pdb 짝 맞음). 타깃 실행 위치: `C:\windows-pe-internals-main\windows-pe-internals-main\sample\bin\` |
