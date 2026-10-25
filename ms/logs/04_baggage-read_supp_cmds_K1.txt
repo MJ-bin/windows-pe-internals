@@ -1,0 +1,12 @@
+.logopen "\\vmware-host\Shared Folders\logs\04_baggage-read_supp_K1.txt"
+.echo "==== K1 05s TOKEN"
+dt nt!_TOKEN ffffb689ae6b6060
+dq ffffb689ae6b6060 L0xb9
+.echo "==== K1 09s PsNtdllExports"
+r $t13 = nt!PsNtdllExports
+dt nt!_PS_NTDLL_EXPORTS @$t13
+.echo "==== K1 13s KUSD_KERNEL"
+dt nt!_KUSER_SHARED_DATA fffff78000000000
+dq fffff78000000000 L0x150
+.echo "==== K1 99 END"
+.logclose

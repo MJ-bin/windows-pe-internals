@@ -1,0 +1,549 @@
+Opened log file 'C:\logs\01_snapshot-test.txt'
+0: kd> .echo ==== STEP1 SETUP
+.echo ==== STEP1 SETUP
+==== STEP1 SETUP
+0: kd> .time
+.time
+Debug session time: Sun Oct 25 03:30:33.004 2026 (UTC + 9:00)
+System Uptime: 0 days 0:07:53.533
+0: kd> .sympath 
+.sympath 
+Symbol search path is: srv*C:\symbols*https://msdl.microsoft.com/download/symbols
+Expanded Symbol search path is: srv*c:\symbols*https://msdl.microsoft.com/download/symbols
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*C:\symbols*https://msdl.microsoft.com/download/symbols
+0: kd> .reload
+.reload
+Connected to Windows 10 26100 x64 target at (Sun Oct 25 03:30:52.022 2026 (UTC + 9:00)), ptr64 TRUE
+Loading Kernel Symbols
+...............................................................
+................................................................
+.............................................................
+Loading User Symbols
+
+Loading unloaded module list
+.........
+
+************* Symbol Loading Error Summary **************
+Module name            Error
+SharedUserData         No error - symbol load deferred
+
+You can troubleshoot most symbol related issues by turning on symbol loading diagnostics (!sym noisy) and repeating the command that caused symbols to be loaded.
+You should also verify that your symbol search path (.sympath) is correct.
+0: kd> !lmi nt
+!lmi nt
+Loaded Module Info: [nt] 
+         Module: ntkrnlmp
+   Base Address: fffff8058f600000
+     Image Name: ntkrnlmp.exe
+   Machine Type: 34404 (X64)
+     Time Stamp: fda9ed74 (This is a reproducible build file hash, not a true timestamp)
+           Size: 1450000
+       CheckSum: c817d5
+Characteristics: 22  
+Debug Data Dirs: Type  Size     VA  Pointer
+             CODEVIEW    25, 5b130,   5b130 RSDS - GUID: {C29EBFB0-6B78-B3C0-20DC-A66D99713F9E}
+               Age: 1, Pdb: ntkrnlmp.pdb
+                 POGO   94c, 5b158,   5b158 [Data not mapped]
+                REPRO    24, 5baf8,   5baf8 Reproducible build
+           DLLCHAR_EX     4, 5bb1c,   5bb1c Extended DLL characteristics: 00000081
+                                                 CET compatible
+                                                 (Unknown)
+     Image Type: MEMORY   - Image read successfully from loaded memory.
+    Symbol Type: PDB      - Symbols loaded successfully from symbol server.
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+    Load Report: public symbols , not source indexed 
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+0: kd> bc *
+bc *
+0: kd> bl
+bl
+
+0: kd> !process 0 0 cmd.exe
+!process 0 0 cmd.exe
+PROCESS ffffa985cfe0a080
+    SessionId: none  Cid: 17c0    Peb: 81f764d000  ParentCid: 138c
+    DirBase: 144e86000  ObjectTable: ffffce040c38e640  HandleCount:  90.
+    Image: cmd.exe
+
+0: kd> ? 0n6080
+? 0n6080
+Evaluate expression: 6080 = 00000000`000017c0
+0: kd> bp /p ffffa985cfe0a080 nt!PspCallProcessNotifyRoutines
+bp /p ffffa985cfe0a080 nt!PspCallProcessNotifyRoutines
+0: kd> bl
+bl
+     0 e Disable Clear  fffff805`8ffb1ca8     0001 (0001) nt!PspCallProcessNotifyRoutines
+     Match process data ffffa985`cfe0a080
+
+0: kd> g
+g
+Break instruction exception - code 80000003 (first chance)
+*******************************************************************************
+*                                                                             *
+*   You are seeing this message because you pressed either                    *
+*       CTRL+C (if you run console kernel debugger) or,                       *
+*       CTRL+BREAK (if you run GUI kernel debugger),                          *
+*   on your debugger machine's keyboard.                                      *
+*                                                                             *
+*                   THIS IS NOT A BUG OR A SYSTEM CRASH                       *
+*                                                                             *
+* If you did not intend to break into the debugger, press the "g" key, then   *
+* press the "Enter" key now.  This message might immediately reappear.  If it *
+* does, press "g" and "Enter" again.                                          *
+*                                                                             *
+*******************************************************************************
+nt!DbgBreakPointWithStatus:
+fffff805`8fafdfb0 cc              int     3
+0: kd> g
+g
+Breakpoint 0 hit
+nt!PspCallProcessNotifyRoutines:
+fffff805`8ffb1ca8 48895c2410      mov     qword ptr [rsp+10h],rbx
+0: kd> .echo ==== STEP3 NAMES
+.echo ==== STEP3 NAMES
+==== STEP3 NAMES
+0: kd> .reload /user
+.reload /user
+Loading User Symbols
+............
+
+************* Symbol Loading Error Summary **************
+Module name            Error
+SharedUserData         No error - symbol load deferred
+
+You can troubleshoot most symbol related issues by turning on symbol loading diagnostics (!sym noisy) and repeating the command that caused symbols to be loaded.
+You should also verify that your symbol search path (.sympath) is correct.
+0: kd> x nt!PspCallProcessNotifyRoutines
+x nt!PspCallProcessNotifyRoutines
+fffff805`8ffb1ca8 nt!PspCallProcessNotifyRoutines (PspCallProcessNotifyRoutines)
+0: kd> x ntdll!LdrInitializeThunk
+x ntdll!LdrInitializeThunk
+00007ff8`8b2e1420 ntdll!LdrInitializeThunk (LdrInitializeThunk)
+0: kd> lm m ntdll
+lm m ntdll
+Browse full module list
+start             end                 module name
+00007ff8`8b200000 00007ff8`8b467000   ntdll      (pdb symbols)          c:\symbols\ntdll.pdb\C3093720177DA6851519DCFFE8DF53FE1\ntdll.pdb
+0: kd> ? ntdll!LdrInitializeThunk - ntdll
+? ntdll!LdrInitializeThunk - ntdll
+Evaluate expression: 922656 = 00000000`000e1420
+0: kd> .echo ==== STEP4 TEST
+.echo ==== STEP4 TEST
+==== STEP4 TEST
+0: kd> !process 0 0 test.exe
+!process 0 0 test.exe
+PROCESS ffffa985d4d840c0
+    SessionId: none  Cid: 0890    Peb: 53fd452000  ParentCid: 17c0
+    DirBase: 1af59f000  ObjectTable: ffffce040bd36580  HandleCount:   4.
+    Image: test.exe
+
+0: kd> bc 0
+bc 0
+0: kd> bl
+bl
+
+0: kd> bp /p ffffa985d4d840c0 ntdll!LdrInitializeThunk
+bp /p ffffa985d4d840c0 ntdll!LdrInitializeThunk
+0: kd> bl
+bl
+     0 e Disable Clear  00007ff8`8b2e1420     0001 (0001) ntdll!LdrInitializeThunk
+     Match process data ffffa985`d4d840c0
+
+0: kd> g
+g
+Breakpoint 0 hit
+ntdll!LdrInitializeThunk:
+0033:00007ff8`8b2e1420 4053            push    rbx
+1: kd> .echo ==== STOP1 LdrInitializeThunk
+.echo ==== STOP1 LdrInitializeThunk
+==== STOP1 LdrInitializeThunk
+1: kd> .time
+.time
+Debug session time: Sun Oct 25 03:36:11.648 2026 (UTC + 9:00)
+System Uptime: 0 days 0:08:05.066
+1: kd> !process -1 0
+!process -1 0
+PROCESS ffffa985d4d840c0
+    SessionId: none  Cid: 0890    Peb: 53fd452000  ParentCid: 17c0
+    DirBase: 1af59f000  ObjectTable: ffffce040bd36580  HandleCount:   4.
+    Image: test.exe
+
+1: kd> !thread -1 0
+!thread -1 0
+THREAD ffffa985d5cd80c0  Cid 0890.255c  Teb: 00000053fd453000 Win32Thread: 0000000000000000 RUNNING on processor 1
+1: kd> ? @$proc
+? @$proc
+Evaluate expression: -95082710024000 = ffffa985`d4d840c0
+1: kd> ? @$thread
+? @$thread
+Evaluate expression: -95082693951296 = ffffa985`d5cd80c0
+1: kd> ? @$teb
+? @$teb
+Evaluate expression: 360731455488 = 00000053`fd453000
+1: kd> ? @$peb
+? @$peb
+Evaluate expression: 360731451392 = 00000053`fd452000
+1: kd> k 5
+k 5
+ # Child-SP          RetAddr               Call Site
+00 00000053`fd6ff518 00000000`00000000     ntdll!LdrInitializeThunk
+1: kd> r
+r
+rax=0000000000000000 rbx=0000000000000000 rcx=00000053fd6ff540
+rdx=00007ff88b200000 rsi=0000000000000000 rdi=0000000000000000
+rip=00007ff88b2e1420 rsp=00000053fd6ff518 rbp=0000000000000000
+ r8=0000000000000000  r9=0000000000000000 r10=0000000000000000
+r11=0000000000000000 r12=0000000000000000 r13=0000000000000000
+r14=0000000000000000 r15=0000000000000000
+iopl=0         nv up ei pl nz na po nc
+cs=0033  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000202
+ntdll!LdrInitializeThunk:
+0033:00007ff8`8b2e1420 4053            push    rbx
+1: kd> r cr3
+r cr3
+cr3=00000001af59f000
+1: kd> .echo ==== STOP1 MODULES
+.echo ==== STOP1 MODULES
+==== STOP1 MODULES
+1: kd> lm m ntdll
+lm m ntdll
+Browse full module list
+start             end                 module name
+00007ff8`8b200000 00007ff8`8b467000   ntdll      (pdb symbols)          c:\symbols\ntdll.pdb\C3093720177DA6851519DCFFE8DF53FE1\ntdll.pdb
+
+Unable to enumerate user-mode unloaded modules, Win32 error 0n30
+1: kd> lm m test
+lm m test
+Browse full module list
+start             end                 module name
+
+Unable to enumerate user-mode unloaded modules, Win32 error 0n30
+1: kd> ? ntdll!LdrInitializeThunk - ntdll
+? ntdll!LdrInitializeThunk - ntdll
+Evaluate expression: 922656 = 00000000`000e1420
+1: kd> db ntdll!LdrInitializeThunk L10
+db ntdll!LdrInitializeThunk L10
+00007ff8`8b2e1420  40 53 48 83 ec 20 48 8b-d9 e8 1a 00 00 00 b2 01  @SH.. H.........
+1: kd> .echo ==== STOP1 FIELDS
+.echo ==== STOP1 FIELDS
+==== STOP1 FIELDS
+1: kd> dt nt!_EPROCESS @$proc UniqueProcessId Peb ImageFileName SectionBaseAddress
+dt nt!_EPROCESS @$proc UniqueProcessId Peb ImageFileName SectionBaseAddress
+   +0x1d0 UniqueProcessId    : 0x00000000`00000890 Void
+   +0x2b0 SectionBaseAddress : 0x00007ff7`cd3c0000 Void
+   +0x2e0 Peb                : 0x00000053`fd452000 _PEB
+   +0x338 ImageFileName      : [15]  "test.exe"
+1: kd> dt nt!_PEB @$peb ImageBaseAddress Ldr ProcessHeap ProcessParameters
+dt nt!_PEB @$peb ImageBaseAddress Ldr ProcessHeap ProcessParameters
+   +0x010 ImageBaseAddress  : 0x00007ff7`cd3c0000 Void
+   +0x018 Ldr               : (null) 
+   +0x020 ProcessParameters : 0x000001f8`b05c0000 _RTL_USER_PROCESS_PARAMETERS
+   +0x030 ProcessHeap       : (null) 
+1: kd> dt nt!_CONTEXT @rcx ContextFlags Rip Rsp Rcx
+dt nt!_CONTEXT @rcx ContextFlags Rip Rsp Rcx
+   +0x030 ContextFlags : 0x10001b
+   +0x080 Rcx          : 0x00007ff7`cd3c1d40
+   +0x098 Rsp          : 0x00000053`fd6ffa48
+   +0x0f8 Rip          : 0x00007ff8`8b2acac0
+1: kd> dq @$peb L4
+dq @$peb L4
+00000053`fd452000  00000000`04000000 ffffffff`ffffffff
+00000053`fd452010  00007ff7`cd3c0000 00000000`00000000
+1: kd> .echo ==== STOP1 VTOP
+.echo ==== STOP1 VTOP
+==== STOP1 VTOP
+1: kd> !vtop 0 @$peb
+!vtop 0 @$peb
+usage: vtop PFNOfPDE VA
+1: kd> !vtop 0 ntdll!LdrInitializeThunk
+!vtop 0 ntdll!LdrInitializeThunk
+usage: vtop PFNOfPDE VA
+1: kd> .echo ==== STOP1 DONE
+.echo ==== STOP1 DONE
+==== STOP1 DONE
+ A B C D E F G H I J K L M N O P Q R S T U V W X Y Z All
+
+. commands:
+   .allow_bp_ba_convert [0|1] - Control bp/bm/bu breakpoints to use hardware debug register support
+   .allow_exec_cmds [0|1] - control execution commands
+   .allow_image_mapping [0|1] - control on-demand image file mapping
+   .apply_dbp [<options>] - add current data breakpoint state to a
+                            register context
+   .asm [<options>] - set disassembly options
+   .asm- [<options>] - clear disassembly options
+   .attach <proc> - attach to <proc> at next execution
+   .block { <commands> } - brackets a set of commands for nested execution
+   .break - break out of the enclosing loop
+   .bugcheck - display the bugcheck code and parameters for a crashed system
+   .cache [<options>] - virtual memory cache control
+   .catch { <commands> } - catch failures in commands
+   .chain - list current extensions
+   .clients - list currently active clients
+   .codearch <address> - determine the architecture of code at the given address
+   .context [<address>] - set page directory base
+   .continue - continue the enclosing loop
+   .copysym [<options>] <path> - copy current symbol files to a directory
+   .cordll [<options>] - control CLR debug DLL
+   .crash - cause target to bugcheck
+   .create <command line> - create a new process
+   .createdir [<options>] [<path>] - control process creation options
+   .cxr <address> - dump context record at specified address
+                    k* after this gives cxr stack
+   .dbgdbg - attach a debugger to the current debugger
+   .debug_sw_wow [0|1] - allow interaction with software WOW emulation
+   .detach - detach from the current process/dump
+   .dml_file <file> - output DML content from file
+   .dml_flow <start> <addr> - show basic block code flow
+   .dml_start [<options>] - navigable overview of debugger activities
+   .do { <commands> } (<cond>) - execute <commands> until <cond> is zero
+   .drivers - This command was removed -- use 'lm' or .reload -l)
+   .dump [<options>] <filename> - create a dump file on the host system
+   .echo ["<string>"|<string>] - echo string
+   .echocpunum [0|1] - toggle DbgPrint processor number output
+   .echotime - output debugger time
+   .echotimestamps [0|1] - toggle timestamp output on events
+   .ecxr - dump context record for current exception
+   .excr - dump context record for current exception
+   .effmach [<machine>] - change current machine type
+   .else { <commands> } - if/then/else conditional execution
+   .elsif (<cond>) { <commands> } [<else clauses>] - if/then/else conditional
+                                                     execution
+   .enable_long_status [0|1] - dump LONG types in default base
+   .enable_unicode [0|1] - dump USHORT array/pointers and unicode strings
+   .endsrv <id> - disable the given engine server
+   .endpsrv - cause the current session's remote server to exit
+   .enumtag - enumerate available tagged data
+   .event_code - display cached event instructions
+   .eventlog - display log of recent events
+   .events - display and select available events
+   .eventstr - display any event strings registered by debuggee
+   .exepath [<dir>[;...]] - set executable search path
+   .exepath+ [<dir>[;...]] - append executable search path
+   .expr - control expression evaluator
+   .exptr <address> - do .exr and .cxr for EXCEPTION_POINTERS
+   .exr <address> - dump exception record at specified address
+   .extmatch [<opts>] <pattern> - display all extensions matching pattern
+   .extpath <opts> [<dir>[;...]] - set extension search path
+   .extpath+ <opts> [<dir>[;...]] - append extension search path
+   .f+ - set current stack frame to caller of current frame
+   .f- - set current stack frame to callee of current frame
+   .fiber <address> - sets context of fiber at address
+                      resets context if no address specified
+   .fiximports <pattern> - attempts to link imports for images
+   .fnent <address> - dump function entry for the given code address
+   .fnret <fnaddr> [<retval>] - display formatted return value
+   .for ( <init> ; <cond> ; <step> ) { <commands> } - execute <commands> and
+                                                      <step> until <cond> is
+                                                      zero
+   .force_chpe_effmach [0|1] - force CHPE locals to be relative to the effective machine
+   .force_radix_output [0|1] - dump integer types in default base
+   .force_system_init [<options>] - force pending systems to initialize if possible
+   .force_tb - forcibly allow branch tracing
+   .foreach [opts] ( <alias> { <tcmds> } ) { <ecmds> } - execute <ecmds> for
+                                                         each token in the
+                                                         output of <tcmds>
+   .fpo <options> - control override FPO information
+   .frame [<frame>] - set current stack frame for locals
+   .formats <expr> - displays expression result in many formats
+   .help [<options>] - display this help
+   .holdmem <options> [range] - hold and compare memory data
+   .if (<cond>) { <commands> } [<else clauses>] - if/then/else conditional
+                                                  execution
+   .ignore_missing_pages [0|1] - control kernel summary dump missing
+                                 page error message
+   .ignore_wow_kd_context [0|1] - control WOW64 kernel debugging partial context error message
+   .imgscan <options> - scan memory for PE images
+   .jdinfo [/u] <jdi_addr> - interpret AeDebug information
+   .kdfiles <file> - control debuggee remote file loading
+   .kdtrans - display current KD transport information
+   .kframes <count> - set default stack trace depth
+   .kill - kill a process on the target
+   .lastevent - display the last event that occurred
+   .leave - exit the enclosing .catch
+   .lines - toggle line symbol loading
+   .load <name> - add this extension DLL to the extension chain
+   .loadby <name> <mod> - add the extension DLL in the module
+                          directory to the extension chain
+   .locale [<locale>] - set the current locale
+   .logfile - display log status
+   .logopen [<file>] - open new log file
+   .logappend [<file>] - append to log file
+   .logclose - close log file
+   .netsyms [0|1] - allow/disallow net symbol paths
+   .netuse [<options>] - manage net connections
+   .noshell - disable shell commands
+   .noversion - disable extension version checking
+   .nvlist - display the set of .NATVIS files loaded into the debugger
+   .nvload <name> - load a .NATVIS file
+   .nvunload <name> - unload a .NATVIS file
+   .nvunloadall - unload all .NATVIS files
+   .ofilter <pattern> - filter debuggee output against the given pattern
+   .opendump <file> - open a dump file
+   .outmask <mask> - set bits in the current output mask
+   .outmask- <mask> - clear bits in the current output mask
+   .pacmask [<options>] - display or override current PAC mask
+   .pagein [<options>] <addr> - attempt to page in data
+   .pcache [<options>] - physical memory cache control
+   .pcmd [<options>] - control per-prompt command
+   .pop [<options>] - pop state
+   .prefer_dml [0|1] - control DML mode default
+   .printf "<format>", <args...> - formatted output
+   .process [<address>] - sets implicit process
+                          resets default if no address specified
+   .prompt_allow [<options>] - control what information can be displayed
+                               at the prompt
+   .push [<options>] - push state
+   .quit_lock [<options>] - locks session against unexpected quit
+   .readmem <file> <range> - read raw memory from a file
+   .reboot - reboot target
+   .record_branches [0|1] - controls recording of processor branching
+   .reload [<image.ext>[=<address>,<size>]] - reload symbols
+   .restart - request a session restart
+   .remote <pipename> - start remote.exe server
+   .secure [0|1] - disallow operations dangerous for the host
+   .scriptdebug [<script name>] - enters the script debugger or starts debugging a script loaded into the debugger
+   .scriptlist - display the set of scripts loaded into the debugger
+   .scriptload <name> - load a script file
+   .scriptproviders - display the set of script providers in the debugger
+   .scriptrun - load a script file and execute its main function
+   .scriptunload <name> - unload a script file
+   .scriptunloadall - unload all script files
+   .send_file <options> - send files to remote server
+   .server <options> - start engine server
+   .servers - list active remoting servers
+   .segmentation <opts> - overrides segmentation mode
+   .setdll <name> - debugger will search for extensions in this DLL first
+   .settings - manage settings
+   .shell [<command>] - execute shell command
+   .show_read_failures [<opts>] - control extra read failure output
+   .show_sym_failures [<opts>] - control extra symbol failure output
+   .sleep <milliseconds> - debugger sleeps for given duration
+                           useful for allowing access to a machine that's
+                           broken in on an ntsd -d
+   .srcfix [<path extra>] - fix source search path
+   .srcfix+ [<path extra>] - append fixed source search path
+   .srcnoisy [0|1] - control verbose source loading output
+   .srcpath [<dir>[;...]] - set source search path
+   .srcpath+ [<dir>[;...]] - append source search path
+   .step_filter [<opts>] ["<pattern>[;<pattern>...]"] - Set symbol patterns
+                                                        to skip when stepping
+   .step_filter+ [<opts>] ["<pattern>[;<pattern>...]"] - Append symbol patterns
+                                                         to skip when stepping
+   .symfix [<localsym>] - fix symbol search path
+   .symfix+ [<localsym>] - append fixed symbol search path
+   .symopt <flags> - set symbol options
+   .symopt+ <flags> - set symbol options
+   .symopt- <flags> - clear symbol options
+   .sympath [<dir>[;...]] - set symbol search path
+   .sympath+ [<dir>[;...]] - append symbol search path
+   .tagmask [<options>] - display or override current pointer tag mask
+   .targetloglevel <level> - sets diagnostic logging level for plug-ins
+   .thread [<address>] - sets context of thread at address
+                         resets default context if no address specified
+   .time - displays session time information
+   .ttime - displays thread time information
+   .tlist - list running processes
+   .trap <address> - dump a trap frame
+   .tss <selector> - dump a Task State Segment
+   .typeopt <flags> - set/clear type options
+   .unload <name> - remove this extension DLL from the list of extension DLLs
+   .unloadall - remove all extension DLLs from the list of extensions DLLs
+   .wake - wake up a .sleep'ing debugger
+   .while (<cond>) { <commands> } - execute <commands> while <cond> is non-zero
+   .writemem <file> <range> - write raw memory to a file
+   .rrestart - register current session for Application Restart
+   .urestart - unregister current session from Application Restart
+   .inline - query the state whether debuggers should query inline functions
+   .stackprovider - query the state whether debugger should query stack dump providers
+   .stkwalk_force_frame_pointer - query or set the state whether debuggers should unwind stack solely based on frame pointer
+   .hideinjectedcode [<on|off|help>] - Hide injected calls from stepping in source mode
+   .enablepackagedebug <packageFullName> - Enable debugging for UWP application.
+   .disablepackagedebug <packageFullName> - Disable debugging for UWP application.
+   .suspendpackage <packageFullName> - Suspends a UWP application.
+   .resumepackage <packageFullName> - Resumes a UWP application.
+   .querypackage <packageFullName> - Displays the state of a UWP application.
+   .querypackages - Lists all UWP applications and their state.
+   .createpackageapp <packageFullName> <appName> [<arguments>] - Enables debugging and launches a UWP application.
+   .terminatepackageapp <packageFullName> - Terminates all processes for UWP application.
+   .activatepackagebgtask <packageFullName> <bgTaskId> - Enables debugging and launches a UWP background task.
+   .symauthcache [<verb> [<param>]] - List, remove, clear symbols negative authenticaion cache.
+   .findext <search string> - Search the help of all extensions in the extension repository.
+   .kdtargetmac - Display the target MAC address
+   .generatedoc <XmlFileName> - Generates an XML documentation file for the registered named models.
+   .lookupxfghash <XFG Hash> [Module] - Looks up an XFG prototype hash from symbols with a given module search pattern (default is all modules with symbols loaded).
+   .extensionnugetfeature [0|1] - control if an EG uses file share or the new Nuget feed). Default is 0.
+   .check_for_gallery_updates - Checks all Nuget or file share extension repositories for updates.
+   .update_ms_nuget_cred_provider [web|artifacts|help] - Updates (if available) Microsoft Nuget Credential Provider.
+
+Use ".hh <command>" to get
+detailed documentation on a command.
+
+1: kd> .echo ==== STOP1 VTOP RETRY
+.echo ==== STOP1 VTOP RETRY
+==== STOP1 VTOP RETRY
+1: kd> !vtop 0 53fd452000
+!vtop 0 53fd452000
+Amd64VtoP: Virt 00000053fd452000, pagedir 00000001af59f000
+Amd64VtoP: PML4E 00000001af59f000
+Amd64VtoP: PDPE 00000001f27b4a78
+Amd64VtoP: PDE 00000001f28b5f50
+Amd64VtoP: PTE 00000001f23b6290
+Amd64VtoP: Mapped phys 00000001f28b7000
+Virtual address 53fd452000 translates to physical address 1f28b7000.
+1: kd> !vtop 0 7ff88b2e1420
+!vtop 0 7ff88b2e1420
+Amd64VtoP: Virt 00007ff88b2e1420, pagedir 00000001af59f000
+Amd64VtoP: PML4E 00000001af59f7f8
+Amd64VtoP: PDPE 00000001f2aabf10
+Amd64VtoP: PDE 00000001f21af2c8
+Amd64VtoP: PTE 00000001f28b0708
+Amd64VtoP: Mapped phys 0000000231733420
+Virtual address 7ff88b2e1420 translates to physical address 231733420.
+1: kd> .echo ==== SNAP START
+.echo ==== SNAP START
+==== SNAP START
+1: kd> .time
+.time
+Debug session time: Sun Oct 25 03:36:11.648 2026 (UTC + 9:00)
+System Uptime: 0 days 0:08:05.066
+1: kd> .echo ==== SNAP END
+.echo ==== SNAP END
+==== SNAP END
+1: kd> .time
+.time
+Debug session time: Sun Oct 25 03:36:11.648 2026 (UTC + 9:00)
+System Uptime: 0 days 0:08:05.066
+1: kd> .echo ==== END
+.echo ==== END
+==== END
+1: kd> bc *
+bc *
+1: kd> bl
+bl
+
+1: kd> .logclose
+.logclose
+Closing open log file C:\logs\01_snapshot-test.txt
+==== HOST NOTES
+host_os: Ubuntu 22.04 (same machine as analysis server)
+vmware: Workstation 17.6.3
+target_vm: bob_baseline_vm  dir /home/mjbin/vmware/bob_baseline_vm/  memory 8192 MB
+debugger_vm: Windows 11 x64  memory 16384 MB
+not_touched: WIN11-26H1-HDAUDIO (other work, powered off during this run)
+ips: target 192.168.100.133  debugger 192.168.100.130
+setup: target already debug Yes but hostip was 192.168.100.133 (target itself) -> S3 bcdedit hostip:192.168.100.130 + new key + reboot. windbg install: already done by user
+kd_ready_snapshot: not taken
+vmrun_list: /home/mjbin/vmware/Windows 11 x64/Windows 11 x64.vmx | /home/mjbin/vmware/bob_baseline_vm/BOB Windows 11 24H2.vmx
+snapshot_name: 01_snapshot-test (vmsd entry snapshot3, uid 4)
+snap_vmem: BOB Windows 11 24H2-Snapshot4.vmem  2668462080  2.5G
+snap_vmsn: BOB Windows 11 24H2-Snapshot4.vmsn  8462336  8.1M
+snapshot_time: see SNAP START/END in log (file mtime 2026-10-25 03:42:33 KST)
+fallback_dump: not used
+copy_time: real 0m1.627s
+server_path: /home/mjbin/prj/bob/teamprj/windows-pe-internals/ms/dump/01_snapshot-test/
+server_ls: BOB Windows 11 24H2-Snapshot4.vmem 2668462080 | BOB Windows 11 24H2-Snapshot4.vmsn 8462336
+debugger_issues: none
+extra: first !vtop with @$peb failed (usage); retried with literal VA, OK

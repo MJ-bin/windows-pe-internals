@@ -1,0 +1,92 @@
+ad /q TOKA
+ad /q VADR
+ad /q LDRF
+.logopen "\\vmware-host\Shared Folders\logs\04_baggage-read_K2.txt"
+.echo "==== K2 00 HEADER"
+.catch { vertarget }
+.catch { !lmi nt }
+.catch { .process /p /r ffff82859908b080 }
+.catch { !process ffff82859908b080 0 }
+.catch { !process 0 0 test.exe }
+.catch { .reload /f ntdll.dll=7ffafb660000,267000 }
+.catch { lm m ntdll }
+.echo "==== K2 01 EPROCESS"
+.catch { dt nt!_EPROCESS ffff82859908b080 }
+.echo "==== K2 01b KPROCESS"
+.catch { dt nt!_KPROCESS ffff82859908b080 }
+.echo "==== K2 01c EPROCESS_RAW"
+.catch { dq ffff82859908b080 L0x108 }
+.echo "==== K2 02 ETHREAD"
+.catch { dt nt!_ETHREAD ffff828598445080 }
+.echo "==== K2 02b KTHREAD"
+.catch { dt nt!_KTHREAD ffff828598445080 }
+.echo "==== K2 02c ETHREAD_RAW"
+.catch { dq ffff828598445080 L0xf3 }
+.echo "==== K2 03 KTRAP_FRAME"
+.catch { dt nt!_KTRAP_FRAME ffffb58b9ad07460 }
+.catch { dq ffffb58b9ad07460 L0x32 }
+.echo "==== K2 03b KTRAP_FRAME_CMD"
+.catch { dt nt!_KTRAP_FRAME ffffb58b99117460 }
+.catch { dq ffffb58b99117460 L0x32 }
+.echo "==== K2 04 HANDLE_TABLE"
+.catch { r $t1 = poi(ffff82859908b080+0x300); ? @$t1; dt nt!_HANDLE_TABLE @$t1; dq @$t1 L0x10 }
+.echo "==== K2 04b HANDLES"
+.catch { !handle 0 3 ffff82859908b080 }
+.echo "==== K2 05 TOKEN"
+.catch { r $t2 = poi(ffff82859908b080+0x248) & 0xfffffffffffffff0; ? @$t2; dt nt!_TOKEN @$t2; dq @$t2 L0xb9 }
+.echo "==== K2 05b TOKEN_EXT"
+.catch { as /x TOKA poi(ffff82859908b080+0x248) & 0xfffffffffffffff0; .block { !token ${TOKA} } }
+.echo "==== K2 06 VAD_ROOT"
+.catch { dt nt!_RTL_AVL_TREE ffff82859908b080+0x558 }
+.echo "==== K2 06b VAD_LIST"
+.catch { as /x VADR poi(ffff82859908b080+0x558); .block { !vad ${VADR} } }
+.echo "==== K2 07 SECTION_CHAIN"
+.catch { r $t3 = poi(ffff82859908b080+0x2a8); ? @$t3; dt nt!_SECTION @$t3; dq @$t3 L8; r $t4 = poi(@$t3+0x28) & 0xfffffffffffffffc; .echo "==== K2 07b CONTROL_AREA"; ? @$t4; dt nt!_CONTROL_AREA @$t4; dq @$t4 L0x10; r $t5 = poi(@$t4); .echo "==== K2 07c SEGMENT"; ? @$t5; dt nt!_SEGMENT @$t5; dq @$t5 L9; r $t6 = poi(@$t5+0x38); .echo "==== K2 07d IMAGE_INFORMATION"; ? @$t6; dt nt!_MI_SECTION_IMAGE_INFORMATION @$t6; dt nt!_SECTION_IMAGE_INFORMATION @$t6; dq @$t6 L0xa }
+.echo "==== K2 08 FILE_OBJECT"
+.catch { r $t7 = poi(ffff82859908b080+0x330); ? @$t7; dt nt!_FILE_OBJECT @$t7; dq @$t7 L0x1b }
+.echo "==== K2 09 PsNtdllExports"
+.catch { dt nt!_PS_NTDLL_EXPORTS nt!PsNtdllExports }
+.catch { dq nt!PsNtdllExports L0x15 }
+.echo "==== K2 10 PEB"
+.catch { dt nt!_PEB 9b2fa66000 }
+.catch { dq 9b2fa66000 L0xfb }
+.echo "==== K2 10b TEB"
+.catch { dt nt!_TEB 9b2fa67000 }
+.catch { dq 9b2fa67000 L0x30f }
+.echo "==== K2 11 PROCESS_PARAMETERS"
+.catch { r $t8 = poi(9b2fa66000+0x20); ? @$t8; dt nt!_RTL_USER_PROCESS_PARAMETERS @$t8; dq @$t8 L0x8a }
+.echo "==== K2 11b ENVIRONMENT"
+.catch { r $t9 = poi(poi(9b2fa66000+0x20)+0x80); ? @$t9; ? poi(poi(9b2fa66000+0x20)+0x3f0); db @$t9 L0x200 }
+.echo "==== K2 12 PEB_LDR_DATA"
+.catch { r $t10 = poi(9b2fa66000+0x18); ? @$t10; .if (@$t10 != 0) { dt nt!_PEB_LDR_DATA @$t10; dq @$t10 L0xb } }
+.echo "==== K2 12b LDR_ENTRIES"
+.catch { .if (poi(9b2fa66000+0x18) != 0) { as /x LDRF poi(poi(9b2fa66000+0x18)+0x10); .block { !list -t nt!_LIST_ENTRY.Flink -m 0x20 -x ".echo ---- ENTRY; ? @$extret; dt nt!_LDR_DATA_TABLE_ENTRY @$extret; dq @$extret L0x27; .echo ---- DDAG; dt nt!_LDR_DDAG_NODE poi(@$extret+0x98); dq poi(@$extret+0x98) L0xa" ${LDRF} } } }
+.echo "==== K2 13 KUSER_SHARED_DATA"
+.catch { dt nt!_KUSER_SHARED_DATA 0x7ffe0000 }
+.catch { dq 0x7ffe0000 L0x150 }
+.echo "==== K2 14 CONTEXT"
+.catch { dt nt!_CONTEXT 9b2fcffa40 }
+.catch { dq 9b2fcffa40 L0x9a }
+.echo "==== K2 15 APISETMAP"
+.catch { r $t11 = poi(9b2fa66000+0x68); ? @$t11; dd @$t11 L0x10; dq @$t11 L8 }
+.echo "==== K2 16 PEB_TEB_POINTERS"
+.catch { .echo "PEB+0x30 ProcessHeap"; r $t12 = poi(9b2fa66000+0x30); ? @$t12; dq @$t12 L0x10 }
+.catch { .echo "PEB+0x78 TlsBitmap"; r $t12 = poi(9b2fa66000+0x78); ? @$t12; dq @$t12 L4 }
+.catch { .echo "PEB+0x90 SharedData"; r $t12 = poi(9b2fa66000+0x90); ? @$t12; dq @$t12 L4 }
+.catch { .echo "PEB+0x2f8 ActivationContextData"; r $t12 = poi(9b2fa66000+0x2f8); ? @$t12; dq @$t12 L4 }
+.catch { .echo "PEB+0x308 SystemDefaultActivationContextData"; r $t12 = poi(9b2fa66000+0x308); ? @$t12; dq @$t12 L4 }
+.catch { .echo "PEB+0x7b8 LeapSecondData"; r $t12 = poi(9b2fa66000+0x7b8); ? @$t12; dq @$t12 L4 }
+.catch { .echo "PEB+0x3a0 WaitOnAddressHashTable (inline 0x400)"; dq 9b2fa66000+0x3a0 L0x80 }
+.catch { .echo "TEB+0x8 StackBase TEB+0x10 StackLimit"; dq 9b2fa67000+0x8 L2 }
+.catch { .echo "TEB+0x1478 DeallocationStack"; dq 9b2fa67000+0x1478 L1 }
+.catch { .echo "TEB+0x58 ThreadLocalStoragePointer"; r $t12 = poi(9b2fa67000+0x58); ? @$t12; dq @$t12 L4 }
+.catch { .echo "TEB+0x2c8 ActivationContextStackPointer"; r $t12 = poi(9b2fa67000+0x2c8); ? @$t12; dq @$t12 L4 }
+.catch { .echo "TEB+0x1850 SchedulerSharedDataSlot"; r $t12 = poi(9b2fa67000+0x1850); ? @$t12; dq @$t12 L8 }
+.echo "==== K2 17a NTDLL_DATA"
+.catch { dq 7ffafb82c000 L0x11eb }
+.echo "==== K2 17b NTDLL_MRDATA"
+.catch { dq 7ffafb847000 L0x6b7 }
+.echo "==== K2 17c NTDLL_00CFG"
+.catch { dq 7ffafb846000 L5 }
+.echo "==== K2 99 END"
+.logclose

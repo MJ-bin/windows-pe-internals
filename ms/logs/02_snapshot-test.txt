@@ -1,0 +1,279 @@
+Opened log file 'C:\logs\02_snapshot-test.txt'
+0: kd> .echo ==== STEP1 SETUP
+.echo ==== STEP1 SETUP
+==== STEP1 SETUP
+0: kd> .sympath 
+.sympath 
+Symbol search path is: srv*C:\symbols*https://msdl.microsoft.com/download/symbols
+Expanded Symbol search path is: srv*c:\symbols*https://msdl.microsoft.com/download/symbols
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*C:\symbols*https://msdl.microsoft.com/download/symbols
+0: kd> .reload
+.reload
+Connected to Windows 10 26100 x64 target at (Sun Oct 25 18:05:37.718 2026 (UTC + 9:00)), ptr64 TRUE
+Loading Kernel Symbols
+...............................................................
+................................................................
+...........................................................
+Loading User Symbols
+
+Loading unloaded module list
+.........
+
+************* Symbol Loading Error Summary **************
+Module name            Error
+SharedUserData         No error - symbol load deferred
+
+You can troubleshoot most symbol related issues by turning on symbol loading diagnostics (!sym noisy) and repeating the command that caused symbols to be loaded.
+You should also verify that your symbol search path (.sympath) is correct.
+0: kd> !lmi nt
+!lmi nt
+Loaded Module Info: [nt] 
+         Module: ntkrnlmp
+   Base Address: fffff802c6600000
+     Image Name: ntkrnlmp.exe
+   Machine Type: 34404 (X64)
+     Time Stamp: fda9ed74 (This is a reproducible build file hash, not a true timestamp)
+           Size: 1450000
+       CheckSum: c817d5
+Characteristics: 22  
+Debug Data Dirs: Type  Size     VA  Pointer
+             CODEVIEW    25, 5b130,   5b130 RSDS - GUID: {C29EBFB0-6B78-B3C0-20DC-A66D99713F9E}
+               Age: 1, Pdb: ntkrnlmp.pdb
+                 POGO   94c, 5b158,   5b158 [Data not mapped]
+                REPRO    24, 5baf8,   5baf8 Reproducible build
+           DLLCHAR_EX     4, 5bb1c,   5bb1c Extended DLL characteristics: 00000081
+                                                 CET compatible
+                                                 (Unknown)
+     Image Type: MEMORY   - Image read successfully from loaded memory.
+    Symbol Type: PDB      - Symbols loaded successfully from symbol server.
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+    Load Report: public symbols , not source indexed 
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+0: kd> bc *
+bc *
+0: kd> bl
+bl
+
+0: kd> !process 0 0 cmd.exe
+!process 0 0 cmd.exe
+PROCESS ffffe78aae30e080
+    SessionId: none  Cid: 0a8c    Peb: f77c524000  ParentCid: 135c
+    DirBase: 1a0377000  ObjectTable: ffffd686a8229340  HandleCount:  91.
+    Image: cmd.exe
+
+0: kd> ? 0n2700
+? 0n2700
+Evaluate expression: 2700 = 00000000`00000a8c
+0: kd> bp /p ffffe78aae30e080 nt!PspCallProcessNotifyRoutines
+bp /p ffffe78aae30e080 nt!PspCallProcessNotifyRoutines
+0: kd> bl
+bl
+     0 e Disable Clear  fffff802`c6fb1ca8     0001 (0001) nt!PspCallProcessNotifyRoutines
+     Match process data ffffe78a`ae30e080
+
+0: kd> g
+g
+Breakpoint 0 hit
+nt!PspCallProcessNotifyRoutines:
+fffff802`c6fb1ca8 48895c2410      mov     qword ptr [rsp+10h],rbx
+0: kd> .echo ==== STEP3 NAMES
+.echo ==== STEP3 NAMES
+==== STEP3 NAMES
+0: kd> .reload /user
+.reload /user
+Loading User Symbols
+............
+
+************* Symbol Loading Error Summary **************
+Module name            Error
+SharedUserData         No error - symbol load deferred
+
+You can troubleshoot most symbol related issues by turning on symbol loading diagnostics (!sym noisy) and repeating the command that caused symbols to be loaded.
+You should also verify that your symbol search path (.sympath) is correct.
+0: kd> x nt!PspCallProcessNotifyRoutines
+x nt!PspCallProcessNotifyRoutines
+fffff802`c6fb1ca8 nt!PspCallProcessNotifyRoutines (PspCallProcessNotifyRoutines)
+0: kd> x ntdll!LdrInitializeThunk
+x ntdll!LdrInitializeThunk
+00007ffe`967a1420 ntdll!LdrInitializeThunk (LdrInitializeThunk)
+0: kd> lm m ntdll
+lm m ntdll
+Browse full module list
+start             end                 module name
+00007ffe`966c0000 00007ffe`96927000   ntdll      (pdb symbols)          c:\symbols\ntdll.pdb\C3093720177DA6851519DCFFE8DF53FE1\ntdll.pdb
+0: kd> ? ntdll!LdrInitializeThunk - ntdll
+? ntdll!LdrInitializeThunk - ntdll
+Evaluate expression: 922656 = 00000000`000e1420
+0: kd> .echo ==== STEP4 TEST
+.echo ==== STEP4 TEST
+==== STEP4 TEST
+0: kd> !process 0 0 test.exe
+!process 0 0 test.exe
+PROCESS ffffe78aafee7080
+    SessionId: none  Cid: 0a58    Peb: f392a35000  ParentCid: 0a8c
+    DirBase: 1aa57b000  ObjectTable: ffffd686a88622c0  HandleCount:   4.
+    Image: test.exe
+
+0: kd> bc 0
+bc 0
+0: kd> bl
+bl
+
+0: kd> bp /p ffffe78aafee7080 ntdll!LdrInitializeThunk
+bp /p ffffe78aafee7080 ntdll!LdrInitializeThunk
+0: kd> bl
+bl
+     0 e Disable Clear  00007ffe`967a1420     0001 (0001) ntdll!LdrInitializeThunk
+     Match process data ffffe78a`afee7080
+
+0: kd> g
+g
+Breakpoint 0 hit
+ntdll!LdrInitializeThunk:
+0033:00007ffe`967a1420 4053            push    rbx
+0: kd> .echo ==== STOP1 LdrInitializeThunk
+.echo ==== STOP1 LdrInitializeThunk
+==== STOP1 LdrInitializeThunk
+0: kd> !process -1 0
+!process -1 0
+PROCESS ffffe78aafee7080
+    SessionId: none  Cid: 0a58    Peb: f392a35000  ParentCid: 0a8c
+    DirBase: 1aa57b000  ObjectTable: ffffd686a88622c0  HandleCount:   4.
+    Image: test.exe
+
+0: kd> !thread -1 0
+!thread -1 0
+THREAD ffffe78aafee6080  Cid 0a58.1174  Teb: 000000f392a36000 Win32Thread: 0000000000000000 RUNNING on processor 0
+0: kd> ? @$proc
+? @$proc
+Evaluate expression: -26892133568384 = ffffe78a`afee7080
+0: kd> ? @$thread
+? @$thread
+Evaluate expression: -26892133572480 = ffffe78a`afee6080
+0: kd> ? @$teb
+? @$teb
+Evaluate expression: 1046137233408 = 000000f3`92a36000
+0: kd> ? @$peb
+? @$peb
+Evaluate expression: 1046137229312 = 000000f3`92a35000
+0: kd> k 5
+k 5
+ # Child-SP          RetAddr               Call Site
+00 000000f3`92cff358 00000000`00000000     ntdll!LdrInitializeThunk
+0: kd> r
+r
+rax=0000000000000000 rbx=0000000000000000 rcx=000000f392cff380
+rdx=00007ffe966c0000 rsi=0000000000000000 rdi=0000000000000000
+rip=00007ffe967a1420 rsp=000000f392cff358 rbp=0000000000000000
+ r8=0000000000000000  r9=0000000000000000 r10=0000000000000000
+r11=0000000000000000 r12=0000000000000000 r13=0000000000000000
+r14=0000000000000000 r15=0000000000000000
+iopl=0         nv up ei pl nz na po nc
+cs=0033  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000202
+ntdll!LdrInitializeThunk:
+0033:00007ffe`967a1420 4053            push    rbx
+0: kd> r cr3
+r cr3
+cr3=00000001aa57b000
+0: kd> .echo ==== STOP1 MODULES
+.echo ==== STOP1 MODULES
+==== STOP1 MODULES
+0: kd> lm m ntdll
+lm m ntdll
+Browse full module list
+start             end                 module name
+00007ffe`966c0000 00007ffe`96927000   ntdll      (pdb symbols)          c:\symbols\ntdll.pdb\C3093720177DA6851519DCFFE8DF53FE1\ntdll.pdb
+
+Unable to enumerate user-mode unloaded modules, Win32 error 0n30
+0: kd> lm m test
+lm m test
+Browse full module list
+start             end                 module name
+
+Unable to enumerate user-mode unloaded modules, Win32 error 0n30
+0: kd> ? ntdll!LdrInitializeThunk - ntdll
+? ntdll!LdrInitializeThunk - ntdll
+Evaluate expression: 922656 = 00000000`000e1420
+0: kd> db ntdll!LdrInitializeThunk L10
+db ntdll!LdrInitializeThunk L10
+00007ffe`967a1420  40 53 48 83 ec 20 48 8b-d9 e8 1a 00 00 00 b2 01  @SH.. H.........
+0: kd> .echo ==== STOP1 FIELDS
+.echo ==== STOP1 FIELDS
+==== STOP1 FIELDS
+0: kd> dt nt!_EPROCESS @$proc UniqueProcessId Peb ImageFileName SectionBaseAddress
+dt nt!_EPROCESS @$proc UniqueProcessId Peb ImageFileName SectionBaseAddress
+   +0x1d0 UniqueProcessId    : 0x00000000`00000a58 Void
+   +0x2b0 SectionBaseAddress : 0x00007ff7`41250000 Void
+   +0x2e0 Peb                : 0x000000f3`92a35000 _PEB
+   +0x338 ImageFileName      : [15]  "test.exe"
+0: kd> dt nt!_PEB @$peb ImageBaseAddress Ldr ProcessHeap ProcessParameters
+dt nt!_PEB @$peb ImageBaseAddress Ldr ProcessHeap ProcessParameters
+   +0x010 ImageBaseAddress  : 0x00007ff7`41250000 Void
+   +0x018 Ldr               : (null) 
+   +0x020 ProcessParameters : 0x000001f6`053d0000 _RTL_USER_PROCESS_PARAMETERS
+   +0x030 ProcessHeap       : (null) 
+0: kd> dt nt!_CONTEXT @rcx ContextFlags Rip Rsp Rcx
+dt nt!_CONTEXT @rcx ContextFlags Rip Rsp Rcx
+   +0x030 ContextFlags : 0x10001b
+   +0x080 Rcx          : 0x00007ff7`41251d40
+   +0x098 Rsp          : 0x000000f3`92cff888
+   +0x0f8 Rip          : 0x00007ffe`9676cac0
+0: kd> dq @$peb L4
+dq @$peb L4
+000000f3`92a35000  00000000`04000000 ffffffff`ffffffff
+000000f3`92a35010  00007ff7`41250000 00000000`00000000
+0: kd> .echo ==== STOP1 VTOP
+.echo ==== STOP1 VTOP
+==== STOP1 VTOP
+0: kd> !vtop 0 f392a35000
+!vtop 0 f392a35000
+Amd64VtoP: Virt 000000f392a35000, pagedir 00000001aa57b000
+Amd64VtoP: PML4E 00000001aa57b008
+Amd64VtoP: PDPE 00000001d0c68e70
+Amd64VtoP: PDE 00000001d42694a8
+Amd64VtoP: PTE 00000001a896a1a8
+Amd64VtoP: Mapped phys 00000001d0f6b000
+Virtual address f392a35000 translates to physical address 1d0f6b000.
+0: kd> !vtop 0 7ffe967a1420
+!vtop 0 7ffe967a1420
+Amd64VtoP: Virt 00007ffe967a1420, pagedir 00000001aa57b000
+Amd64VtoP: PML4E 00000001aa57b7f8
+Amd64VtoP: PDPE 00000001d4260fd0
+Amd64VtoP: PDE 0000000184063598
+Amd64VtoP: PTE 00000001a5f64d08
+Amd64VtoP: Mapped phys 0000000234772420
+Virtual address 7ffe967a1420 translates to physical address 234772420.
+0: kd> .echo ==== STOP1 DONE
+.echo ==== STOP1 DONE
+==== STOP1 DONE
+0: kd> .echo ==== END
+.echo ==== END
+==== END
+0: kd> bc *
+bc *
+0: kd> bl
+bl
+
+0: kd> .logclose
+.logclose
+Closing open log file C:\logs\02_snapshot-test.txt
+
+==== HOST NOTES
+(filled by orchestrator from server-side commands; not debugger output)
+target_vm: bob_baseline_vm (vTPM removed, decrypted 2026-10-25; backup /home/mjbin/vmware/bob_baseline_vm.bak-20261025/)  memory 8192 MB
+ips: target 192.168.100.133  debugger 192.168.100.130 (VMware DHCP leases 2026-10-25 08:54 UTC)
+snapshot_name: 02_snapshot-test (vmsd snapshot0, uid 5, file BOB Windows 11 24H2-Snapshot5.vmsn)
+snap_time: server date before user pressed (upper bound) 18:11:00.345 / user said done 18:13:13.454 KST
+snap_time_vmware_log: TakeSnapshot start 09:11:44.365Z (18:11:44 KST), lazy=1; "Initiated lazy snapshot" 09:11:44.591Z; "End lazy IO (2097152 done, sync = 0, error = 0)" 09:18:52.759Z; "Done with snapshot" 09:18:52.772Z
+lazy_note: memory written in background (lazy). Debugger was released (bc *, g) at ~18:15 before lazy IO finished; write sped up after g. Snapshot content is the 18:11:44 state (VMware lazy checkpoint) - offline values below match live values.
+snap_vmsn: BOB Windows 11 24H2-Snapshot5.vmsn  6485002  magic d3 be d3 be (not encrypted)
+snap_vmem: BOB Windows 11 24H2-Snapshot5.vmem  8589934592  du 4.4G
+copy_time: real 0m3.210s (cp --sparse=always to ms/dump/02_snapshot-test/)
+vmss2core: vmss2core -W8 "BOB Windows 11 24H2-Snapshot5.vmsn" "BOB Windows 11 24H2-Snapshot5.vmem"  -> "Finished writing core."  time real 0m25.934s
+dmp: memory.dmp  8589942784 (du 4.5G)  header "PAGEDU64", build 0x65f4 = 26100; git check-ignore OK (.gitignore:20 ms/dump/*)
+dmp_to_debugger: shared folder "dump" (read-only, host /home/mjbin/prj/bob/teamprj/windows-pe-internals/ms/dump) on Windows 11 x64 only; copy to C:\dump\02_memory.dmp 8589942784
+debugger_issues: none during live. Offline: "Unable to get program counter" / "CS descriptor lookup failed"; dump CPU context = debugger stub loop (kdcom!WaitForRxPacket), not LdrInitializeThunk. "PEB is paged out (Peb.Ldr = ...)" shown but PEB read fine (Ldr is null at this point).
+not_touched: WIN11-26H1-HDAUDIO

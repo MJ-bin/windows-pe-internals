@@ -1,0 +1,318 @@
+Opened log file '\\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt'
+0: kd> .echo ==== OFF <K1>
+.echo ==== OFF <K1>
+==== OFF <K1>
+0: kd> !lmi nt
+!lmi nt
+Unable to get program counter
+Loaded Module Info: [nt] 
+         Module: ntkrnlmp
+   Base Address: fffff805b2c00000
+     Image Name: ntkrnlmp.exe
+   Machine Type: 34404 (X64)
+     Time Stamp: fda9ed74 (This is a reproducible build file hash, not a true timestamp)
+           Size: 1450000
+       CheckSum: c817d5
+Characteristics: 22  
+Debug Data Dirs: Type  Size     VA  Pointer
+             CODEVIEW    25, 5b130,   5b130 RSDS - GUID: {C29EBFB0-6B78-B3C0-20DC-A66D99713F9E}
+               Age: 1, Pdb: ntkrnlmp.pdb
+                 POGO   94c, 5b158,   5b158 [Data not mapped]
+                REPRO    24, 5baf8,   5baf8 Reproducible build
+           DLLCHAR_EX     4, 5bb1c,   5bb1c Extended DLL characteristics: 00000081
+                                                 CET compatible
+                                                 (Unknown)
+     Image Type: FILE     - Image read successfully from debugger.
+                 C:\symbols\ntkrnlmp.exe\FDA9ED741450000\ntkrnlmp.exe
+    Symbol Type: PDB      - Symbols loaded successfully from symbol server.
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+    Load Report: public symbols , not source indexed 
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+0: kd> !process 0 0 test.exe
+!process 0 0 test.exe
+Unable to get program counter
+0: kd> .logclose
+.logclose
+Closing open log file \\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt
+Opened log file '\\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt'
+0: kd> .echo ==== OFF <K2>
+.echo ==== OFF <K2>
+==== OFF <K2>
+0: kd> !lmi nt
+!lmi nt
+Unable to get program counter
+Loaded Module Info: [nt] 
+         Module: ntkrnlmp
+   Base Address: fffff805b2c00000
+     Image Name: ntkrnlmp.exe
+   Machine Type: 34404 (X64)
+     Time Stamp: fda9ed74 (This is a reproducible build file hash, not a true timestamp)
+           Size: 1450000
+       CheckSum: c817d5
+Characteristics: 22  
+Debug Data Dirs: Type  Size     VA  Pointer
+             CODEVIEW    25, 5b130,   5b130 RSDS - GUID: {C29EBFB0-6B78-B3C0-20DC-A66D99713F9E}
+               Age: 1, Pdb: ntkrnlmp.pdb
+                 POGO   94c, 5b158,   5b158 [Data not mapped]
+                REPRO    24, 5baf8,   5baf8 Reproducible build
+           DLLCHAR_EX     4, 5bb1c,   5bb1c Extended DLL characteristics: 00000081
+                                                 CET compatible
+                                                 (Unknown)
+     Image Type: FILE     - Image read successfully from debugger.
+                 C:\symbols\ntkrnlmp.exe\FDA9ED741450000\ntkrnlmp.exe
+    Symbol Type: PDB      - Symbols loaded successfully from symbol server.
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+    Load Report: public symbols , not source indexed 
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+0: kd> !process 0 0 test.exe
+!process 0 0 test.exe
+Unable to get program counter
+0: kd> .logclose
+.logclose
+Closing open log file \\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt
+Opened log file '\\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt'
+0: kd> .echo ==== OFF <K3>
+.echo ==== OFF <K3>
+==== OFF <K3>
+0: kd> !lmi nt
+!lmi nt
+Unable to get program counter
+Loaded Module Info: [nt] 
+         Module: ntkrnlmp
+   Base Address: fffff805b2c00000
+     Image Name: ntkrnlmp.exe
+   Machine Type: 34404 (X64)
+     Time Stamp: fda9ed74 (This is a reproducible build file hash, not a true timestamp)
+           Size: 1450000
+       CheckSum: c817d5
+Characteristics: 22  
+Debug Data Dirs: Type  Size     VA  Pointer
+             CODEVIEW    25, 5b130,   5b130 RSDS - GUID: {C29EBFB0-6B78-B3C0-20DC-A66D99713F9E}
+               Age: 1, Pdb: ntkrnlmp.pdb
+                 POGO   94c, 5b158,   5b158 [Data not mapped]
+                REPRO    24, 5baf8,   5baf8 Reproducible build
+           DLLCHAR_EX     4, 5bb1c,   5bb1c Extended DLL characteristics: 00000081
+                                                 CET compatible
+                                                 (Unknown)
+     Image Type: FILE     - Image read successfully from debugger.
+                 C:\symbols\ntkrnlmp.exe\FDA9ED741450000\ntkrnlmp.exe
+    Symbol Type: PDB      - Symbols loaded successfully from symbol server.
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+    Load Report: public symbols , not source indexed 
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+0: kd> !process 0 0 test.exe
+!process 0 0 test.exe
+Unable to get program counter
+PROCESS ffff82859908b080
+    SessionId: none  Cid: 1dd0    Peb: 9b2fa66000  ParentCid: 19a8
+    DirBase: 192c2e000  ObjectTable: ffffb689ad372500  HandleCount:   4.
+    Image: test.exe
+
+0: kd> .logclose
+.logclose
+Closing open log file \\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt
+Opened log file '\\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt'
+0: kd> .echo ==== OFF <P0>
+.echo ==== OFF <P0>
+==== OFF <P0>
+0: kd> !lmi nt
+!lmi nt
+Unable to get program counter
+Loaded Module Info: [nt] 
+         Module: ntkrnlmp
+   Base Address: fffff805b2c00000
+     Image Name: ntkrnlmp.exe
+   Machine Type: 34404 (X64)
+     Time Stamp: fda9ed74 (This is a reproducible build file hash, not a true timestamp)
+           Size: 1450000
+       CheckSum: c817d5
+Characteristics: 22  
+Debug Data Dirs: Type  Size     VA  Pointer
+             CODEVIEW    25, 5b130,   5b130 RSDS - GUID: {C29EBFB0-6B78-B3C0-20DC-A66D99713F9E}
+               Age: 1, Pdb: ntkrnlmp.pdb
+                 POGO   94c, 5b158,   5b158 [Data not mapped]
+                REPRO    24, 5baf8,   5baf8 Reproducible build
+           DLLCHAR_EX     4, 5bb1c,   5bb1c Extended DLL characteristics: 00000081
+                                                 CET compatible
+                                                 (Unknown)
+     Image Type: FILE     - Image read successfully from debugger.
+                 C:\symbols\ntkrnlmp.exe\FDA9ED741450000\ntkrnlmp.exe
+    Symbol Type: PDB      - Symbols loaded successfully from symbol server.
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+    Load Report: public symbols , not source indexed 
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+0: kd> !process 0 0 test.exe
+!process 0 0 test.exe
+Unable to get program counter
+PROCESS ffff82859908b080
+    SessionId: none  Cid: 1dd0    Peb: 9b2fa66000  ParentCid: 19a8
+    DirBase: 192c2e000  ObjectTable: ffffb689ad372500  HandleCount:   4.
+    Image: test.exe
+
+0: kd> .logclose
+.logclose
+Closing open log file \\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt
+Opened log file '\\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt'
+0: kd> .echo ==== OFF <P1>
+.echo ==== OFF <P1>
+==== OFF <P1>
+0: kd> !lmi nt
+!lmi nt
+Unable to get program counter
+Loaded Module Info: [nt] 
+         Module: ntkrnlmp
+   Base Address: fffff805b2c00000
+     Image Name: ntkrnlmp.exe
+   Machine Type: 34404 (X64)
+     Time Stamp: fda9ed74 (This is a reproducible build file hash, not a true timestamp)
+           Size: 1450000
+       CheckSum: c817d5
+Characteristics: 22  
+Debug Data Dirs: Type  Size     VA  Pointer
+             CODEVIEW    25, 5b130,   5b130 RSDS - GUID: {C29EBFB0-6B78-B3C0-20DC-A66D99713F9E}
+               Age: 1, Pdb: ntkrnlmp.pdb
+                 POGO   94c, 5b158,   5b158 [Data not mapped]
+                REPRO    24, 5baf8,   5baf8 Reproducible build
+           DLLCHAR_EX     4, 5bb1c,   5bb1c Extended DLL characteristics: 00000081
+                                                 CET compatible
+                                                 (Unknown)
+     Image Type: FILE     - Image read successfully from debugger.
+                 C:\symbols\ntkrnlmp.exe\FDA9ED741450000\ntkrnlmp.exe
+    Symbol Type: PDB      - Symbols loaded successfully from symbol server.
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+    Load Report: public symbols , not source indexed 
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+0: kd> !process 0 0 test.exe
+!process 0 0 test.exe
+Unable to get program counter
+PROCESS ffff82859908b080
+    SessionId: none  Cid: 1dd0    Peb: 9b2fa66000  ParentCid: 19a8
+    DirBase: 192c2e000  ObjectTable: ffffb689ad372500  HandleCount:   4.
+    Image: test.exe
+
+0: kd> .logclose
+.logclose
+Closing open log file \\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt
+Opened log file '\\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt'
+0: kd> .echo ==== OFF <P1a>
+.echo ==== OFF <P1a>
+==== OFF <P1a>
+0: kd> !lmi nt
+!lmi nt
+Unable to get program counter
+Loaded Module Info: [nt] 
+         Module: ntkrnlmp
+   Base Address: fffff805b2c00000
+     Image Name: ntkrnlmp.exe
+   Machine Type: 34404 (X64)
+     Time Stamp: fda9ed74 (This is a reproducible build file hash, not a true timestamp)
+           Size: 1450000
+       CheckSum: c817d5
+Characteristics: 22  
+Debug Data Dirs: Type  Size     VA  Pointer
+             CODEVIEW    25, 5b130,   5b130 RSDS - GUID: {C29EBFB0-6B78-B3C0-20DC-A66D99713F9E}
+               Age: 1, Pdb: ntkrnlmp.pdb
+                 POGO   94c, 5b158,   5b158 [Data not mapped]
+                REPRO    24, 5baf8,   5baf8 Reproducible build
+           DLLCHAR_EX     4, 5bb1c,   5bb1c Extended DLL characteristics: 00000081
+                                                 CET compatible
+                                                 (Unknown)
+     Image Type: FILE     - Image read successfully from debugger.
+                 C:\symbols\ntkrnlmp.exe\FDA9ED741450000\ntkrnlmp.exe
+    Symbol Type: PDB      - Symbols loaded successfully from symbol server.
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+    Load Report: public symbols , not source indexed 
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+0: kd> !process 0 0 test.exe
+!process 0 0 test.exe
+Unable to get program counter
+PROCESS ffff82859908b080
+    SessionId: none  Cid: 1dd0    Peb: 9b2fa66000  ParentCid: 19a8
+    DirBase: 192c2e000  ObjectTable: ffffb689ad372500  HandleCount:  26.
+    Image: test.exe
+
+0: kd> .logclose
+.logclose
+Closing open log file \\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt
+Opened log file '\\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt'
+0: kd> .echo ==== OFF <P1b>
+.echo ==== OFF <P1b>
+==== OFF <P1b>
+0: kd> !lmi nt
+!lmi nt
+Unable to get program counter
+Loaded Module Info: [nt] 
+         Module: ntkrnlmp
+   Base Address: fffff805b2c00000
+     Image Name: ntkrnlmp.exe
+   Machine Type: 34404 (X64)
+     Time Stamp: fda9ed74 (This is a reproducible build file hash, not a true timestamp)
+           Size: 1450000
+       CheckSum: c817d5
+Characteristics: 22  
+Debug Data Dirs: Type  Size     VA  Pointer
+             CODEVIEW    25, 5b130,   5b130 RSDS - GUID: {C29EBFB0-6B78-B3C0-20DC-A66D99713F9E}
+               Age: 1, Pdb: ntkrnlmp.pdb
+                 POGO   94c, 5b158,   5b158 [Data not mapped]
+                REPRO    24, 5baf8,   5baf8 Reproducible build
+           DLLCHAR_EX     4, 5bb1c,   5bb1c Extended DLL characteristics: 00000081
+                                                 CET compatible
+                                                 (Unknown)
+     Image Type: FILE     - Image read successfully from debugger.
+                 C:\symbols\ntkrnlmp.exe\FDA9ED741450000\ntkrnlmp.exe
+    Symbol Type: PDB      - Symbols loaded successfully from symbol server.
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+    Load Report: public symbols , not source indexed 
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+0: kd> !process 0 0 test.exe
+!process 0 0 test.exe
+Unable to get program counter
+PROCESS ffff82859908b080
+    SessionId: none  Cid: 1dd0    Peb: 9b2fa66000  ParentCid: 19a8
+    DirBase: 192c2e000  ObjectTable: ffffb689ad372500  HandleCount:  44.
+    Image: test.exe
+
+0: kd> .logclose
+.logclose
+Closing open log file \\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt
+Opened log file '\\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt'
+0: kd> .echo ==== OFF <P2>
+.echo ==== OFF <P2>
+==== OFF <P2>
+0: kd> !lmi nt
+!lmi nt
+Unable to get program counter
+Loaded Module Info: [nt] 
+         Module: ntkrnlmp
+   Base Address: fffff805b2c00000
+     Image Name: ntkrnlmp.exe
+   Machine Type: 34404 (X64)
+     Time Stamp: fda9ed74 (This is a reproducible build file hash, not a true timestamp)
+           Size: 1450000
+       CheckSum: c817d5
+Characteristics: 22  
+Debug Data Dirs: Type  Size     VA  Pointer
+             CODEVIEW    25, 5b130,   5b130 RSDS - GUID: {C29EBFB0-6B78-B3C0-20DC-A66D99713F9E}
+               Age: 1, Pdb: ntkrnlmp.pdb
+                 POGO   94c, 5b158,   5b158 [Data not mapped]
+                REPRO    24, 5baf8,   5baf8 Reproducible build
+           DLLCHAR_EX     4, 5bb1c,   5bb1c Extended DLL characteristics: 00000081
+                                                 CET compatible
+                                                 (Unknown)
+     Image Type: FILE     - Image read successfully from debugger.
+                 C:\symbols\ntkrnlmp.exe\FDA9ED741450000\ntkrnlmp.exe
+    Symbol Type: PDB      - Symbols loaded successfully from symbol server.
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+    Load Report: public symbols , not source indexed 
+                 c:\symbols\ntkrnlmp.pdb\C29EBFB06B78B3C020DCA66D99713F9E1\ntkrnlmp.pdb
+0: kd> !process 0 0 test.exe
+!process 0 0 test.exe
+Unable to get program counter
+PROCESS ffff82859908b080
+    SessionId: none  Cid: 1dd0    Peb: 9b2fa66000  ParentCid: 19a8
+    DirBase: 192c2e000  ObjectTable: ffffb689ad372500  HandleCount:  46.
+    Image: test.exe
+
+0: kd> .logclose
+.logclose
+Closing open log file \\vmware-host\Shared Folders\logs\03_baggage-snap_offline.txt
