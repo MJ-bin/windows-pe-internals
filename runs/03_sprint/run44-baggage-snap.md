@@ -1,5 +1,7 @@
 # 2026-10-25 run44 — 짐 지도 사진: 한 번의 실행에서 8 지점 스냅샷 → 덤프 → 칸마다 "처음 값이 생기는 구간". 구조체 직접 칸 1,456 중 1,428 칸과 ntdll 전역 493 중 332 개가 구간 또는 "끝까지 0" 으로 정해짐. `ProcessParameters` 는 ①→①-a 사이에 힙으로 옮겨짐
 
+> **정정 (run45)**: (1) 아래 "칸마다 처음 값 구간 — 요약" 의 "못 좁힌 것 161" 은 **ntdll 전역만** (`≤P1a` 156 + `.00cfg` 5) 이다. 짐 지도 7.1·7.8·flow.md 4장에 있던 "`≤P1a` 161" 은 다른 묶음 (`≤P1a` 전역 156 + `PebLdr` 5칸) 이라, 그쪽은 "`≤P1a` 전역 156 + `PebLdr` 5칸" 으로 풀어 고쳤다 — 이제 "161" 은 전역 못 좁힌 것 한 뜻뿐. (2) 같은 요약 아래 "P1a 부터 … 트랩 프레임이 덮인다" 는 **P1 부터** 가 맞다 (P1 트랩 프레임 `Rip` 이 이미 멈춘 주소 + 1, 아래 "디버거 영향" 과 같은 말). (3) "아직 확인 필요" 의 `ProcessParameters` 를 옮기는 곳 `[추측]` "`+0x6c5 RtlNormalizeProcessParams` 근처" 는 자리가 달랐다 — `LdrpInitializeProcess +0xc3f RtlpInitParameterBlock` (환경 블록은 앞 `+0xc32 RtlpInitEnvironmentBlock`, `EnvironmentVersion` 은 거기서 +1 만). → `run45-work-list.md` "정정"·6장
+
 ## 환경
 
 - 26100.9457. 바퀴 하나에 동적 요청 넷 (dast/01 ~ 04), 정적 요청 없음. 03_sprint 둘째 바퀴 (짐 지도 B, plan Q77 = Q77a 시험 · Q77b 캡처 · Q77c 읽기).
@@ -152,8 +154,8 @@
 | ntdll `.00cfg` 전역 | 5 | · | · | · | · | · | · | · | · | · | · | 5 | 0 |
 
 - 구조체 21개 1,456칸: 구간이 정해진 칸 581 + 끝까지 0 847 = **1,428 칸이 사진으로 정해짐**. 못 좁힌 것 28 (`≤P1a` 5 · VAD 칸 안 읽음 23).
-- ntdll 전역 493: 구간 35 + 끝까지 0 297 = **332 개가 정해짐**. 못 좁힌 것 161 (`≤P1a` 156 · `.00cfg` 읽기 불가 5).
-- `_KTRAP_FRAME` 의 `P1~P1a` 24칸은 짐이 아니다. P1a 부터 이 자리에 **시스템 콜·int3 의 트랩 프레임**이 덮인다 (아래 "디버거 영향").
+- ntdll 전역 493: 구간 35 + 끝까지 0 297 = **332 개가 정해짐**. **전역** 못 좁힌 것 161 (`≤P1a` 156 · `.00cfg` 읽기 불가 5. 구조체 쪽 `≤P1a` `PebLdr` 5칸은 이 161 에 안 들어감 — run45 정정).
+- `_KTRAP_FRAME` 의 `P1~P1a` 24칸은 짐이 아니다. ~~P1a 부터~~ **P1 부터** (run45 정정 — P1 `Rip` 이 이미 멈춘 주소 + 1) 이 자리에 **시스템 콜·int3 의 트랩 프레임**이 덮인다 (아래 "디버거 영향").
 - `_KTHREAD` 의 P0 이후 구간 칸 다수는 스케줄러 통계·기다림 칸 (`CycleTime`·`ContextSwitches`·`WaitBlock*`·`WaitReason` 등) 이다. 멈춰 있던 시간이 섞인다 `[추측]`.
 - 칸마다 구간 전체는 짐 지도 `runs/03_sprint/baggage.md` 3장 (아는 칸, 근거 칸 끝 "사진") 과 7.2·7.3 (모르는 칸, 구간별로 묶음).
 
@@ -230,7 +232,7 @@
   - K3~P0 PEB `pShimData`·`SystemDefaultActivationContextData`, EPROCESS `ExceptionPortData`·`Flags3` 비트·`WakeChannel`·`BamPpmPolicy` → 부모 쪽 (`CreateProcessInternalW` 뒤쪽, csrss) 과 `PspCallProcessNotifyRoutines` 이후.
   - P0~P1 TEB `IdealProcessor`·`PrimaryGroupAffinity`, EPROCESS `CreateReported`·`ImageNotifyDone`·`ImagePathHash` → `PspUserThreadStartup` 정상 길 4개 (`KeUpdateTebSchedulingPropertiesCurrentThread`, `PspNotifyThreadCreation` 등, 본문 안 봄).
   - P1~P1a·P1a~P1b·P1b~P2 의 ntdll 모르는 전역 (`.data` 24+6, `≤P1a` 143) 과 PEB·TEB 칸.
-- **`ProcessParameters` 를 누가 옮기나** (P1~P1a): `LdrpInitializeProcess` 앞쪽 (`+0x6c5 RtlNormalizeProcessParams` 근처 `[추측]`) 에서 힙에 복사하고 옛 영역을 푸는 줄. `EnvironmentVersion` 3 도 같이.
+- (해결됨 → run45: `+0xc3f RtlpInitParameterBlock`, 환경은 `+0xc32 RtlpInitEnvironmentBlock`) **`ProcessParameters` 를 누가 옮기나** (P1~P1a): `LdrpInitializeProcess` 앞쪽 (~~`+0x6c5 RtlNormalizeProcessParams` 근처 `[추측]`~~) 에서 힙에 복사하고 옛 영역을 푸는 줄. `EnvironmentVersion` 3 도 같이.
 - **`OwnerProcessId` `0x729`·`ConsoleHandle` `0x60` 을 누가 쓰나** (P1a~P1b): KERNELBASE 콘솔 준비 → `NtSetInformationProcess` 쪽 `[추측]` (Q65 와 겹침, 사용자와 정할 것).
 - **`HANDLE_TABLE.UniqueProcessId` 를 누가 바꾸나** (K2~K3).
 - **K1~P1 에 못 읽은 것을 좁히기**: ntdll `.data` 전역 (`≤P1a` 143 + `.mrdata` 13) 과 `PebLdr` 는 P1 에 값이 있었는지 모른다. 방법 하나: ntdll 파일의 `.data` 처음 값 (파일 0x2000 + 나머지 0, run17) 과 P1a 값을 비교 (정적). 둘: 다음 사진에서 K1~P1 지점에 `!pte`/물리 주소로 읽기 (동적).
