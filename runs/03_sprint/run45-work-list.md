@@ -1,5 +1,7 @@
 # 2026-10-26 run45 — 일 목록: 초기화 동안 nt·ntdll 이 하는 일 86개 (짐 지도 칸 69 · 체크리스트 밖 짐 48 · 흐름도에만 14), sast/38 callee 637줄 모두 일·공용 부품·정리 길로 나눔 (못 넣은 줄 0), 체크리스트 밖 짐 "남는 곳" C1~C12. 본문을 읽어 빈 곳 6건을 닫음 — `ProcessParameters` 를 힙으로 옮기는 주인 = `RtlpInitParameterBlock` (`LdrpInitializeProcess +0xc3f`)
 
+> **정정 (run46)**: 1장 일 52 의 사슬 중 `+0xa39 RtlSetHeapInformation` 은 **조건부** (`LdrSystemDllInitBlock+0xa0` 비트 12~13, test.exe 는 안 탐) 이고, "태그 힙" 은 test.exe 에선 만들지 않는다 (`RtlCreateTagHeap` 가 `NtGlobalFlag & 0x800` 이 아니면 0 반환). → `run46-process-heap.md` "정정"
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 결과서 날짜.

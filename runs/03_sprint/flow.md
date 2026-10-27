@@ -6,7 +6,7 @@
   - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32, run33, run34, run41, run42, run43, run45)
   - kernelbase.pdb: `72CCE506944DE0267C172AD64287F9BD1` (run14, run25, run34)
   - kernel32.pdb: `AE9E9D8F7AC1467A645320FDC23235D01` (run25, run34)
-  - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20, run21, run22, run23, run24, run26, run27, run28, run29, run34, run35, run36, run38, run39, run41, run43, run45)
+  - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20, run21, run22, run23, run24, run26, run27, run28, run29, run34, run35, run36, run38, run39, run41, run43, run45, run46)
   - basesrv.pdb: `4B0951C4FAD4CCBDDFDAA284D1ED2C2E1`, csrsrv.pdb: `32C5AA2B9D0AF671C35069A02C5A0C041` (run34 — csrss 프로세스 안에서 도는 DLL, 처음 analyze)
   - cmd.pdb: `6E820A0DD74C2CA6E23F25DEBA1651261` (run34 — 부모 cmd.exe. Ghidra 로 안 걸고 `objdump` 줄에 이름만 붙임, 참고용)
   - test.pdb: `C66E7084C5CA4874B1677F6F1C36A0511` (run30. MS 것이 아니라 sample 빌드의 로컬 pdb, 사용자가 VM 에서 돌린 `sample/bin/` 파일)
@@ -15,8 +15,9 @@
 - 부모: `cmd.exe`에서 `test.exe` 실행
 - 근거 로그: `runs/01_sprint/` run3 ~ run8 (디버거), `runs/03_sprint/` run44 (디버거 + 멈춘 순간의 VMware 스냅샷 8장 → `vmss2core` 덤프 → WinDbg 오프라인. `ms/logs/01_snapshot-test` ~ `04_baggage-read_*`)
   - (run45) 정적 바퀴지만, 닫은 칸의 값 대조에 run44 덤프 읽기 로그 (`ms/logs/04_baggage-read_<P>.txt` 구획 10·17b) 를 다시 읽었다. 새 동적 실행은 없다.
+  - (run46) 정적 바퀴. 힙 머리·힙 전역·VAD 값 대조에 run44 P1a 덤프 읽기 로그 (`ms/logs/04_baggage-read_P1a.txt` 구획 06b·16 등) 를 다시 읽었다 (결과서). 새 동적 실행은 없다.
   - run44 의 `[관찰]` 은 "그 순간 메모리에 그 값이 있었다" 이다. 호출을 콜스택으로 본 것은 지점 8곳의 `k` 뿐이다 (run44 "지점별 라이브 관찰").
-- 정적 근거: `runs/02_sprint/` run9 ~ run42 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ~ run33 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe, run34 kernel32·KernelBase·ntdll·ntoskrnl·basesrv·csrsrv (+ cmd.exe 참고), run35·run36 ntdll, run37 kernel32·KernelBase·apisetschema **PE 표만** (Ghidra 안 씀), run38·run39 ntdll, run40 dll1·dll2 (sample 빌드), run41 ntdll·ntoskrnl, run42 ntoskrnl. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀) · `runs/03_sprint/` run43 (ntoskrnl·ntdll PDB 타입 레코드·공개 이름 + ntoskrnl `MmCreateTeb` 첫 export — 짐 지도 체크리스트) · run45 (ntdll depth 0 14개 읽기만 + 일 목록 86개·callee 637줄 분류·PDB 타입 정의 확인 — sast/39)
+- 정적 근거: `runs/02_sprint/` run9 ~ run42 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ~ run33 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe, run34 kernel32·KernelBase·ntdll·ntoskrnl·basesrv·csrsrv (+ cmd.exe 참고), run35·run36 ntdll, run37 kernel32·KernelBase·apisetschema **PE 표만** (Ghidra 안 씀), run38·run39 ntdll, run40 dll1·dll2 (sample 빌드), run41 ntdll·ntoskrnl, run42 ntoskrnl. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀) · `runs/03_sprint/` run43 (ntoskrnl·ntdll PDB 타입 레코드·공개 이름 + ntoskrnl `MmCreateTeb` 첫 export — 짐 지도 체크리스트) · run45 (ntdll depth 0 14개 읽기만 + 일 목록 86개·callee 637줄 분류·PDB 타입 정의 확인 — sast/39) · run46 (ntdll 프로세스 힙 구간 depth 1 함수 약 44개 읽기만 + PDB `_HEAP`·`_PEB` 등 칸 — sast/40, 짐 지도 Q78a)
   - PE 헤더·import·export 표는 `pefile` 로 읽었다 (run25). KERNELBASE·kernel32·ntdll 의 TLS 디렉터리도 PE 파일에서 읽었다 (run28). Ghidra 는 PE 진입점 함수를 PDB 이름 대신 `entry` 로 잡는다 (run25). 글에선 PDB 이름을 쓴다.
   - test.exe 는 sample 빌드라 MS 심볼 서버가 아니라 `sample/bin/` 의 exe·pdb 를 썼다 (run30). run31 의 test.exe PE 헤더 값(`AddressOfEntryPoint`, `ImageBase`, 정렬 등)도 같은 파일을 직접 읽은 것이다. 진입점 rva `0x1d40` = run5 `[관찰]`, run7 `[관찰]` 의 `…67723` 도 맞는다. 단 run3 ~ run5 와 run6 ~ run8 은 따로 빌드한 exe 라 (5장) 올라온 파일이 어느 쪽인지까지는 모른다.
   - dll1·dll2 도 같은 방식으로 `sample/bin/` 의 dll·pdb 를 썼다 (run40). 진입점 rva (dll1 `0x1d60`, dll2 `0x1d50`) 의 PDB 이름 `_DllMainCRTStartup` = run8 `[관찰]` `rcx`, `DllMain` rva `0x12e0` = run6 `[관찰]`, run7 `[관찰]` `LoadLibraryExW` 돌아올 주소 둘의 아래 16비트도 이 파일의 ret 자리와 맞는다. 그래도 VM 에서 돈 파일과 같은 빌드라고 단정하진 않는다 `[추측]`.
@@ -215,7 +216,13 @@
 - run44 의 ② 지점 (`NtContinue` 입구) 콜스택이 `NtContinue` ← `LdrInitializeThunk+0x18` 이었다 → `c1 → q1` `(2) +0x18` 은 이제 관찰한 호출이다. 상자 묶음 이름도 "NtContinue 입구는 관찰" 로 고쳤다. `SYSCALL` 뒤 커널 쪽 상자들은 그대로 `(정적)` 이다.
 - 나머지는 사진이 호출이 아니라 멈춘 순간의 칸 값을 본 것이라 화살표·테두리를 바꿀 근거가 없다.
 - 8 지점의 콜스택 (`k`) 은 그림에 이미 `+0x…` 로 있는 호출과 같다: `NtCreateUserProcess +0xe5c`·`+0xfc2`·`+0x101a`, `PspInsertThread +0x807`, `KiStartUserThread +0x28`, `LdrInitializeThunk +0xe`·`+0x18`, `LdrpInitializeInternal +0x5a`, `_LdrpInitialize +0x16c`.
-- 지점 자리: K1 = 그림 1 `PspAllocateThread` 입구, K2 = `PspInsertProcess` 입구, K3 = `PspCallProcessNotifyRoutines` 입구, P0 = 그림 2 `PspUserThreadStartup` 입구, P1 = `LdrInitializeThunk` 입구, P1a = `LdrpInitializeProcess` 의 `(7) +0x19a2` call 자리, P1b = 그래프 켜기 call 자리, P2 = 로더 끝 `NtContinue` 입구. 칸마다 언제 값이 생기나는 2장 각 절 "사진 (run44)" 과 짐 지도 `runs/03_sprint/baggage.md` 2.1.
+- 지점 자리: K1 = 그림 1 `PspAllocateThread` 입구, K2 = `PspInsertProcess` 입구, K3 = `PspCallProcessNotifyRoutines` 입구, P0 = 그림 2 `PspUserThreadStartup` 입구, P1 = `LdrInitializeThunk` 입구, P1a = `LdrpInitializeProcess` 의 `(7) +0x19a2` (run46 부터 번호 `(8)`) call 자리, P1b = 그래프 켜기 call 자리, P2 = 로더 끝 `NtContinue` 입구. 칸마다 언제 값이 생기나는 2장 각 절 "사진 (run44)" 과 짐 지도 `runs/03_sprint/baggage.md` 2.1.
+
+그림 2 의 `(0) 프로세스 준비` 에 **힙 사슬 대표 지점 둘을 넣었다** (run46 `[정적]`, 2.4 묶음 7).
+- `LdrpInitializeProcess` → `(2) +0x9f2` **`RtlInitializeHeapManager`** (힙 관리자) 를 `(정적)` 상자로 넣었다. PEB 힙 목록 3칸·ntdll 힙 전역 대부분·큰 예약 둘이 이 아래에서 생긴다. 끝의 꼬리 `JMP` (`RtlHpInitializeHeapManager`) 와 그 아래는 상자 글·2.4 글에만 (대표 지점 하나만).
+- `LdrpInitializeProcessHeap` 아래 `+0x196` **`RtlpCreateHeap`** (NT 힙 길 본체) 를 `(정적)` 상자로 넣었다. 그 안 시스템 콜 5개와 머리 칸 함수들은 2.4 글·짐 지도 (`baggage.md` 7.6.1) 에만.
+- 그래서 `LdrpInitializeProcess` 호출 번호가 `(2)` 부터 하나씩 밀렸다: 힙 `(3)`, `\KnownDlls` `(4)`, ntdll 항목 `(5)`·`(6)`, exe 항목 `(7)`, kernel32 `(8)`, 병렬 로딩 `(9)`, import `(10)`, 일감 비우기 `(11)`, 실행 준비 `(12)`, 간접 호출 `(13)`, 그래프 초기화 `(14)`, exe TLS `(15)`, 간접 호출 `(16)`.
+- 조건부 `+0xa34 RtlSetHeapInformation` 은 test.exe 에서 안 타서 (`LdrSystemDllInitBlock+0xa0` 비트 12~13 이 0, 사진) 그림에 안 넣었다.
 
 > 왜 2장인가: 서로 화살표로 이어지지 않은 덩어리는 머메이드가 위아래 순서를 마음대로 정한다 (실험해보니 ③ → ② → ① 거꾸로 나왔다). 두 스레드 사이엔 호출 관계가 없어서 화살표로 이을 수 없으니, 그림을 나누고 **문서 순서로 시간 순서**를 보인다.
 
@@ -414,7 +421,7 @@ flowchart LR
     class cb1,cb2,cb3,cb4 unkg
 ```
 
-### 그림 2 — test.exe 메인 스레드 (run4 ~ run8, run13, run14 메모, run15, run16, run17, run18, run19, run20, run21, run22, run23, run24, run25, run26, run27, run28, run29, run30, run33, run35, run36, run38, run39, run40, run44)
+### 그림 2 — test.exe 메인 스레드 (run4 ~ run8, run13, run14 메모, run15, run16, run17, run18, run19, run20, run21, run22, run23, run24, run25, run26, run27, run28, run29, run30, run33, run35, run36, run38, run39, run40, run44, run46)
 
 ```mermaid
 flowchart LR
@@ -489,7 +496,9 @@ flowchart LR
             subgraph PH0["(0) 프로세스 준비 — 앞쪽 +0x0 ~ +0x12dd, 뒤쪽 첫 묶음 exe 항목 (정적)"]
                 direction LR
                 p1["ntdll!LdrpInitializeExecutionOptions<br/>(정적: 실행 옵션 IFEO 읽기)"]:::ntg
-                p2["ntdll!LdrpInitializeProcessHeap<br/>(정적: 결과가 PEB.ProcessHeap)"]:::ntg
+                p2h["ntdll!RtlInitializeHeapManager<br/>(정적 run46: 힙 관리자 — 난수·키, IFEO 첫 열기,<br/>PEB 힙 목록 3칸 준비. 끝에 꼬리 JMP 로<br/>RtlHpInitializeHeapManager — 큰 예약 둘)"]:::ntg
+                p2["ntdll!LdrpInitializeProcessHeap<br/>(정적: +0x1a2 에서 PEB.ProcessHeap = 힙, run46)"]:::ntg
+                p2c["ntdll!RtlpCreateHeap<br/>(정적 run46: NT 힙 길 — 1MB 예약·8KB 확정,<br/>_HEAP 머리, 프로세스 힙 목록에 넣기)"]:::ntg
                 p3["ntdll!NtOpenDirectoryObject<br/>(정적: \KnownDlls 열기, 경로만 읽음)"]:::ntg
                 p4["ntdll!LdrpInitializeNtdllDataTableEntry<br/>(정적: ntdll 모듈 항목, 조건 없음. 매핑은 안 함.<br/>이름 루트\SYSTEM32\ntdll.dll, EntryPoint 0.<br/>+0x150 State = 9, +0x154 LdrpNtDllDataTableEntry = 새 항목)"]:::ntg
                 p4a["ntdll!LdrpAllocateModuleEntry [ntdll]<br/>(정적: 새 항목 + 그래프 노드, 인자 0)"]:::ntg
@@ -725,18 +734,20 @@ flowchart LR
 
     %% LdrpInitializeProcess (0) 프로세스 준비 (정적)
     c4 -->|"(1) +0x536"| p1
-    c4 -->|"(2) +0xa50"| p2
-    c4 -->|"(3) +0xdbd"| p3
-    c4 -->|"(4) +0x11a2"| p4
+    c4 -->|"(2) +0x9f2"| p2h
+    c4 -->|"(3) +0xa50"| p2
+    p2 -->|+0x196| p2c
+    c4 -->|"(4) +0xdbd"| p3
+    c4 -->|"(5) +0x11a2"| p4
     p4 -->|"(1) +0x6c"| p4a
     p4 -->|"(2) +0xf7"| p4b
     p4 -->|"(3) +0x116"| p4c
     p4 -->|"(4) +0x124"| p4d
-    c4 -->|"(5) +0x126f"| p5
-    c4 -->|"(6) +0x135e"| p6
+    c4 -->|"(6) +0x126f"| p5
+    c4 -->|"(7) +0x135e"| p6
 
     %% LdrpInitializeProcess (1) kernel32 준비
-    c4 -->|"(7) +0x19a2"| k1
+    c4 -->|"(8) +0x19a2"| k1
     k1 -.-> c4
     k1 -->|"(1) +0xa4"| ka
     k1 -->|"(2) +0xc0"| k2
@@ -770,8 +781,8 @@ flowchart LR
     k1 -->|"(7) +0x1af"| z3
 
     %% LdrpInitializeProcess (1)~(2) 사이 (정적), 일감 흐름 run24 (정적), 파일로 올리는 길 run26 (정적), 간접 호출 (정적)
-    c4 -->|"(8) +0x1a47"| j1
-    c4 -->|"(9) +0x1aa9"| j2
+    c4 -->|"(9) +0x1a47"| j1
+    c4 -->|"(10) +0x1aa9"| j2
     j2 -->|"(1) +0x9e"| ja1
     j2 -->|"(2) +0xe5"| ja2
     j2 -->|"(3) +0x34e"| ja3
@@ -812,7 +823,7 @@ flowchart LR
     js2 -->|+0x5e| jq2
     jc1 -->|"(6) +0x1c8"| jc2
     jc2 -->|+0x4f7| jc3
-    c4 -->|"(10) +0x1ab1"| jw1
+    c4 -->|"(11) +0x1ab1"| jw1
     jw1 -->|"(1) +0x187"| jw2
     jw2 -->|+0x6a| jw3
     jw3 -->|"(1) +0x131"| jf0
@@ -851,15 +862,15 @@ flowchart LR
     jw10 -->|+0x131| jw11
     jw11 -->|+0xb66| ps4
     ps4 -->|+0x93| ht4
-    c4 -->|"(11) +0x1af2"| j3
+    c4 -->|"(12) +0x1af2"| j3
     j3 -->|+0x12f| cg1
     cg1 -->|+0x26| cg2
     cg2 -->|+0x13d| cg3
     cg3 -->|+0x13d| cg4
-    c4 -->|"(12) +0x1b5e"| z1
+    c4 -->|"(13) +0x1b5e"| z1
 
     %% LdrpInitializeProcess (2) import DLL 초기화
-    c4 -->|"(13) +0x1bbb"| g1
+    c4 -->|"(14) +0x1bbb"| g1
     g1 -.-> c4
     g1 -.- w1
     g1 -->|"(1) +0x96"| g2
@@ -893,8 +904,8 @@ flowchart LR
     i1 -->|"(2) ?"| i2
 
     %% LdrpInitializeProcess (3) exe TLS, 그 뒤 간접 호출 (정적)
-    c4 -->|"(14) +0x1c99"| x1
-    c4 -->|"(15) +0x1d1b"| z2
+    c4 -->|"(15) +0x1c99"| x1
+    c4 -->|"(16) +0x1d1b"| z2
     x1 -->|+0x19b| x2
     x2 -->|+0x93| xi
     xi -->|+0x22| x3
@@ -1995,7 +2006,7 @@ PspInitPhase2 +0x177                                    (원본 바이트 훑기
 
 ---
 
-### 2.4 `ntdll` — 로더 시작 (run7, run8, run16, run17, run18, run19, run28, run29, run35, run38, run39, run41, run45)
+### 2.4 `ntdll` — 로더 시작 (run7, run8, run16, run17, run18, run19, run28, run29, run35, run38, run39, run41, run45, run46)
 
 ```
 LdrInitializeThunk                                  ← Rcx = 맡긴 원래 문맥 (run16), Rdx = 커널 PspSystemDlls[0]+0x20 값 (본문이 ntdll 시작 주소로 씀 [정적] run18)
@@ -2097,7 +2108,9 @@ LdrpInitializeProcess (0x8c404)          ← RCX = CONTEXT 레코드 → [RSP+0x
  │  +0x587 핫패치 끄기 (IFEO 값 2 일 때) / +0x5f2 UseWOW64 = (WowTebOffset > 0)
  ├─ +0x6c5  RtlNormalizeProcessParams          ⑤
  ├─ +0x9d2  RtlInitializeCriticalSectionEx     ⑥ FastPebLock → PEB+0x38
- ├─ +0xa50  LdrpInitializeProcessHeap          ⑦ → PEB+0x30 ProcessHeap
+ ├─ +0x9f2  RtlInitializeHeapManager           ⑦ 힙 관리자 (난수·키, IFEO 첫 열기, PEB 힙 목록 3칸, ⇒ 큰 예약 둘) (run46)
+ │  +0xa34 RtlSetHeapInformation(0,1,0,0)  조건부 — test.exe 안 탐 (run46)
+ ├─ +0xa50  LdrpInitializeProcessHeap          ⑦ → +0x196 RtlpCreateHeap (NT 힙 길) → +0x1a2 PEB+0x30 ProcessHeap (run46)
  ├─ +0xb88  TpInitializePackage                ⑧ (+0xc32 RtlpInitEnvironmentBlock, +0xc3f RtlpInitParameterBlock = 매개변수 블록을 힙으로 옮김, run45)
  ├─ +0xdbd  NtOpenDirectoryObject (\KnownDlls) ⑨ (+0xe4c NtOpenSymbolicLinkObject, +0xe95 NtQuerySymbolicLinkObject, +0xfca LdrpInitializePolicy)
  ├─ +0x11a2 LdrpInitializeNtdllDataTableEntry  ⑩ ntdll 모듈 항목 (조건 없음) → 적재·메모리 순서 목록·해시 표·색인, State 9 (run35)
@@ -2145,7 +2158,7 @@ LdrpInitializeProcess (0x8c404)          ← RCX = CONTEXT 레코드 → [RSP+0x
 | 4 | `+0x4a8 ~ +0x579` | **실행 옵션(IFEO) 읽기** | `LdrpInitializeExecutionOptions` `+0x531 / +0x536` | 2 (1) |
 | 5 | `+0x57a ~ +0x773` | 전역 켜고 끄기 (핫패치·`UseWOW64`·.NET 검사·매개변수 정규화·LoadConfig·`LdrpDebugFlags`) | `RtlNormalizeProcessParams` `+0x6c0 / +0x6c5` | 5 (1) |
 | 6 | `+0x774 ~ +0x9e4` | PEB TLS 비트맵·FLS 자리, 스택 추적 DB 옵션, `FastPebLock` | `RtlInitializeCriticalSectionEx` `+0x9cd / +0x9d2` | 8 (2) |
-| 7 | `+0x9e5 ~ +0xb7d` | **프로세스 힙 만들기** + 로더 스냅 버퍼·활성화 컨텍스트 스택·`LdrpHeap`·태그 힙 | `LdrpInitializeProcessHeap` `+0xa4b / +0xa50` | 13 (2) |
+| 7 | `+0x9e5 ~ +0xb7d` | **프로세스 힙 만들기** (힙 관리자 `+0x9ed / +0x9f2` → (조건부 `+0xa34`) → 힙. run46 아래 `####` 절) + 로더 스냅 버퍼·활성화 컨텍스트 스택·`LdrpHeap` (= PEB 힙)·태그 힙 (test.exe 는 0 반환) | `LdrpInitializeProcessHeap` `+0xa4b / +0xa50` | 13 (2) |
 | 8 | `+0xb83 ~ +0xc41` | 스레드 풀, ETW 등록 3곳, **환경 블록·매개변수 블록** | `TpInitializePackage` `+0xb83 / +0xb88` | 11 (0) |
 | 9 | `+0xc47 ~ +0x1168` | 시스템 경로(`LdrpSystem32`. run39 `[정적]`: `+0x109e` `RtlpSystem32Dirs`·`LdrpSystem32`, `+0x1161` **`RtlpSystemDirs`** = DLL 검색 목록의 시스템 폴더 덩어리 `System32;Windows\system;Windows;`), **`\KnownDlls` 열기 → `KnownDllPath` 읽기** (보호 프로세스 아닐 때), DLL 정책 | `NtOpenDirectoryObject` `+0xdb8 / +0xdbd` | 29 (17) |
 | 10 | `+0x1169 ~ +0x12dd` | exe 폴더 종류 검사, exe 파일 이름 잘라 두기 (`[RSP+0x130]` → 뒤쪽 `BaseDllName`. ~~exe 폴더~~ run19 정정), **ntdll 모듈 항목**, (있으면) 패치 ntdll 항목, 히스토리 표, 초기화 순서 목록 연결 | `LdrpInitializeNtdllDataTableEntry` `+0x119d / +0x11a2` | 4 (0) |
@@ -2230,6 +2243,43 @@ LdrpInitializeProcess (0x8c404)          ← RCX = CONTEXT 레코드 → [RSP+0x
   - 묶음 8 `+0xc32 RtlpInitEnvironmentBlock` → `+0xc3f RtlpInitParameterBlock` = **매개변수 블록을 힙으로 옮김**: 앞 함수가 옛 블록의 환경을 별도 힙 블록으로 복사해 `Environment`·`EnvironmentSize` 를 쓰고 `EnvironmentVersion` +1. 뒤 함수가 `RtlAllocateHeap(PEB.ProcessHeap, 0, Length)` → 통째 복사 → 안쪽 포인터 9개를 새 자리 기준으로 → `PEB+0x20` 갈아끼움 (`+0x10d`) → 옛 블록 `NtFreeVirtualMemory(MEM_RELEASE)`. run44 사진 (P1→P1a 에 주소 바뀜, 옛 VAD 사라짐, 바뀐 포인터 6칸·0 인 3칸) 과 맞는다. `EnvironmentVersion` 0 → 3 중 나머지 +2 는 모름 (4장).
   - 뒤4 `+0x180b LdrpInitializeCfgScpHelpers`: CFG 강제이고 ntdll 헤더·LoadConfig 플래그가 맞으면 `LdrProtectMrdata(0)` → `.mrdata` `LdrpGuardCheckIcallNoESFptr` = `LdrpValidateUserCallTarget`, `LdrpGuardDispatchIcallNoESFptr` = `LdrpDispatchUserCallTarget` → `LdrProtectMrdata(1)`. **사진 값은 이 둘이 아니다** (ntdll+`0xfac60` 빈 함수 · ntdll+`0x166480` `_guard_dispatch_icall`) → test.exe 에선 이 갈래를 안 탄 것 `[추측]` (4장).
   - 뒤5 `+0x1963 LdrpInitializeImportRedirection`: 매개변수 `RedirectionDllName` (`+0x410`) 길이가 0 이 아닐 때만 `LdrpLoadDll` (ret `+0xd5`)·`LdrpBuildImportRedirection` (ret `+0xf6`). 사진에서 그 칸은 끝까지 0 → test.exe 에선 아무것도 안 함.
+
+#### 프로세스 힙 만들기 — 묶음 7 `+0x9ed ~ +0xa50` (run46 `[정적]`, sast/40, 짐 지도 Q78a)
+
+- 대표 지점만. 시스템 콜 12개 표·호출 지점 전부는 `runs/03_sprint/run46-process-heap.md`, 쓰는 칸은 짐 지도 `baggage.md` 3.1·3.8·7.6.1.
+
+```
+LdrpInitializeProcess
+ ├─ (2) +0x9f2  RtlInitializeHeapManager (rva 0x9c334)            ← &이미지 이름 (ImagePathName, 앞 \??\ 뗌)
+ │        ├─ +0x12  RtlHpGlobalsInitialize          난수 상태·키 (RtlpHpHeapGlobals) — 시스템 콜 없음
+ │        ├─ +0x2d  RtlpHpOptIntoSegmentHeap        세그먼트 힙 조건 9개 → test.exe 0 (NT 힙)
+ │        ├─ +0x7d  RtlpHpQueryGCTimerInterval      NtOpenKey ×2 (IFEO 바탕 키 · test.exe 키)
+ │        ├─ +0xa2  RtlpGetModifiedProcessCookie    NtQueryInformationProcess 0x24
+ │        │  +0xe7 ~ +0x10a  PEB NumberOfHeaps 0 · ProcessHeaps · MaximumNumberOfHeaps 0x10
+ │        ├─ +0x196 RtlpInitializeLowFragHeapManager NtQuerySystemInformation 0
+ │        └─ +0x1a0 ⇒ RtlHpInitializeHeapManager (꼬리 JMP)
+ │                ├─ +0xae  NtQuerySystemInformation 0x3e (사용자 공간 끝)
+ │                └─ +0xdd  RtlHpHeapManagerStart  큰 예약 둘 (32MB+4KB, 4GB+128KB)
+ │  +0xa34  RtlSetHeapInformation(0,1,0,0)   조건부 — test.exe 안 탐
+ └─ (3) +0xa50  LdrpInitializeProcessHeap (rva 0x9e300)
+          ├─ +0x196 RtlpCreateHeap (rva 0xa8820)   NT 힙 길
+          │        ├─ +0xe0c NtQuerySystemInformation 0
+          │        ├─ +0x45e NtAllocateVirtualMemory   예약 1MB + 무작위 몫 (+0x4a6 앞 몫 풀기)
+          │        ├─ +0x517 NtAllocateVirtualMemory   확정 8KB
+          │        ├─ +0x74b RtlpInitializeHeapSegment  첫 세그먼트 (힙 자신)
+          │        └─ +0x974 RtlpProcessHeapsInsert     프로세스 힙 목록 · PEB ProcessHeaps[0] · NumberOfHeaps 1
+          └─ +0x1a2  PEB+0x30 ProcessHeap = 힙
+```
+
+- `[정적]` **test.exe 프로세스 힙은 NT 힙**이다. 세그먼트 힙을 고르는 조건 9개 (`RtlpHpOptIntoSegmentHeap`: 전역 비트 둘, 이름 없는 전역 `0x1ce268`, `PEB.pShimData` 안 두 바이트, 스위트 마스크, 매니페스트 `heapType`, 패키지 앱, `HeapPartitionName`, 이미지 이름 목록 24개) 중 8개가 test.exe 값으로 "아님". 넷째 (`pShimData` 바이트) 만 못 봤다 → 동적 D1. `[관찰]` run44 P1a 덤프: 힙 `+0x10` = `0xffeeffee` (NT 힙 표시), `RtlpHpHeapFeatures` = 0 — 결과는 사진이 정했다.
+- `[정적]` **PEB `+0x30 ProcessHeap` 을 쓰는 줄 = `LdrpInitializeProcessHeap +0x1a2`** (`MOV [R15],RAX`, `R15` = `LdrpInitializeProcess +0xa39` 이 넘긴 칸 주소). run18 의 "칸 주소를 `+0xa39` 에서 넘김" 의 받는 쪽이다. PEB 힙 목록 3칸 (`+0xe8`·`+0xec`·`+0xf0`) 은 **힙보다 먼저** `RtlInitializeHeapManager` 가 준비한다.
+- `[정적]` **콜스택 주의**: `RtlInitializeHeapManager` 는 끝에서 `RtlHpInitializeHeapManager` 로 꼬리 `JMP` 한다 (`+0x1a0`). 그 아래에서 멈추면 콜스택엔 `RtlInitializeHeapManager` 가 안 보이고 `LdrpInitializeProcess+0x9f2` 가 바로 보인다.
+- `[정적]` **IFEO 는 여기서 처음 열린다**: 앞 `LdrpInitializeExecutionOptions` (묶음 4) 는 매개변수 `Flags` 의 `0x4000` 비트 (`[관찰]` run44 P1 `Flags = 0x4001`) 때문에 IFEO 읽기를 건너뛴다. 구간 앞 `Segment Heap` 레지스트리 키 (`NtOpenKey`) 는 그래도 항상 연다 (`RtlSetGlobalHeapFeatures`).
+- `[정적]` **큰 예약 둘 = 힙 관리자 희소 비트맵** (`RtlHpHeapManagerStart` → `RtlCSparseBitmapStart` → `RtlpHpEnvAllocVA` → `NtAllocateVirtualMemoryEx`, `MEM_TOP_DOWN`). 크기 `0x2001000`·`0x100020000` 이 `[관찰]` run44 P1a VAD (`7ff5ed090–7ff5ef090` 확정 1쪽, `7ff4ed070–7ff5ed08f` 확정 0) 와 정확히 같다. 클래스 `0x3e` 조회가 실패하면 이 둘이 안 생긴다.
+- `[정적]` **힙 주소 흔들기**: `RtlpCreateHeap` 은 `0x100000` (test.exe `SizeOfHeapReserve`) + 무작위 몫 (`n×0x10000`, n = 0~31) 을 예약하고 앞 몫을 풀어 시작 주소를 흔든다. n 은 `RtlpHpHeapGlobals +0x40` 난수 (씨앗 = TEB 스레드 ID ^ KUSD 틱 값). 실제 n 은 동적 D9.
+- `[정적]` **`RtlCreateHeap` (rva `0xaa330`) = `RtlpCreateHeap` 껍데기** (7번째 인자 0). 그러나 `RtlInitializeHeapManager` 없이 부르면 `RtlpProcessHeapsInsert` 가 빈 목록 머리·락·PEB 힙 배열을 못 찾는다.
+- `[정적]` 안 타는 갈래 (test.exe 값, 대부분 `[관찰]` run44 P1·P1a): `+0xa34 RtlSetHeapInformation` (`LdrSystemDllInitBlock+0xa0` 비트 12~13 = 0), `RtlInitializeHeapManager +0x67` 간접 호출 (세그먼트 힙 조건이 0 이라 도달 안 함), 디버그 힙·페이지 힙·태그 힙 (`NtGlobalFlag` 0, 전역 0), 파티션 힙 `NtOpenPartition` (`HeapPartitionName` 빈 값), `RtlpHpLfhContextEnable` (세그먼트 힙일 때만), `NtQueryVirtualMemory` ×2 (힙 터 `Base ≠ NULL` 일 때만).
+- **디버거가 붙어서 달라지는 길** `[정적]`: 이 구간은 `PEB.BeingDebugged` 를 안 읽는다. `NtGlobalFlag` (`+0xbc`) 비트가 디버그·태그 힙을 켜는데, test.exe 는 0 (`[관찰]` run44, 커널 디버거만 붙음).
 
 #### `ntdll!LdrpInitializeNtdllDataTableEntry` (rva `0x7015c`, 633바이트, 직접 호출 15줄, run35 `[정적]`)
 
@@ -3912,6 +3962,10 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.4 (짐 지도) | **(run45 새로)** PEB `ActiveCodePage`·`OemCodePage` 는 ntdll `LdrpInitializeNlsInfo` (`+0x1cd`) 가 쓰지만 값 `0x3b5` 가 **K1 부터** 이미 있음 `[관찰]` — K1 전에 처음 쓴 쪽 (`MmCreatePeb` 후보 `[추측]`) 정적 **Q78** |
 | 2.4 (짐 지도) | **(run45 새로)** 매개변수 `EnvironmentVersion` 0 → 3 중 +1 만 `RtlpInitEnvironmentBlock +0x86` `[정적]`. 나머지 +2 (`+0xa0 RtlpSetupEnvironmentHashTable` 쪽 `[추측]`) 정적 **Q78** |
 | 짐 지도 | **(run45 새로) 일 목록** (sast/39): 일 86개 중 48개가 짐 지도 체크리스트 밖에도 짐을 남김 (C1 ~ C12, 짐 지도 7.6). 사용자 결정 (2026-10-26): C3·C6·C8·C10·C11·C12 부모 → **Q79**, C5 → **Q82**, 동적 **Q83 ~ Q86**, 나머지 기록만. 갈 곳이 없는 정적 거리: `nt!NtGetNlsSectionPtr` 커널 쪽 (일 47), `PspCreateObjectHandle`·`PspUpdateCreateInfo` 가 부모 쪽에 쓰는 것 (일 33), 부모 `BasepInitAppCompatData` 본문 (일 37) — `runs/03_sprint/run45-work-list.md` |
+| 2.4 (짐 지도) | (해결됨, 정적 → run46: PEB `+0x30 ProcessHeap` 을 쓰는 줄 = `LdrpInitializeProcessHeap +0x1a2`, `NumberOfHeaps` = `RtlInitializeHeapManager +0xe7` (0) · `RtlpProcessHeapsInsert +0xb9` (1), `MaximumNumberOfHeaps` = `+0x10a`, `ProcessHeaps` = `+0xf5`, ntdll 힙 전역 17개) **Q78 의 첫 조각 Q78a — PEB 힙 칸·ntdll 힙 전역의 쓴 자리** (위 "초기화 함수 15개의 callee …" 줄과 짐 지도 7.2·7.3 에 묶여 있던 것): run18 은 "칸 주소를 `+0xa39` 에서 넘김, 쓰는 줄은 callee 안" 까지, run44 사진은 `P1~P1a`·`≤P1a` 까지 |
+| 2.4 (짐 지도) | **(run46 새로) 프로세스 힙 구간 실행 값** (sast/40 결과서 번호 그대로): **D1** `PEB.pShimData` 안 두 바이트 (`+0x11aa` 비트 `0x40`·`+0x11b2` 비트 `0x4`) — NT 힙을 정한 조건이 어느 것인가 (`ntdll!RtlpHpOptIntoSegmentHeap+0x190`, 덤프로도 가능할 수 있음) · **D4** IFEO 열기 두 번 결과와 이 프로세스 첫 IFEO 열기인지 (`RtlpOpenBaseImageFileOptionsKey+0x80`, `RtlpOpenImageFileOptionsKeyEx+0xec`) · **D5** `NtQueryInformationProcess(0x24)` 반환·쿠키 (`RtlpGetModifiedProcessCookie+0x27`, 클래스 이름 `ProcessCookie` `[추측]`) · **D9** 무작위 몫 n 과 `NtFreeVirtualMemory` 실제 여부 (`RtlpCreateHeap+0x459`) — 동적 **Q91**. 사진·정적으로 닫혀 확인만인 것: D2·D6·D7·D8·D10·D11·D12, 덤프로: D13 (힙 머리 나머지 칸), 정적 `[추측]` 으로 남김: D3 (매니페스트 `heapType`) |
+| 2.4 (짐 지도) | **(run46 새로)** 조건부로만 쓰는 힙 전역 8개 (`RtlpHpHeapFeatures`·`RtlpHpAppCompatFlags`·`RtlpGlobalTagHeap`·`g_RegInfo`·`RtlpLowFragHeapGlobalFlags`·`RtlpLargestLfhBlock`·`RtlpDisableHeapLookaside`·`RtlpLowFragHeapRandomData`) — 쓰는 줄은 sast/40 에 있으나 닫힌 칸으로 안 셈, 그리고 이름 없는 자리 (`0x1ce270~`·`0x1ce430`·`0x1ce6e8`) 가 앞 이름 (`LdrpThunkSignature`·`LdrpInitOnceLoadAsDataCrits`·`RtlpDisableHeapLookaside`) 짐작 크기에 묻혀 있었음 → 나머지 정적 **Q78**·**Q80** (짐 지도 7.5) |
+| 2.4 | **(run46 새로)** 묶음 7 의 힙 **뒤** 부분 (`+0xa50 ~ +0xb7d`: 기능 스위치 2개, 로더 스냅 버퍼, 활성화 컨텍스트 스택, `+0xb52` 시스템 정보 클래스 `0xc5` → `RtlpHypervisorSharedUserVa`) 본문은 안 봄 — 짐 지도 칸에 걸리면 나머지 **Q78** |
 
 ### 4.1 추측·정적으로 둔 호출 관계 (그림의 `?`, `(정적)` 상자)
 
@@ -3968,9 +4022,10 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 그림 2 ntdll ==> nt | `ntdll!NtContinue` ==> (`SYSCALL 0x43`) `KiSystemServiceCopyEnd` → `?` → `nt!NtContinue` | 번호 `0x43` 과 서비스 표 `[0x43]` = `nt!NtContinue` 는 run29 `[정적]`. 처리기 이름 `KiSystemServiceCopyEnd` 는 그림 1 (run3 `[관찰]`, 다른 시스템 콜) 에서 빌린 **추측 상자**, 본문 안 읽음 | `nt!NtContinue` 입구 (`nt+0x6adde0`) 에서 `k` — 바로 위가 `KiSystemServiceCopyEnd+0x..` 인가 (Q29) |
 | 그림 2 nt (2) 로더 끝 NtContinue | `nt!NtContinue` ==> (꼬리 JMP) `NtContinueEx` → (1) `KiContinueEx` → (1) `KeTestAlertThread` / (2) `KiContinuePreviousModeUser` → (1) `RtlpReadExtendedContext` / (2) `KiVerifyContextIpForUserCet` / (3) `KeContextToKframes` → `KxContextToKframes`; `NtContinueEx` → (2) `KiInitiateUserApc` → `KiDeliverApc` → `KiInitializeUserApc` (run42), (3) ==> `IRETQ +0x426` 또는 ==> `KiKernelExit` (JMP `+0x40c`) ==> `+0xa5 IRETQ` → `RtlUserThreadStart` | 모두 코드의 call·jmp 자리 (run29 `[정적]`, `KiKernelExit +0xa5` 는 run15, `KiInitiateUserApc +0x70`·`KiDeliverApc +0x5f3` 는 run42). 조건부: `KeTestAlertThread` (TestAlert 참), `KiVerifyContextIpForUserCet` (CET 비트 둘), `KiInitiateUserApc` (유저 APC 대기), 출구 두 갈래 (`KiKvaShadow`). 그림엔 대표만, 검사 호출(`RtlpValidateContextFlags2`·`RtlGuardIsValidStackPointer` 등)·출구 마무리 호출은 글(2.10)에만 | `nt+0x2bcb72`/`nt+0x2bcb77` (`KiContinuePreviousModeUser +0x422`/`+0x427`) 에서 `k` 와 트랩 프레임 `Rip`. `nt+0x6ae1f3`·`nt+0x6ae216`·`nt+0x6ae1fc` 중 어디 서나 (Q29·Q42). `nt+0x2bcae9` 에 서는지 (CET, Q57), `nt!KiInitiateUserApc` 가 이때 걸리나 (Q57 — 입구는 호출자가 많아 시끄러우니 `nt+0x6adf4b` (`NtContinueEx +0x15b`) 나 `nt+0x3ec6a3` (`KiInitializeUserApc +0x1fb`), run42). 모든 프로세스가 지나니 프로세스 조건 필수 |
 | 그림 2 ntdll 로더 입구 | `LdrInitializeThunk` → `LdrpInitialize`(0xe1448) ==> (꼬리 JMP) `LdrpInitializeInternal` → (1) `LdrpInitializeHotPatching` / (2) `LdrpInitializationComplete` / (3) `_LdrpInitialize` → (1) `LdrInitializeMrdata` / (2) `LdrpInitializeProcess` / (3) `LdrpInitializationComplete` | `LdrInitializeThunk+0xe` ← `LdrpInitializeInternal+0x5a` ← `LdrpInitialize+0x16c` 콜스택은 run7 `[관찰]`. 0xe1448 과 꼬리 점프, `(정적)` 상자 5개, 이름 `_LdrpInitialize` 는 run17 `[정적]`. 그림엔 대표만, `InitSecurityCookie`·`NtCreateEvent`·`LdrpTouchThreadStack`·`NtTestAlert` 등은 글(2.4)에만 | 이름이 겹치니 **주소로**: `ntdll+0xe1448`·`ntdll+0xe1484`(JMP 직전) 에서 `r rcx rdx`, `ntdll+0x8bfcf`(`_LdrpInitialize +0x43`) 에서 `r eax`, `LdrpInitializeInternal+0x98` 에서 `db ntdll+0x1d26f0 L1`, `ntdll+0x8c0f8` 에서 `k`·`ln`. 각 `(정적)` 상자 입구에서 `k` (Q43) |
-| 그림 2 (0) 프로세스 준비 | `LdrpInitializeProcess` → (1) `LdrpInitializeExecutionOptions` / (2) `LdrpInitializeProcessHeap` / (3) `NtOpenDirectoryObject` (`\KnownDlls`) / (4) `LdrpInitializeNtdllDataTableEntry` / (5) 같은 함수 둘째 호출 (조건부) | 코드의 call 자리·흐름 순서 (run18 `[정적]`, 앞쪽 94곳 중 묶음 대표 4개 + 조건부 둘째 호출). 관찰 `(7)`·`(12)`·`(13)` (`+0x19a2`·`+0x1bbb`·`+0x1c99`, run19 에서 번호 다시 매김) 보다 앞. 나머지 대표(`LdrInitializePerThreadRng`·`LdrpInitializeNlsInfo`·`RtlInsertInvertedFunctionTable`·`RtlNormalizeProcessParams`·`FastPebLock`·`TpInitializePackage`)는 글(2.4)에만 | 주소로: `ntdll+0x8c935`(`+0x531`)·`ntdll+0x8ce4f`(`+0xa4b`)·`ntdll+0x8d1bc`(`+0xdb8`)·`ntdll+0x8d5a1`(`+0x119d`) 에 멈춤 + `k` (돌아올 자리 `LdrpInitializeProcess+0x536`·`+0xa50`·`+0xdbd`·`+0x11a2`), 서는 순서가 이대로이고 모두 `+0x19a2` 보다 앞인지. `ntdll+0x8d66e`(`+0x126a`, (5)) 에 서는지 — 핫패치가 꺼졌으면 안 서야 함 `[추측]`. test.exe 일 때만. (run35 `[정적]`) (5) 가 만드는 건 패치 ntdll 항목이라 상자에서 "추정" 을 뗐다. 타는지는 그대로 이 줄 (Q44) |
+| 그림 2 (0) 프로세스 준비 | `LdrpInitializeProcess` → (1) `LdrpInitializeExecutionOptions` / (2) `RtlInitializeHeapManager` (run46) / (3) `LdrpInitializeProcessHeap` / (4) `NtOpenDirectoryObject` (`\KnownDlls`) / (5) `LdrpInitializeNtdllDataTableEntry` / (6) 같은 함수 둘째 호출 (조건부) | 코드의 call 자리·흐름 순서 (run18 `[정적]`, 앞쪽 94곳 중 묶음 대표 4개 + 조건부 둘째 호출, run46 이 힙 관리자 하나 더함). 관찰 `(8)`·`(14)`·`(15)` (`+0x19a2`·`+0x1bbb`·`+0x1c99`, run19·run24·run46 에서 번호 다시 매김) 보다 앞. 나머지 대표(`LdrInitializePerThreadRng`·`LdrpInitializeNlsInfo`·`RtlInsertInvertedFunctionTable`·`RtlNormalizeProcessParams`·`FastPebLock`·`TpInitializePackage`)는 글(2.4)에만 | 주소로: `ntdll+0x8c935`(`+0x531`)·`ntdll+0x8ce4f`(`+0xa4b`)·`ntdll+0x8d1bc`(`+0xdb8`)·`ntdll+0x8d5a1`(`+0x119d`) 에 멈춤 + `k` (돌아올 자리 `LdrpInitializeProcess+0x536`·`+0xa50`·`+0xdbd`·`+0x11a2`), 서는 순서가 이대로이고 모두 `+0x19a2` 보다 앞인지. `ntdll+0x8d66e`(`+0x126a`, (5)) 에 서는지 — 핫패치가 꺼졌으면 안 서야 함 `[추측]`. test.exe 일 때만. (run35 `[정적]`) (5) 가 만드는 건 패치 ntdll 항목이라 상자에서 "추정" 을 뗐다. 타는지는 그대로 이 줄 (Q44) |
+| 그림 2 (0) 프로세스 준비 | `LdrpInitializeProcess` → (2) `RtlInitializeHeapManager` (`p2h`), `LdrpInitializeProcessHeap` → `RtlpCreateHeap` (`p2c`) (`(정적)` 상자 둘, run46) | 코드의 call 자리 (run46 `[정적]`, `_calls.tsv` 라벨 ret `+0x9f2`·`+0x196`). 둘 다 조건 없음. 사이 `+0xa34 RtlSetHeapInformation` 은 조건부라 글(2.4)에만. 결과 값 (힙 `+0x10` NT 힙 표시, PEB 힙 4칸, 큰 예약 둘 VAD) 은 run44 사진과 맞음 | 주소로 (test.exe 만): `ntdll+0x8cdf1` (`+0x9ed`) 에 멈춤 + `k` (돌아올 자리 `LdrpInitializeProcess+0x9f2`), `ntdll+0xa8820` (`RtlpCreateHeap` 입구) `k` 첫 줄이 `LdrpInitializeProcessHeap+0x196` 인가 (+ D8 인자 `r rcx,rdx,r8,r9`). 큰 예약 때 콜스택에 `RtlInitializeHeapManager` 가 **없어야** 함 (꼬리 JMP). 값은 Q91 (D1·D4·D5·D9) |
 | 그림 2 (0) 프로세스 준비 | `LdrpInitializeNtdllDataTableEntry` (첫째, `p4`) → (1) `LdrpAllocateModuleEntry` / (2) `LdrpInsertDataTableEntry` / (3) `LdrpInsertModuleToIndex` / (4) `LdrpProcessMappedModule` (`(정적)` 상자 넷, run35) | 코드의 call 자리·흐름 순서 (run35 `[정적]`, 라벨 ret `+0x6c`·`+0xf7`·`+0x116`·`+0x124`). (1) 이 0 이면 (2)~(4) 없이 실패 로그. (4) 가 음수면 `+0x12c JS` 로 실패. 조건 없는 대표 넷, `RtlImageNtHeaderEx`·`RtlAppendUnicodeStringToString`·로그·`LdrpInsertModuleToIndexLockHeld` 안쪽은 글(2.4)에만. 둘째 호출(`p5`) 안의 같은 셋과 `NtQueryVirtualMemory`·`LdrpResolvePatchDllName`·`LdrpRecordModuleDependency` 는 핫패치 때만이라 글에만 | 주소로 (test.exe 만): `ntdll+0x7015c` 입구 `k` (돌아올 자리 `LdrpInitializeProcess+0x11a2`), `ntdll+0x701c3`(`+0x67`)·`ntdll+0x7024e`(`+0xf2`)·`ntdll+0x7026d`(`+0x111`)·`ntdll+0x7027b`(`+0x11f`) 이 이 순서로 한 번씩 서나. 값은 Q44 |
-| 그림 2 (0) 프로세스 준비 | `LdrpInitializeProcess` → (6) `LdrpAllocateModuleEntry` (exe 모듈 항목) | 코드의 call 자리, 조건 없음, 저장 `+0x1374 LdrpImageEntry` (run19 `[정적]`). 뒤쪽 첫 묶음이라 `(7)` kernel32 준비보다 앞. 이어지는 `LdrpInsertDataTableEntry`·`LdrpInsertModuleToIndex`·`LdrpProcessMappedModule` 는 글(2.4)에만. (run35 `[정적]`) `LdrpInsertDataTableEntry` 본문: 항목 == `LdrpImageEntry` 면 두 목록 **맨 앞** → exe 가 머리 (상자 글에 붙임) | `ntdll+0x8d75d`(call `+0x1359`) 에 멈춤 + `k` (돌아올 자리 `LdrpInitializeProcess+0x135e`), ret `ntdll+0x8d762` 에서 `r rax`. `ntdll+0x8d859`(`+0x1455`) 에서 `dt ntdll!_LDR_DATA_TABLE_ENTRY poi(ntdll+0x1d2828) BaseDllName FullDllName DllBase Flags` (Q46) |
+| 그림 2 (0) 프로세스 준비 | `LdrpInitializeProcess` → (7) `LdrpAllocateModuleEntry` (exe 모듈 항목, run46 전 `(6)`) | 코드의 call 자리, 조건 없음, 저장 `+0x1374 LdrpImageEntry` (run19 `[정적]`). 뒤쪽 첫 묶음이라 `(8)` kernel32 준비보다 앞. 이어지는 `LdrpInsertDataTableEntry`·`LdrpInsertModuleToIndex`·`LdrpProcessMappedModule` 는 글(2.4)에만. (run35 `[정적]`) `LdrpInsertDataTableEntry` 본문: 항목 == `LdrpImageEntry` 면 두 목록 **맨 앞** → exe 가 머리 (상자 글에 붙임) | `ntdll+0x8d75d`(call `+0x1359`) 에 멈춤 + `k` (돌아올 자리 `LdrpInitializeProcess+0x135e`), ret `ntdll+0x8d762` 에서 `r rax`. `ntdll+0x8d859`(`+0x1455`) 에서 `dt ntdll!_LDR_DATA_TABLE_ENTRY poi(ntdll+0x1d2828) BaseDllName FullDllName DllBase Flags` (Q46) |
 | 그림 2 (1)~(2) 사이 | `LdrpInitializeProcess` → (8) `LdrpEnableParallelLoading` / (9) `LdrpMapAndSnapDependency` / (10) `LdrpDrainWorkQueue(1)` / (11) `LdrpPrepareModuleForExecution` (run24 에서 (10) 을 넣어 번호가 밀림. 예전 (10) = 지금 (11)) | 코드의 call 자리·흐름 순서 (run19 `[정적]`). (9) 는 IL-only 가 아닐 때, (11) 은 (9) 뒤 상태가 음수가 아닐 때. (10) `+0x1ab1` 은 run24 `[정적]`: 인자 1 (`R12D`), 큐의 일감을 직접 처리·비면 일꾼 기다림. 하는 일은 callee 이름으로만 `[추측]`. run21 `[정적]`: (11) 은 `+0x1a94` 가 로드 문맥 `+0x20` 비트 0 을 켠 뒤라 그래프 켜기(`Prepare +0xef`)를 **건너뛰는 코드** (`Prepare +0xcb ~ +0xcf`), 켜기는 (13) `+0x1bbb`. 사이의 `LdrpThreadTokenSetMainThreadToken`(`+0x1a8e`)·`LdrInitState` 1/2 는 글(2.4·2.6)에만 (`LdrpDrainWorkQueue(1)` 은 run24 부터 그림에) run22 `[정적]`: (9) 의 안쪽은 아래 네 줄 (run23 에서 한 줄 더함). (9) 자신의 끝맺음은 exe 문맥 부모 칸 `+0x30` 이 0 이라 `LdrpSnapModule` 직접 (일감 아님) | 주소로: `ntdll+0x8de46`(`+0x1a42`, `r ecx`)·`ntdll+0x8dea8`(`+0x1aa4`, `r rcx`)·`ntdll+0x8def1`(`+0x1aed`, `r rcx` = `poi(ntdll+0x1d2828)`) 에 멈춤 + `k`, 모두 `+0x19a2` 뒤 `+0x1bb6` 앞에 서는지. 각 자리에서 `lm m dll*` 와 스레드 수 (Q23·Q47) |
 | 그림 2 (1)~(2) 사이 | `LdrpMapAndSnapDependency` [test.exe] → (1) `LdrpPrepareImportAddressTableForSnap` / (2) `LdrpGetImportDescriptorForSnap` / (3) `LdrpLoadDependentModuleInternal` [dll1 추정] / (4) `LdrpSnapModule` | 코드의 call 자리·흐름 순서 (run22 `[정적]`). (3) 은 import 서술자마다 조건 없이 (test.exe import 가 여럿이면 바퀴마다 불림, 그림은 dll1 바퀴만 `[소스]`). (4) 는 IAT 있음·락 안에서 줄인 남은 자식 0·문맥 `+0x30 == 0` 일 때만, 직전 노드 `State = 4`. 남은 자식이 있으면 (4) 없이 끝남. (run36) (4) 의 본문: IAT 칸 쓰기 `+0x3e7`, 끝에 `+0xb66 LdrpDoPostSnapWork` → `+0xb87 State = 5`. run24 `[정적]`+`[추측]`: dll1 은 `+0x182c` 에서 일감에 넣기만 해서 그 자리에선 `State 0` → 일꾼이 없으면 이 고리 끝에서 남은 수 1 → (4) 는 안 타고 exe snap 은 `LdrpSignalModuleMapped` 가 넣은 일감 (`Drain` (2)) 으로 간다. 일꾼이 있으면 경합이라 둘 다 가능 (snap 은 한 번). 그림 밖 (글 2.6 에만): `+0x63 LdrpFindDllActivationContext`, `+0xd2` 리다이렉션, `+0x10e`·`+0x5d8` 핫패치, 이름 문자열 잡일 8곳, `+0x17b` 자식 칸 배열, `+0x461`/`+0x47d` 락 | 입구 `ntdll+0x210a0` 에서 `du poi(@rcx+0x38)+0x58`·`dq @rcx+0x30 L1`·`k`, `ntdll+0x213e9`(call `+0x349`) 에서 `du poi(@rcx+8)`, `ntdll+0x2155d`(call `+0x4bd`) 에 서는지와 그때 `lm m dll*` (Q23·Q47) |
 | 그림 2 (1)~(2) 사이 | `LdrpLoadDependentModuleInternal` [dll1 추정]·[dll2 추정] → (1) `ApiSetpResolveHost` / (2) `LdrpFindLoadedDllByName` / (3) `LdrpAllocateModuleEntry` / (4) `LdrpLoadKnownDll` / (5) `LdrpQueueWork` | 코드의 call 자리·흐름 순서 (run23 `[정적]`, 라벨 ret `+0x2ff`·`+0x16ee`·`+0x115c`·`+0x1792`·`+0x182c`). 번호는 **실행 순서** (주소 순서와 다름, 함수 안에 이름 다듬기·찾기 코드가 끼워져 있음). 조건: (1) `ApiSetMap` 이 새 모양일 때 (옛 모양이면 대신 `+0x22b5`·`+0x22e0`), (2) 맨 이름일 때 (전체 이름은 해시 훑기, 호출 없음), (3) 찾기가 `0xc0000135` 일 때만, (4) (3) 뒤 이유 ≠ 9 면 늘, (5) 상태가 아직 `0xc0000135` 이고 flags `0x400` 아님, 락 독점 안. 간선 `+0xf69`/`+0xf8b`·부모 카운터 `+0x12f7`·`+0x162d`/`+0x1634` 는 호출이 아니라 상자 글에. 그림 밖 (글 2.6 에만): `+0x142b` SxS, `+0x169a LdrpGetFullPath`, `+0x1513 LdrpIncrementModuleLoadCount`(찾았을 때), `+0x1cae LdrpProcessWork`(경로 직접 준 이름만 — dll1·dll2 는 안 탈 것 `[추측]`), 마지막 참조 정리, `+0x23f5 RtlRaiseException`. 실제로 dll1·dll2 가 (2) 못 찾음 → (4) KnownDll 아님 → (5) 로 갔는지는 `[추측]`. run22 까지의 `(1) +0x115c` / `(2) ?` 두 줄을 이렇게 바꿈 | 입구 `ntdll+0x21ab0` 에서 `du poi(@rcx+8)`·`dq @rdx+0x38 L1`·`k`. ret 자리 `ntdll+0x21daf`(`+0x2ff`)·`0x2319e`(`+0x16ee`)·`0x22c0c`(`+0x115c`)·`0x23242`(`+0x1792`) 에서 `r eax`/`r rax`, call `ntdll+0x232d7`(`+0x1827`) 에서 `dq ntdll!LdrpModuleDatatableLock L1`·`~`·`kb`, 간선 직후 `ntdll+0x22a58` 에서 `dq @rcx L4` (Q23·Q47·Q20) |
@@ -4061,6 +4116,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run43 | (정적, PDB 타입·공개 이름 + ntoskrnl `MmCreateTeb` 첫 export — 03_sprint 짐 지도 첫 바퀴) 체크리스트: 구조체 21개 (커널 14 + 유저 7) 직접 칸 1,456 — 이미 아는 쓴 자리 정확 138 · 짐작 43 · 모름 1,275. ntdll 전역 `.data` 438 · `.mrdata` 50 · `.00cfg` 5 (쓴 자리 아는 것 54). 초기화 함수 15개 callee 637줄 (서로 다른 이름 nt 252 · ntdll 133, 어디에도 없음 57). `MmCreateTeb` callee 4개 (`KiStackAttachProcess` → `MiAllocateFromSubAllocatedRegion` → `KiUnstackDetachProcess`, `__security_check_cookie`), TEB 대입 약 47줄. run10 PEB 표 이름 7줄이 PDB 와 맞음. `LdrSystemDllInitBlock` 블록 타입은 두 PDB 에 없음. 짐 지도 = `runs/03_sprint/baggage.md` |
 | run44 | (동적, 03_sprint 짐 지도 둘째 바퀴 — 사진) 한 번의 test.exe 실행에서 8 지점 (K1 `PspAllocateThread` · K2 `PspInsertProcess` · K3 `PspCallProcessNotifyRoutines` · ⓪ `PspUserThreadStartup` · ① `LdrInitializeThunk` · ①-a `LdrpInitializeProcess +0x199d` · ①-b `+0x1bb6` · ② `NtContinue`) 에 멈춰 VMware 스냅샷 → `vmss2core` 덤프 → WinDbg 오프라인 읽기 (C 방식, 암호화 해제·lazy 끄기 시행착오). 8 지점 콜스택이 그림의 `+0x…` 와 같음, **`NtContinue` 입구 콜스택 `LdrInitializeThunk+0x18` 관찰 → 그림 2 `q1` 실선**. ⓪ 트랩 프레임 = 원래 출발 문맥 = ① `_CONTEXT` (`ContextFlags 0x10001b`), ② `_CONTEXT` = ①, ⓪·① `KTHREAD.TrapFrame` null, 바꿔 끼우기 앞뒤 값, `ProcessLock` 호출자가 잡아 옴 (K1·K2 1 → K3 0), `ProcessFirstResume` K3 0 → ⓪ 1, `ActiveProcessLinks`·`HANDLE_TABLE.UniqueProcessId` K2~K3, `PEB.Ldr`·`ProcessHeap`·**`ProcessParameters` 옮김** ①~①-a, 일꾼 2개 ①-a~①-b (`LoaderThreads` 0), `Kernel32ThreadInitThunkFunction` = KERNEL32+`0x2cd70`, `BeingDebugged` 0. 짐 지도: 칸마다 처음 값 구간 (구조체 1,428/1,456 · 전역 332/493 정해짐) |
 | run45 | (정적, 03_sprint 짐 지도 셋째 바퀴 — 일 목록) 초기화 동안 nt·ntdll 이 하는 일 86개 (짐 지도 칸 69 · 체크리스트 밖 짐 48 · 흐름도만 14), sast/38 callee 637줄 → 일 433 · 공용 146 · 정리 49 · 조각 9 (못 넣은 줄 0, callee 표에 0줄인 일 19). ntdll depth 0 14개 읽기만: **`ProcessParameters` 를 힙으로 옮기는 주인 `+0xc3f RtlpInitParameterBlock`** (환경 `+0xc32 RtlpInitEnvironmentBlock`), `LdrInitializeMrdata` 전역 3개, `+0x180b LdrpInitializeCfgScpHelpers` (test.exe 는 안 탄 것 `[추측]`), `+0x1cd LdrpInitializeNlsInfo` PEB 코드 페이지 칸, `+0x1963` import 리다이렉션 안 탐. PDB 이웃 타입 정의 있음/없음 확정. run44 "161" 두 뜻·트랩 프레임 시점 정정. 그림은 안 바뀜 |
+| run46 | (정적, 03_sprint 짐 지도 넷째 바퀴 — Q78a 프로세스 힙 구간) `LdrpInitializeProcess +0x9ed ~ +0xa50`: test.exe 프로세스 힙 = **NT 힙** (세그먼트 힙 조건 9개 중 8개 "아님", 사진 `0xffeeffee`), 구간 시스템 콜 12개 (`NtOpenKey` 2 · `NtQueryInformationProcess` 1 · `NtQuerySystemInformation` 3 · `NtAllocateVirtualMemoryEx` 3 · `NtAllocateVirtualMemory` 2 · `NtFreeVirtualMemory` 1), run44 큰 예약 둘 = 힙 관리자 희소 비트맵 (`0x2001000`·`0x100020000`, VAD 와 정확히 같음), PEB `+0x30` 쓰는 줄 `LdrpInitializeProcessHeap +0x1a2`, PEB 힙 목록 3칸·ntdll 힙 전역 17개 쓴 자리, `_HEAP` 머리 칸, `RtlCreateHeap` = 껍데기, `RtlInitializeHeapManager` 꼬리 JMP. 그림 2 에 `(정적)` 상자 둘 (`c4` 번호 `(2)` 부터 밀림). run18·run45 정정 (`RtlSetHeapInformation` 조건부, 태그 힙 안 만듦) |
 | `sample/` 소스 | 의존 관계, 모듈별 TLS 콜백, `/MT` 빌드 |
 
 - run3 ~ run5는 타깃에서 빌드한 test.exe, run6 ~ run8은 디버거 VM에서 빌드해 옮긴 test.exe (같은 소스).
@@ -4114,3 +4170,4 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run43 | `_workspace/sast/38_baggage-checklist` | 없음 | 정적만 (대기열 Q76, 짐 지도 A — 체크리스트, pe-flow-cycle 단계 4 첫 바퀴). ntoskrnl `^MmCreateTeb$` depth 1 export (5개, `_calls.tsv` +57줄), 다시 analyze 안 함. 표 원본은 `ms/disassemble/<모듈>/_baggage/`, 임시 스크립트 `ms/ghidra/_tmp_sast38/`. 새 공백은 새 항목 없이 Q77 (사진)·Q78 (쓴 자리·줄기) 에 출처로 |
 | run44 | 없음 | `_workspace/dast/01_snapshot-test` · `02_snapshot-test` · `03_baggage-snap` · `04_baggage-read` | 동적만 (대기열 Q77 = Q77a 시험 dast/01·02 · Q77b 캡처 dast/03 · Q77c 읽기 dast/04, 짐 지도 B). 로그 `ms/logs/01_snapshot-test.txt` ~ `04_baggage-read_<P>.txt` (+ 보충 `_supp_<P>.txt`), 판정 넷 다 분석성공. dast/01 은 암호화 스냅샷이라 변환 실패 (분석은 성공 — 스냅샷·대조값). 덤프 원본 `ms/dump/03_baggage-snap/` 커밋 안 함. 지점끼리 비교는 서버 임시 스크립트 (커밋 안 함) |
 | run45 | `_workspace/sast/39_work-list` | 없음 | 정적만 (대기열 Q81, 짐 지도 바퀴). 다시 analyze 안 함, ntdll depth 0 14개 읽기만 (`_calls.tsv` 1,559 → 1,625줄). 줄별 표 `ms/disassemble/{ntoskrnl,ntdll}/_baggage/callees_by_work.tsv` (커밋 안 함). 사용자 결정 (2026-10-26): Q78 범위 그대로, Q79 넓힘, 새 Q82 (정적) · Q83 ~ Q86 (동적), 나머지 체크리스트 밖 짐은 baggage 7.6 에 기록만 |
+| run46 | `_workspace/sast/40_process-heap` | 없음 | 정적만 (대기열 **Q78a**, Q78 첫 조각 — 사용자 요청 2026-10-27, 짐 지도 바퀴). 다시 analyze 안 함, ntdll 읽기만 (`.asm`/`.c` 225 → 342, `_calls.tsv` 1,625 → 2,165줄, `_refs` 새로 17개 이상). PDB 칸은 `llvm-pdbutil-14` (스크래치). 동적 질문 D1~D13 중 필요한 D1·D4·D5·D9 → 새 **Q91** (오케스트레이터). 결과서 도구 제안 (PDB 구조체 칸 한 줄 명령, sast/26 에 이어 두 번째) 은 하네스라 사용자 검토 |
