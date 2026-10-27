@@ -54,6 +54,8 @@ MS 바이너리를 **PDB와 함께** Ghidra로 분석해서, 요청서가 묻는
      - 지도는 **읽을 목록이 아니라 색인**이다 (커널은 끝까지 1만 개가 넘는다, sast/05). "이 함수는 뿌리에서 몇 단계, 누가 부르나, caller 몇 곳"을 찾는 데 쓴다.
      - 스크립트(`ExportFunctions`·`CallGraphMap`)를 바꾼 뒤엔 지도를 다시 만든다.
    - **누가 읽고 쓰나**: 전역 변수·함수 주소를 누가 읽고 쓰는지(호출로 안 닿는 쓰기·포인터 표 포함)는 `run_ghidra.sh refs <바이너리> <이름|0xRVA> [바이트수]` → `ms/disassemble/<모듈>/_refs/` (형식은 reference.md "누가 읽고 쓰나").
+   - **구조체 칸 표**: `python3 .claude/skills/ghidra-headless-export/scripts/pdb_struct.py <바이너리> <구조체> [...]` → 오프셋·이름·타입·비트 TSV (PDB `ms/sym/<바이너리>.pdb`, llvm-pdbutil-14). 이름 찾기는 `--list <바이너리> <정규식>`. 결과서에 임시 스크립트를 따로 짜지 않는다.
+   - **전역 주석 주의**: `.asm` 의 전역 주석은 "가장 가까운 앞쪽 PDB 이름 + 칸" 이라, `이름+0x8` 같은 자리는 그 이름의 일부가 아니라 이름 없는 별개 변수일 수 있다 (sast/40: `RtlpDisableHeapLookaside+0x8` = 사용자 공간 최대 주소 캐시). 짐 지도 전역 칸 크기를 짐작할 때 `refs` 로 따로 본다.
 4. **이름 찾기·주변 보기**: 요청서 함수 이름이 정확하지 않으면 `_index.tsv` 를 grep 해서 실제 이름을 고른다. **`_index.tsv` 에 없으면** `python3 .claude/skills/ghidra-headless-export/scripts/pdb_aliases.py --where <바이너리> <이름>` 으로 PDB 이름을 찾는다 — Ghidra 가 같은 함수를 다른 이름(내보내기 이름 등)으로 잡았으면 그 이름이 나온다 (예: `KeWaitForSingleObject` → Ghidra `KeWaitForMutexObject`). 문서에는 PDB 이름을 쓰고 Ghidra 이름을 한 번 밝힌다. 대상 함수의 위치는 지도에서 본다: `_nodes.tsv` 의 깊이·caller 수·상태, `_edges.tsv` 에서 caller 열이 대상인 줄(= 직접 부르는 함수)과 callee 열이 대상인 줄(= 누가 부르나). 요청서 범위를 넓혀야 할 것 같으면(예: 일이 한두 단계 아래에서 일어남) 지도로 길을 먼저 찾고, 넓힌 이유를 결과서에 쓴다.
 5. **뽑기**:
    ```bash
