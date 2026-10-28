@@ -3,7 +3,7 @@
 ## 기준
 
 - 타깃: Windows 11 24H2, **26100.9457**
-  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32, run33, run34, run41, run42, run43, run45)
+  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32, run33, run34, run41, run42, run43, run45, run47)
   - kernelbase.pdb: `72CCE506944DE0267C172AD64287F9BD1` (run14, run25, run34)
   - kernel32.pdb: `AE9E9D8F7AC1467A645320FDC23235D01` (run25, run34)
   - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20, run21, run22, run23, run24, run26, run27, run28, run29, run34, run35, run36, run38, run39, run41, run43, run45, run46)
@@ -16,8 +16,9 @@
 - 근거 로그: `runs/01_sprint/` run3 ~ run8 (디버거), `runs/03_sprint/` run44 (디버거 + 멈춘 순간의 VMware 스냅샷 8장 → `vmss2core` 덤프 → WinDbg 오프라인. `ms/logs/01_snapshot-test` ~ `04_baggage-read_*`)
   - (run45) 정적 바퀴지만, 닫은 칸의 값 대조에 run44 덤프 읽기 로그 (`ms/logs/04_baggage-read_<P>.txt` 구획 10·17b) 를 다시 읽었다. 새 동적 실행은 없다.
   - (run46) 정적 바퀴. 힙 머리·힙 전역·VAD 값 대조에 run44 P1a 덤프 읽기 로그 (`ms/logs/04_baggage-read_P1a.txt` 구획 06b·16 등) 를 다시 읽었다 (결과서). 새 동적 실행은 없다.
+  - (run47) 정적 바퀴. 섹션 묶음·exe 파일 객체 칸 값 대조에 run44 K1 덤프 읽기 로그 (`ms/logs/04_baggage-read_K1.txt` 1381 ~ 1500줄, `K1 07`·`K1 08`) 를 다시 읽었다 (결과서). 새 동적 실행은 없다.
   - run44 의 `[관찰]` 은 "그 순간 메모리에 그 값이 있었다" 이다. 호출을 콜스택으로 본 것은 지점 8곳의 `k` 뿐이다 (run44 "지점별 라이브 관찰").
-- 정적 근거: `runs/02_sprint/` run9 ~ run42 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ~ run33 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe, run34 kernel32·KernelBase·ntdll·ntoskrnl·basesrv·csrsrv (+ cmd.exe 참고), run35·run36 ntdll, run37 kernel32·KernelBase·apisetschema **PE 표만** (Ghidra 안 씀), run38·run39 ntdll, run40 dll1·dll2 (sample 빌드), run41 ntdll·ntoskrnl, run42 ntoskrnl. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀) · `runs/03_sprint/` run43 (ntoskrnl·ntdll PDB 타입 레코드·공개 이름 + ntoskrnl `MmCreateTeb` 첫 export — 짐 지도 체크리스트) · run45 (ntdll depth 0 14개 읽기만 + 일 목록 86개·callee 637줄 분류·PDB 타입 정의 확인 — sast/39) · run46 (ntdll 프로세스 힙 구간 depth 1 함수 약 44개 읽기만 + PDB `_HEAP`·`_PEB` 등 칸 — sast/40, 짐 지도 Q78a)
+- 정적 근거: `runs/02_sprint/` run9 ~ run42 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ~ run33 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe, run34 kernel32·KernelBase·ntdll·ntoskrnl·basesrv·csrsrv (+ cmd.exe 참고), run35·run36 ntdll, run37 kernel32·KernelBase·apisetschema **PE 표만** (Ghidra 안 씀), run38·run39 ntdll, run40 dll1·dll2 (sample 빌드), run41 ntdll·ntoskrnl, run42 ntoskrnl. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀) · `runs/03_sprint/` run43 (ntoskrnl·ntdll PDB 타입 레코드·공개 이름 + ntoskrnl `MmCreateTeb` 첫 export — 짐 지도 체크리스트) · run45 (ntdll depth 0 14개 읽기만 + 일 목록 86개·callee 637줄 분류·PDB 타입 정의 확인 — sast/39) · run46 (ntdll 프로세스 힙 구간 depth 1 함수 약 44개 읽기만 + PDB `_HEAP`·`_PEB` 등 칸 — sast/40, 짐 지도 Q78a) · run47 (ntoskrnl 섹션 사슬·exe 열기 depth 0 35개 새로 + sast/26 13개 읽기만, PDB 칸은 `pdb_struct.py` — sast/41, 짐 지도 Q78b)
   - PE 헤더·import·export 표는 `pefile` 로 읽었다 (run25). KERNELBASE·kernel32·ntdll 의 TLS 디렉터리도 PE 파일에서 읽었다 (run28). Ghidra 는 PE 진입점 함수를 PDB 이름 대신 `entry` 로 잡는다 (run25). 글에선 PDB 이름을 쓴다.
   - test.exe 는 sample 빌드라 MS 심볼 서버가 아니라 `sample/bin/` 의 exe·pdb 를 썼다 (run30). run31 의 test.exe PE 헤더 값(`AddressOfEntryPoint`, `ImageBase`, 정렬 등)도 같은 파일을 직접 읽은 것이다. 진입점 rva `0x1d40` = run5 `[관찰]`, run7 `[관찰]` 의 `…67723` 도 맞는다. 단 run3 ~ run5 와 run6 ~ run8 은 따로 빌드한 exe 라 (5장) 올라온 파일이 어느 쪽인지까지는 모른다.
   - dll1·dll2 도 같은 방식으로 `sample/bin/` 의 dll·pdb 를 썼다 (run40). 진입점 rva (dll1 `0x1d60`, dll2 `0x1d50`) 의 PDB 이름 `_DllMainCRTStartup` = run8 `[관찰]` `rcx`, `DllMain` rva `0x12e0` = run6 `[관찰]`, run7 `[관찰]` `LoadLibraryExW` 돌아올 주소 둘의 아래 16비트도 이 파일의 ret 자리와 맞는다. 그래도 VM 에서 돈 파일과 같은 빌드라고 단정하진 않는다 `[추측]`.
@@ -252,7 +253,7 @@
 - **점선 테두리** = 이름이나 실행이 확실하지 않은 것. **노란 메모** = 같은 무렵 다른 스레드에서 일어난 일.
 - `[dll1 추정]`처럼 대괄호 = 그 함수가 그때 맡은 모듈. "추정"이 붙으면 추측이다.
 
-### 그림 1 — 부모 cmd.exe 스레드 (run3, run9, run10, run11, run12, run13, run14, run16, run31, run32, run34)
+### 그림 1 — 부모 cmd.exe 스레드 (run3, run9, run10, run11, run12, run13, run14, run16, run31, run32, run34, run47)
 
 ```mermaid
 flowchart LR
@@ -286,13 +287,14 @@ flowchart LR
             a0["nt!KiSystemServiceCopyEnd<br/>(시스템 콜 진입)"]
             a1["nt!NtCreateUserProcess"]
             s1["nt!PspBuildCreateProcessContext<br/>(정적)"]
-            s2["nt!IopCreateFile<br/>(정적: exe 파일 열기)"]
+            s2["nt!IopCreateFile<br/>(정적: exe 파일 열기. 파일 객체는 안쪽<br/>IopParseDevice +0xe1e IopAllocRealFileObject, 2.1)"]
             s3["nt!MmCreateSpecialImageSection<br/>(정적: 이미지 섹션. 핸들을 돌려줌,<br/>서명 재시도 고리 안)"]
             i1["nt!MiCreateSection<br/>(정적)"]
             i2["nt!MiCreateImageOrDataSection<br/>(정적: 갈림길. 같은 파일 컨트롤 영역이 이미 있으면<br/>+0x1d5 MiShareExistingControlArea 로 가고 오른쪽 셋 안 탐)"]
             i3["nt!MiCreateNewSection<br/>(정적: 없을 때만. 뒤에 +0x3da MiRelocateImage 가<br/>새 기본 주소면 TransferAddress 에 델타 더함)"]
             i4["nt!MiCreateImageFileMap<br/>(정적: exe 헤더 읽기 +0x15c/+0x501,<br/>MZ 검사, +0x1f6 MiVerifyImageHeader)"]
             i5["nt!MiBuildImageControlArea<br/>(정적: 컨트롤 영역·프로토 PTE 만들기.<br/>+0x172 TransferAddress = ImageBase + 진입점 rva)"]
+            i6["nt!MiFinishCreateSection<br/>(정적: _SECTION 객체 만들기 +0x148 ObCreateObjectEx,<br/>패킷 사본을 통째 복사. 사슬이 끝난 뒤, run47)"]
             a2["nt!PspAllocateProcess"]
             p1["nt!MmCreateProcessAddressSpace<br/>(정적: 주소 공간 껍데기)"]
             p2["nt!MmInitializeProcessAddressSpace<br/>(정적: 보통 길, 복제 길은 +0x2113)"]
@@ -357,10 +359,11 @@ flowchart LR
     a1 -->|"(2) +0x6cb"| s2
     a1 -->|"(3) +0x93c"| s3
     s3 -->|+0xd4| i1
-    i1 -->|+0xf8| i2
+    i1 -->|"(1) +0xf8"| i2
     i2 -->|+0x385| i3
     i3 -->|+0x215| i4
     i4 -->|+0x2e6| i5
+    i1 -->|"(2) +0x125"| i6
     a1 -->|"(4) +0xc36"| a2
     a2 -->|"(1) +0x163c"| p1
     a2 -->|"(2) +0x2095"| p2
@@ -417,7 +420,7 @@ flowchart LR
     r4 -.- wz
 
     class a0,a1,a2,a3,a4,a5,a6,a7 kern
-    class s1,s2,s3,i1,i2,i3,i4,i5,s4,s5,s6,s7,s8,t0,t1,t2,t3,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,u1,u2,u3,u4,u5,v1,v2,y1,y2,y3,r0a,r0,r1,r2,r3,r4 kerng
+    class s1,s2,s3,i1,i2,i3,i4,i5,i6,s4,s5,s6,s7,s8,t0,t1,t2,t3,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,u1,u2,u3,u4,u5,v1,v2,y1,y2,y3,r0a,r0,r1,r2,r3,r4 kerng
     class cb1,cb2,cb3,cb4 unkg
 ```
 
@@ -942,7 +945,7 @@ flowchart LR
 
 ## 2. 단계별 설명
 
-### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9, run10, run11, run12, run13, run16, run31, run32, run34)
+### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9, run10, run11, run12, run13, run16, run31, run32, run34, run47)
 
 이 구간은 **test.exe가 아니라 부모 cmd.exe**가 일하는 시간이다.
 test.exe는 아직 "만들어지는 중"이라, 자기 코드는 한 줄도 안 돌았다.
@@ -952,18 +955,24 @@ test.exe는 아직 "만들어지는 중"이라, 자기 코드는 한 줄도 안 
 ```
 NtCreateUserProcess                                    (번호 = 코드 순서)
  ├─ (1)  +0x29a   PspBuildCreateProcessContext          [정적]
- ├─ (2)  +0x6cb   IopCreateFile                         [정적]
+ ├─ (2)  +0x6cb   IopCreateFile                         [정적] exe 열기 (실패 때만 +0x740 IoCreateFileEx 재시도, run47)
+ │                 └─ 조각 +0x6f  ObOpenObjectByNameEx              [정적] (run47)
+ │                      └─ +0x224  ObpLookupObjectName              [정적]
+ │                           └─ +0xbcd  IopParseDevice              [정적] 장치 형식의 Parse 를 직접 호출
+ │                                ├─ (1) +0xe1e  IopAllocRealFileObject  [정적] exe 파일 객체 할당·칸 채우기
+ │                                └─ (2) +0xf5f  IofCallDriver           [정적] IRP_MJ_CREATE → 파일 시스템 (ntfs.sys [추측])
  ├─ (3)  +0x93c   MmCreateSpecialImageSection           [정적] 섹션 핸들을 돌려줌 (run31)
  │                 └─ +0xd4  MiCreateSection                         [정적] (run31)
- │                      └─ +0xf8  MiCreateImageOrDataSection         [정적] 갈림길: 서랍(컨트롤 영역)이 이미 있으면
- │                           │                                          +0x1d5 MiShareExistingControlArea (아래 안 탐)
- │                           └─ +0x385  MiCreateNewSection           [정적] 없을 때만
- │                                ├─ (1) +0x215  MiCreateImageFileMap      [정적] exe 헤더 읽기·검사
- │                                │     ├─ (1) +0x15c  MiCopyHeaderIfResident  (없으면 +0x501 MiReadImageHeaders)
- │                                │     ├─ (2) +0x1f6  MiVerifyImageHeader      +0x8a 진입점 rva 복사
- │                                │     └─ (3) +0x2e6  MiBuildImageControlArea  +0x172 TransferAddress = ImageBase + rva
- │                                ├─ (2) +0x167  MiSectionCreated
- │                                └─ (3) +0x3da  MiRelocateImage           [정적] 새 기본 주소면 TransferAddress += 델타
+ │                      ├─ (1) +0xf8  MiCreateImageOrDataSection     [정적] 갈림길: 서랍(컨트롤 영역)이 이미 있으면
+ │                      │    │                                          +0x1d5 MiShareExistingControlArea (아래 안 탐)
+ │                      │    └─ +0x385  MiCreateNewSection           [정적] 없을 때만
+ │                      │         ├─ (1) +0x215  MiCreateImageFileMap      [정적] exe 헤더 읽기·검사
+ │                      │         │     ├─ (1) +0x15c  MiCopyHeaderIfResident  (없으면 +0x501 MiReadImageHeaders)
+ │                      │         │     ├─ (2) +0x1f6  MiVerifyImageHeader      +0x8a 진입점 rva 복사
+ │                      │         │     └─ (3) +0x2e6  MiBuildImageControlArea  +0x172 TransferAddress = ImageBase + rva
+ │                      │         ├─ (2) +0x167  MiSectionCreated
+ │                      │         └─ (3) +0x3da  MiRelocateImage           [정적] 새 기본 주소면 TransferAddress += 델타
+ │                      └─ (2) +0x125  MiFinishCreateSection         [정적] _SECTION 객체 (+0x148 ObCreateObjectEx), 패킷 사본 복사 (run47)
  ├─ (4)  +0xc36   PspAllocateProcess                    [관찰]+[정적]
  │                 ├─ (1) +0x163c  MmCreateProcessAddressSpace       [정적] 주소 공간
  │                 ├─ (2) +0x2095  MmInitializeProcessAddressSpace   [정적] 보통 길로 [추측]
@@ -1044,10 +1053,19 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
 - `[정적]` (run9) `NtCreateUserProcess+0x29a`(call `+0x295`)에서 부른다.
 - `[정적]` 유저가 준 **속성 목록**(11번째 인자)을 읽어 커널 안의 "만들기 준비물" 묶음으로 풀어 둔다 (디컴파일 요약).
 
-#### `nt!IopCreateFile` (정적)
+#### `nt!IopCreateFile` (정적, run9, run47)
 
 - `[정적]` (run9) `NtCreateUserProcess+0x6cb`(call `+0x6c6`)에서 부른다. **실행 파일(exe)을 연다.** 접근권 `0x100020` = 실행 + 동기.
 - `[정적]` 앞에서 `PspCreateUserProcessEcp`(call `+0x5fa`)로 덧붙일 정보를 만들고, 실패하면 `IoCreateFileEx`(call `+0x73b`)로 한 번 더 시도하는 코드가 있다.
+  - `[정적]` (run47) 재시도가 맞다: `+0x6cf JNS +0x764` 가 첫 번째 성공이면 `+0x740` 을 건너뛴다. **exe 파일 객체를 만드는 쪽은 `+0x6cb`**. 열기 인자: 접근 `0x100020`, 공유 5 (읽기+삭제), `FILE_OPEN`, 옵션 `0x60`, 객체 속성 `[RBP+0xb8]` (커널 핸들·대소문자 무시, 사용자 모드 호출이면 접근 검사 강제 `+0x56e ~ +0x57e`). 플래그 이름은 공개 헤더 `[추측]`.
+- `[정적]` (run47) **파일 객체가 생기는 사슬** (`IopParseDevice`·`IopParseFile`·`ObpLookupObjectName` 은 지도에 없다 — 객체 형식의 Parse 함수 포인터로 가는 간접 호출이라. 결과서가 `.asm`·`refs` 로 이었다):
+  1. `IopCreateFile` 이 열기 패킷 (`_OPEN_PACKET` 0xe0, PDB) 을 채우고 (`+0x21b ~ +0x2ea`, `RelatedFileObject` 0, `QueryOnly` 0) 조각 `FUN_1408c7e1f +0x6a` (ret `+0x6f`, = `IopCreateFile +0x4d1`) 에서 `ObOpenObjectByNameEx`.
+  2. `ObOpenObjectByNameEx +0x224` `ObpLookupObjectName` — `\??\…` → 심볼릭 링크 → 장치 객체. 장치 형식의 Parse 가 `IopParseDevice` 면 **직접 호출**: `+0xb75 LEA` 로 비교 → `+0xbcd` (또는 `+0xc95`). 포인터는 부팅 때 `IoCreateObjectTypes +0xeb/+0xfd` 가 꽂음.
+     - `IopParseFile` 은 파일 객체 밑 상대 열기 (`ObpLookupObjectName +0x135b`) 때만 오는 징검다리 (`+0xc7 IopParseDevice`). **절대 경로 exe 는 안 탄다** `[정적 조건]` (동적 D8, Q92).
+  3. **`IopParseDevice +0xe1e` `IopAllocRealFileObject`** — 룩어사이드 또는 `+0x16f ObpAllocateObject` (`0xd8`) → `+0x223 memset` → `Type`·`Size`·`DeviceObject`·`Flags`·`Lock`·`IrpList` 등. (`+0x10dc` 둘째 호출은 `QueryOnly` 갈래, exe 아님.) 이어서 `IopParseDevice` 가 `FileName` (`+0xead`·`+0xecb`)·`Event` (`+0xf1f`) 를 쓰고 **`+0xf5f IofCallDriver`** 로 파일 시스템에 `IRP_MJ_CREATE`.
+  4. 돌아와 `ObOpenObjectByNameEx +0x40a ObpCreateHandle` 로 핸들, `IopCreateFile` 조각 `+0xbb` 에서 `Flags` `0x40000`.
+- `[정적]` (run47) **파일 객체 칸 넷 (`Vpb`·`FsContext`·`FsContext2`·`SectionObjectPointer`) 은 nt 에 쓰는 줄이 없다.** IRP 를 받은 파일 시스템 (ntfs.sys `[추측]`, 동적 D7) 몫이다. 그런데 `SectionObjectPointer` 는 바로 뒤 섹션 사슬이 읽고, 가리키는 블록의 `ImageSectionObject` 는 nt 가 쓴다 (아래 `MiCreateImageOrDataSection` 갈림길). 칸별은 짐 지도 3.24.
+- `[정적]` (run47) 이 exe 핸들은 `NtCreateUserProcess +0x11d5 PspDeleteCreateProcessContext` (`PspInsertThread` 뒤) 가 `+0x139 ObCloseHandle` 로 닫는다 → `IopCloseFile +0x13d IofCallDriver` (`IRP_MJ_CLEANUP`). run44 사진의 `FILE_OBJECT.Flags` `K3~P0` 바뀜 (`0x4400`) 이 이때 같다 `[추측]` (동적 D6, Q92).
 - `[추측]` 비유하면 **설계도(exe 파일) 꺼내 오기**.
 
 #### `nt!MmCreateSpecialImageSection` (정적)
@@ -1063,15 +1081,18 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
   - **핸들**을 돌려준다: `+0x141` (ret `+0x146`) `ObInsertObjectEx` → `+0x14f` 에서 호출자 칸(`[RBP+0x260]`)에. 객체는 `NtCreateUserProcess +0x972` `ObReferenceObjectByHandle` 로 다시 얻어 `PspAllocateProcess` 로 넘긴다 (run10 과 맞음).
   - 그 밖에 `+0x69` 기능 검사(`Feature_TrustedLaunchHosts…`), `+0x8b` 세션 id, `+0xf6 ~ +0x11c` 파일 마지막 페이지 꼬리 0 채우기. `MiCreateSection` 이 `0xc0000054` 를 돌려주면 `+0xef` `KeDelayExecutionThread` 로 쉬고 다시 (일반 길에도 있는 고리).
 
-#### `nt!MiCreateSection` → `nt!MiCreateImageOrDataSection` (정적, run31)
+#### `nt!MiCreateSection` → `nt!MiCreateImageOrDataSection` (정적, run31, run47)
 
 - `[정적]` `MiCreateSection` 은 스택에 "만들기 패킷"(0xc8바이트)을 채우고 (`MiInitializeCreateSectionPacket`) `+0xf8` 에서 `MiCreateImageOrDataSection` 을 부른다. 파일 핸들을 넘기니 이쪽이 늘 탄다 (둘 다 0 이면 `MiCreatePagingFileMap`).
+- `[정적]` (run47) **`_SECTION` 객체는 그 뒤 형제 호출 `+0x125 MiFinishCreateSection` 이 만든다.** 컨트롤 영역·세그먼트 사슬 (`+0xf8` 아래) 이 다 끝난 뒤 `+0x148 ObCreateObjectEx` (`MmSectionObjectType`, 몸통 `0x40`). 사슬이 패킷 `+0x50 ~ +0x8f` 에 모아 둔 값을 `+0x15b ~ +0x179` 에서 객체로 통째 복사한다 (비유: 메모지에 적어 둔 걸 봉투에 한 번에 옮겨 적기). `MiCreateNewSection` 아래에서는 섹션 객체를 안 만든다. 칸별은 짐 지도 3.20.
 - `[정적]` **갈림길** — `MiCreateImageOrDataSection +0x1a3` `MiReferenceControlArea` 가 파일 객체의 `SectionObjectPointer` 안 **`ImageSectionObject`** 를 본다:
   1. 비었음 → 자리표시 컨트롤 영역(`BeingCreated` 켜짐)을 꽂음 → **`+0x385` `MiCreateNewSection`** (새로 만들기).
   2. 있고 멀쩡함 → 사용 수 +1 → **`+0x1d5` `MiShareExistingControlArea`** (같이 쓰기). 아래 `MiCreateImageFileMap` 은 안 탄다.
+     - `[정적]` (run47) "사용 수 +1" 은 `MiReferenceControlArea` 안: `+0x107` `NumberOfSectionReferences`, `+0x11d` `NumberOfUserReferences`. 공유 길은 이 둘과 `SizeOfSection` 만 정하고 컨트롤 영역·세그먼트 다른 칸은 안 건드린다.
   3. 만드는 중/지우는 중 → 기다렸다가 처음부터 다시.
   - 가르는 줄: `+0x1ba MOV EAX,[RAX+0x38]` / `+0x1bd TEST AL,2` / `+0x1bf JNZ`.
 - `[추측]` test.exe 처음 실행이면 1번 길. 같은 부팅에 이미 돌렸고 그 컨트롤 영역이 남아 있으면 2번 길. 얼마나 남는지는 안 봤다. → 동적 Q61.
+  - (run47) run44 사진 값 (`NumberOfSectionReferences` 1 · `NumberOfUserReferences` 2 · `NumberOfMappedViews` 1) 으로는 **못 가른다** — 두 길이 같은 숫자를 만든다 `[정적]` (매핑이 사용자 참조를 1 더 올린다는 것은 `[추측]`). 재부팅 없이 두 번 돌려 두 K1 의 `_SECTION.u1` (컨트롤 영역 주소) 이 같은지 보면 사진으로도 가린다 (sast/41 D1 → Q61).
 
 #### `nt!MiCreateNewSection` (정적, run31)
 
@@ -1098,6 +1119,7 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
 #### `nt!MiBuildImageControlArea` (rva `0x970fc4`, 1278바이트, run31 `[정적]`)
 
 - `[정적]` 컨트롤 영역+서브섹션, 프로토 PTE 배열, 세그먼트(0x98바이트) 를 풀에 만들고, 섹션 표를 훑어 서브섹션별 PTE 를 채운다 (`+0x367` `MiParseImageSectionHeaders`).
+  - `[정적]` (run47) 컨트롤 영역·세그먼트·이미지 정보 칸은 거의 이 함수 하나가 쓴다 (짐 지도 3.21 ~ 3.23). 풀은 0 으로 채워져 오고 (플래그에 "초기화 안 함" 비트 없음) 안 쓰는 칸은 그대로 0. 뒤에 `MiSectionCreated` 가 `FilePointer`·`WaitList` 를 채우고 `BeingCreated` 를 끈다.
 - `[정적]` **`+0x16b MOV EAX,[R15+0x1c]` · `+0x16f ADD RAX,[R15]` · `+0x172 MOV [R8],RAX`** — 진입점 rva + `ImageBase` 를 **이미지 정보 `+0x0` = `_SECTION_IMAGE_INFORMATION.TransferAddress`** 에 쓴다. **진입점 주소가 처음 만들어지는 줄**이다. 이 시점엔 헤더의 `ImageBase` 기준 (test.exe 면 `0x140001d40` 일 것, 동적 Q61).
 - `[정적]` 이미지 정보는 세그먼트 안에 살고, 세그먼트 `+0x38` (`_SEGMENT.u2.ImageInformation`) 이 가리킨다. 같은 함수가 스택 크기·서브시스템·OS 버전·`Machine`·`DllCharacteristics` 칸도 채운다 (run31 결과서 표).
 
@@ -3822,10 +3844,14 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.1 | (일부 해결, 정적) `MmCreateTeb` 본문: TEB 에 무엇을 쓰나 → run43 `[정적]`: 본문 처음 뽑음 (811바이트). 붙기 `+0x7a KiStackAttachProcess` → 자리 `+0xa7 MiAllocateFromSubAllocatedRegion` → TEB 대입 약 47줄 (64비트 + WOW64 갈래) → 떼기 `+0x299 KiUnstackDetachProcess` (실패 길 `+0x2d3`). **남은 것**: 칸별로 무엇을 쓰나 — 짐 지도 Q78 (`runs/03_sprint/baggage.md` 7.5) (run44 `[관찰]`: K1~K2 에 처음 값이 생긴 TEB 칸 9개 — 2.1 `MmCreateTeb` 절. 칸별 맞추기 후보) |
 | 2.1 | `PspInsertProcess +0x1e3` `ObInsertObjectEx` 인자 이름·하는 일 (핸들 안 돌려받는 모양까지만 봄) |
 | 2.1 | (해결됨, 정적) exe 진입점이 이미지 정보 `TransferAddress` 에 처음 적히는 곳 (run16 은 `MmGetSectionInformation` 에서 꺼내는 쪽만) → run31 `[정적]`: `MiVerifyImageHeader +0x8a` 가 헤더 `AddressOfEntryPoint` 를 칸 `+0x1c` 에 복사 → **`MiBuildImageControlArea +0x172`** 가 `ImageBase + rva` 를 `TransferAddress` 에. 재배치 때 `MiRelocateImage` 조각 `+0x1b1279` 가 델타를 더함 |
-| 2.1 | 이미지 섹션 만들기 실제 길 + `TransferAddress` 값 (run31 결과서 D1~D5) — 동적 **Q61**: `nt+0x96f4d0` `MiCreateNewSection` / `nt+0x96e6cc` `MiShareExistingControlArea` 중 어느 쪽이 서나 (같은 부팅에 이미 돌렸으면 공유 쪽 — 재부팅 직후 첫 실행 또는 파일 복사), `nt+0x96ff50` `MiCreateImageFileMap` 입구 `k` (`MiCreateNewSection+0x215` ← … ← `NtCreateUserProcess+0x93c`), `nt+0x970886` `MiVerifyImageHeader +0x8a` `eax` (기대 `0x1d40`), `nt+0x971136` `MiBuildImageControlArea +0x172` `rax` (기대 `0x140001d40`), `nt+0xb246bd` `MiRelocateImage` 조각 `ADD` 가 서나·델타. test.exe 이름 조건 필요 |
+| 2.1 | 이미지 섹션 만들기 실제 길 + `TransferAddress` 값 (run31 결과서 D1~D5, + run47 sast/41 D1 같은 질문 — run44 사진 값으로는 못 가름, 재부팅 없이 두 번 실행해 두 K1 의 `_SECTION.u1` 비교로도 가능) — 동적 **Q61**: `nt+0x96f4d0` `MiCreateNewSection` / `nt+0x96e6cc` `MiShareExistingControlArea` 중 어느 쪽이 서나 (같은 부팅에 이미 돌렸으면 공유 쪽 — 재부팅 직후 첫 실행 또는 파일 복사), `nt+0x96ff50` `MiCreateImageFileMap` 입구 `k` (`MiCreateNewSection+0x215` ← … ← `NtCreateUserProcess+0x93c`), `nt+0x970886` `MiVerifyImageHeader +0x8a` `eax` (기대 `0x1d40`), `nt+0x971136` `MiBuildImageControlArea +0x172` `rax` (기대 `0x140001d40`), `nt+0xb246bd` `MiRelocateImage` 조각 `ADD` 가 서나·델타. test.exe 이름 조건 필요 |
 | 2.1 | `TransferAddress` 가 `PspAllocateProcess` 까지 안 바뀌고 오나 (run31 결과서 D6) — 동적 **Q35**: `nt+0xa02ef9` (`PspAllocateProcess +0x991` ret 직후) `dq @r15+0x38 L1` 이 Q61 의 `+0x172` (+ `MiRelocateImage` 델타) 값과 같은가. `+0x20b3 ~ +0x20ce` 보정이 이 값과 어떤 관계인지는 `[추측]` (실제 올라간 주소와 다를 때) |
 | 2.1 | `MmCreateSpecialImageSection` 을 몇 번 지나나 (서명 재시도 고리, run31 `[정적]`: 섹션을 만든 뒤 서명 수준이 다르면 닫고 다시) — 동적 **Q34**: `nt+0x96bd64` 입구 횟수, ret `nt+0xa01c7c` (`NtCreateUserProcess +0x93c`) 의 `eax` |
-| 2.1 | 이미지 섹션 쪽 정적으로 남은 것 (run31) — 정적 **Q62**: (a) 안 읽은 함수(`MiParseComAndCetHeaders`, `MiMakeImageReadOnly`, `MiInitializeNewImageSectionProtos`, `MiValidateSectionSigningPolicy`, `MiReleaseImageSection`, `MiFinalizeImageHeaderPage`)에 `TransferAddress` 를 쓰는 줄이 더 있나, (b) `PspAllocateProcess +0x20b3 ~ +0x20ce` 보정 조건과 `MiRelocateImage` 델타(`+0x1b1279`)의 관계 (지금 `[추측]`), (c) 공유 길 `MiShareExistingControlArea` → `MiValidateExistingImage` 안쪽, (d) 헤더 페이지 → 프로토 PTE (`MiSectionCreated +0x103` `MiInitializeNewImageSectionProtos`, 지금 `[추측]`), (e) 작은 것: `MiVerifyImageHeader` 이유 번호 0x57~0x59 검사, `Feature_TrustedLaunchHosts` 뜻, `MmCreateSpecialImageSection +0x8b` 별칭 둘(`PsGetProcessSessionIdEx`/`PsGetSessionIdEx`), `MiCreateSection` 안 재시도가 위로 올라오는 경우. "컨트롤 영역이 프로세스가 끝난 뒤 얼마나 남나" 는 정적 대신 Q61 재실행 비교로 본다 |
+| 2.1 | 이미지 섹션 쪽 정적으로 남은 것 (run31) — 정적 **Q62**: (a) 안 읽은 함수(`MiParseComAndCetHeaders`, `MiMakeImageReadOnly`, `MiInitializeNewImageSectionProtos`, `MiValidateSectionSigningPolicy`, `MiReleaseImageSection`, `MiFinalizeImageHeaderPage`)에 `TransferAddress` 를 쓰는 줄이 더 있나, (b) `PspAllocateProcess +0x20b3 ~ +0x20ce` 보정 조건과 `MiRelocateImage` 델타(`+0x1b1279`)의 관계 (지금 `[추측]`), (c) 공유 길 `MiShareExistingControlArea` → `MiValidateExistingImage` 안쪽 (run47: `MiShareExistingControlArea` 본문은 읽음 — 카운터·`SizeOfSection` 만 정함. `MiValidateExistingImage` 는 뽑기만, 본문 안 읽음), (d) 헤더 페이지 → 프로토 PTE (`MiSectionCreated +0x103` `MiInitializeNewImageSectionProtos`, 지금 `[추측]`), (e) 작은 것: `MiVerifyImageHeader` 이유 번호 0x57~0x59 검사, `Feature_TrustedLaunchHosts` 뜻, `MmCreateSpecialImageSection +0x8b` 별칭 둘(`PsGetProcessSessionIdEx`/`PsGetSessionIdEx`), `MiCreateSection` 안 재시도가 위로 올라오는 경우. "컨트롤 영역이 프로세스가 끝난 뒤 얼마나 남나" 는 정적 대신 Q61 재실행 비교로 본다 |
+| 2.1 (짐 지도) | (해결됨, 정적 → run47: 다섯 구조체 모르는 칸 74 → 여전히 모름 0, 짐 지도 3.20 ~ 3.24) **exe 섹션 묶음 칸의 쓴 자리 (Q78b)** — `_SECTION` 은 `MiCreateSection +0x125 MiFinishCreateSection` 이 만듦 (패킷 사본 복사), 컨트롤 영역·세그먼트·이미지 정보는 거의 `MiBuildImageControlArea`, exe 파일 객체는 `IopParseDevice +0xe1e IopAllocRealFileObject`. 파일 시스템 칸 넷은 nt 에 쓰는 줄 없음 |
+| 2.1 (짐 지도) | **(run47 새로) exe 섹션 묶음 실행 확인** (sast/41 결과서 번호 그대로) — 동적 **Q92**: **D4** `_CONTROL_AREA.u2` (`ffffffff`/`0x00c00009`) 가 `MiSelectImageBase` (`nt+0x972de0`) 어느 갈래에서 나오나 · **D5** `NumberOfPfnReferences` 3→`0x2d`·`FilePointer` 아래 비트를 바꾸는 주체 (`ba w8 <CA+0x20>`/`<CA+0x40>`) · **D6** `FILE_OBJECT.Flags` `0x4400` 을 켜는 때가 exe 핸들 닫기 (`nt+0x842838` `PspDeleteCreateProcessContext +0x134`, `nt+0x86c660` `IopCloseFile`) 인가 · **D7** `Vpb`·`FsContext`·`FsContext2`·`SectionObjectPointer` 를 쓴 모듈이 ntfs 인가 (`nt+0x8bbb8f` `IopParseDevice +0xf5f` 뒤 `ba w8` + `lm a @rip`). 낮은 우선순위: D2 (`_SECTION` 패킷 사본) · D3 (원격·`SEC_BASED`·세션 갈래) · D8 (`IopParseFile` 안 탐) · D9 (`IoSetShareAccess` 부르는 쪽) · D10 (서명 수준 값). 멈춤점·찍을 것은 run47 "아직 확인 필요" |
+| 2.1 | **(run47 새로)** exe 이름 문자열 `NtCreateUserProcess [RBP+0x290]` (→ 객체 속성 `ObjectName`, `+0x584`) 을 채우는 줄 `[공백]` — 부모가 넘긴 NT 경로로 보임 `[추측]`. Q92 에 같이 |
+| 2.1 (짐 지도) | **(run47 새로)** 섹션 묶음 옆 짐 — 칸 표 후보 `_SECTION_OBJECT_POINTERS`·`_MI_IMAGE_ADDITIONAL_INFO`·`_MI_EXTRA_IMAGE_INFORMATION` (기록만, 짐 지도 7.6), `EPROCESS.SectionObject`·`ImageFilePointer`·`SectionBaseAddress` 쓰기와 매핑이 올리는 `NumberOfMappedViews`·`NumberOfUserReferences` → 정적 **Q78c** (/ Q79) |
 | 2.2 | (일부 해결) `NtCreateUserProcess` 안엔 첫 스레드를 풀어 주는 호출이 없다, 멈춤 갈림길 = `PspInsertThread` call `+0x2e0` `KeSuspendThread` / 끝 call `+0x5a1` `KeReadyThread` → run9 `[정적]` |
 | 2.2 | (일부 해결) 첫 스레드를 풀어 주는 **nt 쪽 사슬** `NtResumeThread +0x9b` → `PsMultiResumeThread +0x25` → `KeResumeThread +0x87` → `KiResumeThread +0xab` → `KiTryUnwaitThread` → run13 `[정적]`. `PsResumeThread` 는 사슬에 없음 |
 | 2.2 | (해결됨, 정적) `NtCreateUserProcess` 반환 후 부모 쪽 마무리, 부모 유저 쪽이 풀어 주는 시스템 콜을 부르는지·어느 쪽인지 → run14 `[정적]` `KERNELBASE!CreateProcessInternalW` `+0x30ee` `NtCreateUserProcess`(ThreadFlags 늘 1) → `+0x4672` `CsrClientCallServer` → `+0x5bd3` **`NtResumeThread`** (`CREATE_SUSPENDED` 없을 때만). `NtAlertResumeThread` 안 씀 (Q5b) |
@@ -3977,7 +4003,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 그림 자리 | 추측한 호출 | 지금까지 본 것 | 확인할 것 |
 |---|---|---|---|
 | 그림 1 nt | `NtCreateUserProcess` → (1)(2)(3) `PspBuildCreateProcessContext` / `IopCreateFile` / `MmCreateSpecialImageSection` | 코드의 call 자리 (run9 `[정적]`) | 각 입구에서 `k`. `MmCreateSpecialImageSection`이 서명 루프(call `+0xa08` ~ `+0xa2a`)로 **두 번** 불리는지도 (Q34, `nt+0x96bd64`) |
-| 그림 1 nt | `MmCreateSpecialImageSection` → `MiCreateSection` → `MiCreateImageOrDataSection` → `MiCreateNewSection` → `MiCreateImageFileMap` → `MiBuildImageControlArea` (`(정적)` 상자 다섯, run31) | 코드의 call 자리 `+0xd4` / `+0xf8` / `+0x385` / `+0x215` / `+0x2e6` (run31 `[정적]`). `MiCreateImageOrDataSection` 은 갈림길 — 컨트롤 영역이 이미 있으면 `+0x1d5` `MiShareExistingControlArea` 로 가서 오른쪽 셋을 안 탐 | Q61: `MiCreateImageFileMap` 입구 (`nt+0x96ff50`) `k`, `MiCreateNewSection` / `MiShareExistingControlArea` 입구 중 어느 쪽이 서나, `+0x172` (`nt+0x971136`) `rax` |
+| 그림 1 nt | `MmCreateSpecialImageSection` → `MiCreateSection` → `MiCreateImageOrDataSection` → `MiCreateNewSection` → `MiCreateImageFileMap` → `MiBuildImageControlArea` (`(정적)` 상자 다섯, run31) + `MiCreateSection` → (2) `MiFinishCreateSection` (`(정적)` 상자, run47) | 코드의 call 자리 `+0xd4` / `+0xf8` / `+0x385` / `+0x215` / `+0x2e6` (run31 `[정적]`), `MiCreateSection +0x125` (run47 `[정적]`, `_calls.tsv`). `MiCreateImageOrDataSection` 은 갈림길 — 컨트롤 영역이 이미 있으면 `+0x1d5` `MiShareExistingControlArea` 로 가서 오른쪽 셋을 안 탐 | Q61: `MiCreateImageFileMap` 입구 (`nt+0x96ff50`) `k`, `MiCreateNewSection` / `MiShareExistingControlArea` 입구 중 어느 쪽이 서나, `+0x172` (`nt+0x971136`) `rax`. Q92 (D2): `MiFinishCreateSection +0x148` (`nt+0x96dd64`) 에서 `k` |
 | 그림 1 nt | `NtCreateUserProcess` → (5) `PspCreateUserContext` | 코드상 갈림길: 반대쪽은 `PspGetContextThreadInternal`(`+0xd3e`). 채우는 값 `Rip` = `RtlUserThreadStart`, `Rcx` = 진입점, `Rdx` = PEB (run16 `[정적]`) | 두 함수 입구에 다 걸어서 어느 쪽을 타는지 (Q34). `PspCreateUserContext` 입구에서 `ln @r8` (= `ntdll!RtlUserThreadStart`), `ln @r9` (= `test!mainCRTStartup`), `dq @rsp+0x28 L1` (5번째 인자 = PEB, `PspCreateUserContext +0xc` 가 읽는 자리) |
 | 그림 1 nt | `NtCreateUserProcess` → (6) `PspMapThreadCreationFlags` | 코드의 call 자리 | `NtCreateUserProcess` 입구에서 `ThreadFlags` = `poi(@rsp+0x40)` 값 |
 | 그림 1 nt | `NtCreateUserProcess` → (8) `PsTestProtectedProcessIncompatibility` | 코드의 call 자리 | 입구에서 `k` |
@@ -4117,6 +4143,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run44 | (동적, 03_sprint 짐 지도 둘째 바퀴 — 사진) 한 번의 test.exe 실행에서 8 지점 (K1 `PspAllocateThread` · K2 `PspInsertProcess` · K3 `PspCallProcessNotifyRoutines` · ⓪ `PspUserThreadStartup` · ① `LdrInitializeThunk` · ①-a `LdrpInitializeProcess +0x199d` · ①-b `+0x1bb6` · ② `NtContinue`) 에 멈춰 VMware 스냅샷 → `vmss2core` 덤프 → WinDbg 오프라인 읽기 (C 방식, 암호화 해제·lazy 끄기 시행착오). 8 지점 콜스택이 그림의 `+0x…` 와 같음, **`NtContinue` 입구 콜스택 `LdrInitializeThunk+0x18` 관찰 → 그림 2 `q1` 실선**. ⓪ 트랩 프레임 = 원래 출발 문맥 = ① `_CONTEXT` (`ContextFlags 0x10001b`), ② `_CONTEXT` = ①, ⓪·① `KTHREAD.TrapFrame` null, 바꿔 끼우기 앞뒤 값, `ProcessLock` 호출자가 잡아 옴 (K1·K2 1 → K3 0), `ProcessFirstResume` K3 0 → ⓪ 1, `ActiveProcessLinks`·`HANDLE_TABLE.UniqueProcessId` K2~K3, `PEB.Ldr`·`ProcessHeap`·**`ProcessParameters` 옮김** ①~①-a, 일꾼 2개 ①-a~①-b (`LoaderThreads` 0), `Kernel32ThreadInitThunkFunction` = KERNEL32+`0x2cd70`, `BeingDebugged` 0. 짐 지도: 칸마다 처음 값 구간 (구조체 1,428/1,456 · 전역 332/493 정해짐) |
 | run45 | (정적, 03_sprint 짐 지도 셋째 바퀴 — 일 목록) 초기화 동안 nt·ntdll 이 하는 일 86개 (짐 지도 칸 69 · 체크리스트 밖 짐 48 · 흐름도만 14), sast/38 callee 637줄 → 일 433 · 공용 146 · 정리 49 · 조각 9 (못 넣은 줄 0, callee 표에 0줄인 일 19). ntdll depth 0 14개 읽기만: **`ProcessParameters` 를 힙으로 옮기는 주인 `+0xc3f RtlpInitParameterBlock`** (환경 `+0xc32 RtlpInitEnvironmentBlock`), `LdrInitializeMrdata` 전역 3개, `+0x180b LdrpInitializeCfgScpHelpers` (test.exe 는 안 탄 것 `[추측]`), `+0x1cd LdrpInitializeNlsInfo` PEB 코드 페이지 칸, `+0x1963` import 리다이렉션 안 탐. PDB 이웃 타입 정의 있음/없음 확정. run44 "161" 두 뜻·트랩 프레임 시점 정정. 그림은 안 바뀜 |
 | run46 | (정적, 03_sprint 짐 지도 넷째 바퀴 — Q78a 프로세스 힙 구간) `LdrpInitializeProcess +0x9ed ~ +0xa50`: test.exe 프로세스 힙 = **NT 힙** (세그먼트 힙 조건 9개 중 8개 "아님", 사진 `0xffeeffee`), 구간 시스템 콜 12개 (`NtOpenKey` 2 · `NtQueryInformationProcess` 1 · `NtQuerySystemInformation` 3 · `NtAllocateVirtualMemoryEx` 3 · `NtAllocateVirtualMemory` 2 · `NtFreeVirtualMemory` 1), run44 큰 예약 둘 = 힙 관리자 희소 비트맵 (`0x2001000`·`0x100020000`, VAD 와 정확히 같음), PEB `+0x30` 쓰는 줄 `LdrpInitializeProcessHeap +0x1a2`, PEB 힙 목록 3칸·ntdll 힙 전역 17개 쓴 자리, `_HEAP` 머리 칸, `RtlCreateHeap` = 껍데기, `RtlInitializeHeapManager` 꼬리 JMP. 그림 2 에 `(정적)` 상자 둘 (`c4` 번호 `(2)` 부터 밀림). run18·run45 정정 (`RtlSetHeapInformation` 조건부, 태그 힙 안 만듦) |
+| run47 | (정적, 03_sprint 짐 지도 다섯째 바퀴 — Q78b exe 섹션 묶음) 커널 다섯 구조체 (`_SECTION`·`_CONTROL_AREA`·`_SEGMENT`·`_SECTION_IMAGE_INFORMATION`·`_FILE_OBJECT`) 모르는 칸 74 → **여전히 모름 0**. `_SECTION` 객체 = 사슬 끝 형제 `MiCreateSection +0x125 MiFinishCreateSection` (`+0x148 ObCreateObjectEx`, 패킷 `+0x50 ~ +0x8f` 사본 통째 복사). exe 파일 객체 사슬 `IopCreateFile → ObOpenObjectByNameEx → ObpLookupObjectName +0xbcd → IopParseDevice +0xe1e IopAllocRealFileObject` (`+0x740 IoCreateFileEx` 는 실패 때만 재시도, `IopParseFile` 은 상대 열기만). 파일 시스템 칸 넷 (`Vpb`·`FsContext*`·`SectionObjectPointer`) 은 nt 에 쓰는 줄 없음. 새 길 / 공유 길은 사진 값으로 못 가름 (→ Q61). 그림 1 에 `(정적)` 상자 하나 (`i6`). 정정: `NumberOfUserReferences` +1 은 `MiReferenceControlArea +0x11d` (짐 지도·run31 문구) |
 | `sample/` 소스 | 의존 관계, 모듈별 TLS 콜백, `/MT` 빌드 |
 
 - run3 ~ run5는 타깃에서 빌드한 test.exe, run6 ~ run8은 디버거 VM에서 빌드해 옮긴 test.exe (같은 소스).
@@ -4171,3 +4198,4 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run44 | 없음 | `_workspace/dast/01_snapshot-test` · `02_snapshot-test` · `03_baggage-snap` · `04_baggage-read` | 동적만 (대기열 Q77 = Q77a 시험 dast/01·02 · Q77b 캡처 dast/03 · Q77c 읽기 dast/04, 짐 지도 B). 로그 `ms/logs/01_snapshot-test.txt` ~ `04_baggage-read_<P>.txt` (+ 보충 `_supp_<P>.txt`), 판정 넷 다 분석성공. dast/01 은 암호화 스냅샷이라 변환 실패 (분석은 성공 — 스냅샷·대조값). 덤프 원본 `ms/dump/03_baggage-snap/` 커밋 안 함. 지점끼리 비교는 서버 임시 스크립트 (커밋 안 함) |
 | run45 | `_workspace/sast/39_work-list` | 없음 | 정적만 (대기열 Q81, 짐 지도 바퀴). 다시 analyze 안 함, ntdll depth 0 14개 읽기만 (`_calls.tsv` 1,559 → 1,625줄). 줄별 표 `ms/disassemble/{ntoskrnl,ntdll}/_baggage/callees_by_work.tsv` (커밋 안 함). 사용자 결정 (2026-10-26): Q78 범위 그대로, Q79 넓힘, 새 Q82 (정적) · Q83 ~ Q86 (동적), 나머지 체크리스트 밖 짐은 baggage 7.6 에 기록만 |
 | run46 | `_workspace/sast/40_process-heap` | 없음 | 정적만 (대기열 **Q78a**, Q78 첫 조각 — 사용자 요청 2026-10-27, 짐 지도 바퀴). 다시 analyze 안 함, ntdll 읽기만 (`.asm`/`.c` 225 → 342, `_calls.tsv` 1,625 → 2,165줄, `_refs` 새로 17개 이상). PDB 칸은 `llvm-pdbutil-14` (스크래치). 동적 질문 D1~D13 중 필요한 D1·D4·D5·D9 → 새 **Q91** (오케스트레이터). 결과서 도구 제안 (PDB 구조체 칸 한 줄 명령, sast/26 에 이어 두 번째) 은 하네스라 사용자 검토 |
+| run47 | `_workspace/sast/41_section-chain` | 없음 | 정적만 (대기열 **Q78b**, Q78 둘째 조각 — 사용자 결정 2026-10-28 시간 순서 조각, 짐 지도 바퀴). 다시 analyze 안 함, ntoskrnl depth 0 35개 새로 (+ sast/26 13개 읽기만), `refs` 5번. PDB 칸은 새 도구 `pdb_struct.py` (첫 실사용 — 이름 없는 공용체·겹침 표시 한계 둘은 하네스라 사용자 검토). 동적 질문 D1 → **Q61** 에 합침, D2 ~ D10 → 새 **Q92** (오케스트레이터). ntfs.sys 는 안 뽑음 |

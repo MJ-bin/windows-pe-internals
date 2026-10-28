@@ -1,5 +1,7 @@
 # 2026-10-23 run31 — exe 이미지 섹션: `MmCreateSpecialImageSection` → … → **`MiCreateImageFileMap` 은 안쪽이 맞다** (단 같은 파일 컨트롤 영역이 있으면 공유 길로 건너뜀). 진입점이 처음 적히는 줄 = **`MiBuildImageControlArea +0x172`** (정적)
 
+> 정정 (run47, sast/41): 아래 "갈림길" 2번의 "사용 수를 1 올리고 (`+0x11d`)" 는 **`MiReferenceControlArea +0x11d`** (`INC [RBX+0x30]` = `_CONTROL_AREA.NumberOfUserReferences`) 다. `MiCreateImageOrDataSection +0x11d` 가 아니다 (짐 지도가 그렇게 옮겨 적었음). 새 길에서는 `MiBuildImageControlArea +0x214` 가 1 을 쓴다. 또 `_SECTION` 객체는 이 사슬이 아니라 형제 `MiCreateSection +0x125 MiFinishCreateSection` 이 만든다 → `runs/03_sprint/run47-section-chain.md`
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 작성일.
