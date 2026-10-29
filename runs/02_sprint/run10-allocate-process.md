@@ -2,6 +2,8 @@
 
 > 정정 (run48, sast/42): 아래 "`PspMapSystemDll` 입구는 부팅 때 System 프로세스에도 걸린다 (caller 에 `PspInitPhase3`)" 의 이유가 틀렸다. 부팅 때 System 프로세스에 올리는 caller 는 **`PspLocateSystemDll +0x233`** (ret `+0x238`) 이고, `PspInitPhase3` 는 `VslVsmEnabled` 일 때만 **`PsSecureSystemProcess`** 에 올린다. 결론 (새 프로세스만 보려면 `PsMapSystemDlls` 쪽) 은 그대로 (`runs/03_sprint/run48-system-dll-boot.md`).
 
+> 정정 (run50, sast/44): 아래 "`+0x2095`: 보통 길 (부모 없음, 섹션 있음) / `+0x2113`: 복제 길 (부모 있음, 섹션 없음)" 의 **부모 있음·없음은 틀렸다.** 가르는 지역 플래그 비트 `4` 는 **"부모를 복제 (섹션 없음)"** 이고 (`PspAllocateProcess +0x2ec ~ +0x317`: 7번째 인자 섹션이 0 일 때만 켜짐), 부모가 있는지와는 상관없다. test.exe 는 부모 (cmd) 가 있는데 섹션이 있어서 **보통 길** (`+0x2095`) 이다. 갈림 플래그·`MmCreatePeb` 조건 (`+0x22e9 TEST BL,0x4`) 은 그대로 (`runs/03_sprint/run50-eprocess-create.md` "정정").
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음).
