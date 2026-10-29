@@ -3,7 +3,7 @@
 ## 기준
 
 - 타깃: Windows 11 24H2, **26100.9457**
-  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32, run33, run34, run41, run42, run43, run45, run47)
+  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32, run33, run34, run41, run42, run43, run45, run47, run48)
   - kernelbase.pdb: `72CCE506944DE0267C172AD64287F9BD1` (run14, run25, run34)
   - kernel32.pdb: `AE9E9D8F7AC1467A645320FDC23235D01` (run25, run34)
   - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20, run21, run22, run23, run24, run26, run27, run28, run29, run34, run35, run36, run38, run39, run41, run43, run45, run46)
@@ -17,8 +17,9 @@
   - (run45) 정적 바퀴지만, 닫은 칸의 값 대조에 run44 덤프 읽기 로그 (`ms/logs/04_baggage-read_<P>.txt` 구획 10·17b) 를 다시 읽었다. 새 동적 실행은 없다.
   - (run46) 정적 바퀴. 힙 머리·힙 전역·VAD 값 대조에 run44 P1a 덤프 읽기 로그 (`ms/logs/04_baggage-read_P1a.txt` 구획 06b·16 등) 를 다시 읽었다 (결과서). 새 동적 실행은 없다.
   - (run47) 정적 바퀴. 섹션 묶음·exe 파일 객체 칸 값 대조에 run44 K1 덤프 읽기 로그 (`ms/logs/04_baggage-read_K1.txt` 1381 ~ 1500줄, `K1 07`·`K1 08`) 를 다시 읽었다 (결과서). 새 동적 실행은 없다.
+  - (run48) 정적 바퀴. `PsNtdllExports` 21칸 값 대조에 run44 K1 덤프 읽기 로그 (`ms/logs/04_baggage-read_K1.txt` 1531 ~ 1542줄) 를 다시 읽었다 (flow-writer). 새 동적 실행은 없다.
   - run44 의 `[관찰]` 은 "그 순간 메모리에 그 값이 있었다" 이다. 호출을 콜스택으로 본 것은 지점 8곳의 `k` 뿐이다 (run44 "지점별 라이브 관찰").
-- 정적 근거: `runs/02_sprint/` run9 ~ run42 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ~ run33 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe, run34 kernel32·KernelBase·ntdll·ntoskrnl·basesrv·csrsrv (+ cmd.exe 참고), run35·run36 ntdll, run37 kernel32·KernelBase·apisetschema **PE 표만** (Ghidra 안 씀), run38·run39 ntdll, run40 dll1·dll2 (sample 빌드), run41 ntdll·ntoskrnl, run42 ntoskrnl. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀) · `runs/03_sprint/` run43 (ntoskrnl·ntdll PDB 타입 레코드·공개 이름 + ntoskrnl `MmCreateTeb` 첫 export — 짐 지도 체크리스트) · run45 (ntdll depth 0 14개 읽기만 + 일 목록 86개·callee 637줄 분류·PDB 타입 정의 확인 — sast/39) · run46 (ntdll 프로세스 힙 구간 depth 1 함수 약 44개 읽기만 + PDB `_HEAP`·`_PEB` 등 칸 — sast/40, 짐 지도 Q78a) · run47 (ntoskrnl 섹션 사슬·exe 열기 depth 0 35개 새로 + sast/26 13개 읽기만, PDB 칸은 `pdb_struct.py` — sast/41, 짐 지도 Q78b)
+- 정적 근거: `runs/02_sprint/` run9 ~ run42 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ~ run33 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe, run34 kernel32·KernelBase·ntdll·ntoskrnl·basesrv·csrsrv (+ cmd.exe 참고), run35·run36 ntdll, run37 kernel32·KernelBase·apisetschema **PE 표만** (Ghidra 안 씀), run38·run39 ntdll, run40 dll1·dll2 (sample 빌드), run41 ntdll·ntoskrnl, run42 ntoskrnl. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀) · `runs/03_sprint/` run43 (ntoskrnl·ntdll PDB 타입 레코드·공개 이름 + ntoskrnl `MmCreateTeb` 첫 export — 짐 지도 체크리스트) · run45 (ntdll depth 0 14개 읽기만 + 일 목록 86개·callee 637줄 분류·PDB 타입 정의 확인 — sast/39) · run46 (ntdll 프로세스 힙 구간 depth 1 함수 약 44개 읽기만 + PDB `_HEAP`·`_PEB` 등 칸 — sast/40, 짐 지도 Q78a) · run47 (ntoskrnl 섹션 사슬·exe 열기 depth 0 35개 새로 + sast/26 13개 읽기만, PDB 칸은 `pdb_struct.py` — sast/41, 짐 지도 Q78b) · run48 (ntoskrnl 부팅 준비 갈래 `PsLocateSystemDlls` 등 depth 0 약 23개 새로 + 3개 읽기만, 새 지도 뿌리 `PsLocateSystemDlls`, 표 처음 값은 PE 바이트 — sast/42, Q93. **흐름도 범위 앞 (부팅)**)
   - PE 헤더·import·export 표는 `pefile` 로 읽었다 (run25). KERNELBASE·kernel32·ntdll 의 TLS 디렉터리도 PE 파일에서 읽었다 (run28). Ghidra 는 PE 진입점 함수를 PDB 이름 대신 `entry` 로 잡는다 (run25). 글에선 PDB 이름을 쓴다.
   - test.exe 는 sample 빌드라 MS 심볼 서버가 아니라 `sample/bin/` 의 exe·pdb 를 썼다 (run30). run31 의 test.exe PE 헤더 값(`AddressOfEntryPoint`, `ImageBase`, 정렬 등)도 같은 파일을 직접 읽은 것이다. 진입점 rva `0x1d40` = run5 `[관찰]`, run7 `[관찰]` 의 `…67723` 도 맞는다. 단 run3 ~ run5 와 run6 ~ run8 은 따로 빌드한 exe 라 (5장) 올라온 파일이 어느 쪽인지까지는 모른다.
   - dll1·dll2 도 같은 방식으로 `sample/bin/` 의 dll·pdb 를 썼다 (run40). 진입점 rva (dll1 `0x1d60`, dll2 `0x1d50`) 의 PDB 이름 `_DllMainCRTStartup` = run8 `[관찰]` `rcx`, `DllMain` rva `0x12e0` = run6 `[관찰]`, run7 `[관찰]` `LoadLibraryExW` 돌아올 주소 둘의 아래 16비트도 이 파일의 ret 자리와 맞는다. 그래도 VM 에서 돈 파일과 같은 빌드라고 단정하진 않는다 `[추측]`.
@@ -945,7 +946,7 @@ flowchart LR
 
 ## 2. 단계별 설명
 
-### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9, run10, run11, run12, run13, run16, run31, run32, run34, run47)
+### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9, run10, run11, run12, run13, run16, run31, run32, run34, run47, run48 부팅 메모)
 
 이 구간은 **test.exe가 아니라 부모 cmd.exe**가 일하는 시간이다.
 test.exe는 아직 "만들어지는 중"이라, 자기 코드는 한 줄도 안 돌았다.
@@ -1190,16 +1191,18 @@ PE AddressOfEntryPoint (NT 헤더 +0x28, test.exe 0x1d40)
   2. `+0xc5` 올린 주소를 새 프로세스 `+0x2b0`에 저장 (나중에 `MmCreatePeb`가 PEB `+0x10`에 옮김).
   3. `+0xdc` `PsMapSystemDlls` — ntdll 쪽.
 
-#### `nt!PsMapSystemDlls` → `nt!PspMapSystemDll` (정적)
+#### `nt!PsMapSystemDlls` → `nt!PspMapSystemDll` (정적, run10, run16, run48)
 
 - `[정적]` (run10) `PsMapSystemDlls`는 `MiMapProcessExecutable+0xdc`에서 불리고, `+0xc0`에서 `PspMapSystemDll`을 부른다.
 - `[정적]` `PsMapSystemDlls`는 `PspSystemDlls` 표를 최대 6칸 돈다. 0번 칸은 늘 부르고, 나머지 칸은 WOW64(32비트) 조건이 붙는다.
   - `[추측]` 64비트 test.exe 면 0번 칸(ntdll) 하나만.
+  - `[정적]` (run48) 조건은 둘: WOW 프로세스 (`EPROCESS +0x310` ≠ 0) 면 `PsWow64GetProcessNtdllType` 번호 칸, 보안 프로세스 (`+0x170` 비트0) 면 칸 플래그 `0x40` 칸 (`PsMapSystemDlls +0x7c ~ +0xa4`, `+0x12a`). test.exe 가 둘 다 아니라는 건 그대로 `[추측]`.
 - `[정적]` `PspMapSystemDll`은 미리 준비된 섹션을 잡아(`PspReferenceSystemDll` `+0x40`) **`+0x11d` `MmMapViewOfSectionEx`로 올린다.**
 - `[정적]` points.md 의 `PspMapSystemDll`은 `PspAllocateProcess`가 **직접 부르지 않는다**. 새 프로세스 길의 직접 caller 는 `PsMapSystemDlls`.
-  - 다른 caller 3곳(`PspInitPhase3`, `PsLocateSystemDlls`, `PspLocateSystemDll`)도 있다. `[추측]` 부팅 때 ntdll 섹션을 준비하는 쪽.
-- `[추측]` ntdll 섹션은 부팅 때 한 번 만들어 두고, 프로세스마다 **같은 섹션을 붙이기만** 한다.
-  - `[정적]` (run16) 모양은 맞다: 프로세스마다 붙일 땐(`PsMapSystemDlls`, 네 번째 인자 0) `PspMapSystemDll +0x172` 가 **부팅 때 정한 주소**(`PspSystemDlls[0]` 칸 `+0x20`)에 붙었는지만 검사한다. 그 칸은 부팅 때 `PspLocateSystemDll +0x238` / `PsLocateSystemDlls +0x89` 가 인자 1 로 부를 때 채운다. 2.3 `PspInitializeThunkContext` 가 이 칸을 `Rdx` 로 넘긴다.
+  - 다른 caller 3곳(`PspInitPhase3`, `PsLocateSystemDlls`, `PspLocateSystemDll`)도 있다. ~~`[추측]`~~ → `[정적]` (run48) 셋 다 부팅 쪽: `PspLocateSystemDll +0x238` (칸마다, System 프로세스에 올리고 칸을 채움), `PsLocateSystemDlls +0x89` (별칭 칸 전용 — 이 빌드엔 없음), `PspInitPhase3 +0x70`·`+0xa5` (VBS 일 때만, 보안 System 프로세스에).
+- ~~`[추측]`~~ → `[정적]` (run48) ntdll 섹션은 부팅 때 한 번 만들어 두고, 프로세스마다 **같은 섹션을 붙이기만** 한다.
+  - `[정적]` (run16) 모양은 맞다: 프로세스마다 붙일 땐(`PsMapSystemDlls`, 네 번째 인자 0) `PspMapSystemDll +0x172` 가 **부팅 때 정한 주소**(`PspSystemDlls[0]` 칸 `+0x20`)에 붙었는지만 검사한다. 그 칸은 부팅 때 `PspLocateSystemDll +0x238` 이 인자 1 로 부를 때 채운다 (run48 정정: run16 이 같이 적은 `PsLocateSystemDlls +0x89` 는 별칭 칸 전용이라 이 빌드에선 안 탄다). 2.3 `PspInitializeThunkContext` 가 이 칸을 `Rdx` 로 넘긴다.
+  - **부팅 때 준비 (run48 `[정적]`, 흐름도 범위 앞이라 그림엔 없음)**: `Phase1Initialization +0x3b IoInitSystem → +0x17 IoInitSystemPreDrivers → +0x10fa PsLocateSystemDlls` (call `+0x10f5`) `→ +0xa3 PspLocateSystemDll` (표 칸마다: ntdll·SysWOW64 ntdll·vertdll) `→ +0xc5 ZwOpenFile → +0xf4 MmCreateSpecialImageSection` (exe 와 같은 사슬, 토큰 NULL·서명 수준 `0x0c`) `→ … → +0x238 PspMapSystemDll(…, 0, 1)` 이 칸 `+0x20` (뷰 헤더 `ImageBase`)·`+0xc`·`+0x28` 을, `+0x1aa` 가 `+0x38` (재배치량) 을 쓴다. 그 뒤 `Phase1InitializationIoReady → PspInitPhase2 +0x177 PspInitializeSystemDlls +0x6b` 가 `PsNtdllExports` 19칸 (2.3 끝 절). 칸·짐은 `runs/03_sprint/baggage.md` 7.6.2, 줄마다는 `runs/03_sprint/run48-system-dll-boot.md`.
 
 #### `nt!MmCreatePeb`
 
@@ -1831,7 +1834,7 @@ csrsrv!CsrApiRequestThread
 
 ---
 
-### 2.3 커널 `nt` — test.exe 스레드 출발 ~ 유저로 넘어가기 (run4, run5, run13, run15, run16, run29, run42)
+### 2.3 커널 `nt` — test.exe 스레드 출발 ~ 유저로 넘어가기 (run4, run5, run13, run15, run16, run29, run42, run48 부팅 메모)
 
 run4 에서 본 콜스택 (`[관찰]`):
 
@@ -2008,7 +2011,7 @@ KiStartUserThread  (= Kx +0x60 이름표)                       [관찰] run4 �
 - `[관찰]` (run44) 같은 칸을 사진으로 앞뒤 다 봤다: P0 (`PspUserThreadStartup` 입구) `Rip` = `RtlUserThreadStart`, P1 (`LdrInitializeThunk` 입구) `Rip` = `LdrInitializeThunk` (+1 은 멈춤점 영향). "바꾸기 전·후" 는 이제 `[관찰]` 이다. 남은 `[추측]` 은 WinDbg 가 그 칸을 유저 자리로 보여 준 이유와 새 `Rsp` 칸 (`9b2fcffa18`) 값 (이번 사진은 `9b2fcffa40` 부터 읽음).
 - 둘은 모순이 아니라 **같은 칸(`_KTRAP_FRAME.Rip`)의 바꾸기 전·후**를 본 것이다. 시각 차이는 `[정적]`, "그래서 그렇게 보였다" 는 연결은 `[추측]`. `PspUserThreadStartup+0xae`/`+0xb3` 앞뒤 값을 찍으면 닫힌다 (Q42).
 
-#### 커널이 `LdrInitializeThunk` 주소를 아는 법 — 부팅 때 (run16 `[정적]`)
+#### 커널이 `LdrInitializeThunk` 주소를 아는 법 — 부팅 때 (run16 `[정적]`, run48)
 
 ```
 PspInitPhase2 +0x177                                    (원본 바이트 훑기로 찾은 자리)
@@ -2024,7 +2027,8 @@ PspInitPhase2 +0x177                                    (원본 바이트 훑기
 - `[정적]` 그래서 `PspCreateUserContext`(`RtlUserThreadStart`)와 `PspInitializeThunkContext`(`LdrInitializeThunk`, ntdll 칸)가 쓰는 값은 모두 **부팅 때 한 번 정해진 전역**이다. 프로세스마다 다시 찾지 않는다.
 - `[관찰]` (run44, 덤프 8개 모두) `PsNtdllExports` = `_PS_NTDLL_EXPORTS` 21칸: `+0x0 LdrSystemDllInitBlock` `7ffafb84a450` (ntdll+`0x1ea450`), `+0x8 LdrInitializeThunk` `7ffafb741420` (ntdll+`0xe1420`), `+0x10 RtlUserThreadStart` `7ffafb70cac0` (ntdll+`0xacac0`), `+0x28 KiUserApcDispatcher` 등. 이 프로세스의 ntdll 이 같은 베이스 (`7ffafb660000`) 에 붙어 있어 표 값이 그대로 맞는다 (4장 짝 → 짐 지도 4장).
 - `[추측]` 표와 이름 문자열은 INIT 구역(부팅 뒤 버려지는 곳)에 있어서 나중엔 메모리에 없을 수 있다. 남는 건 `PsNtdllExports` 안 주소뿐.
-- `[공백]` 부팅 안에서 `PsLocateSystemDlls`(ntdll 섹션 준비, ← `IoInitSystemPreDrivers +0x10f5`)와 `PspInitPhase2` 의 앞뒤 순서 (범위 밖).
+- (해결됨) ~~`[공백]` 부팅 안에서 `PsLocateSystemDlls`(ntdll 섹션 준비, ← `IoInitSystemPreDrivers +0x10f5`)와 `PspInitPhase2` 의 앞뒤 순서 (범위 밖).~~ → run48 `[정적]`: `Phase1Initialization` 이 `IoInitSystem` (`+0x36`, 그 안 `IoInitSystemPreDrivers +0x10f5` → ret `+0x10fa` `PsLocateSystemDlls`) 을 먼저, `Phase1InitializationIoReady` (`+0x61`) 를 나중에 부른다. IoReady 안에서 `PsInitSystem(2)` (`+0x1da` → `PspInitPhase2`) → `MmInitSystemDll` (`+0x1e7`) → `PsInitSystem(3)` (`+0x20f` → `PspInitPhase3`). 그래서 **섹션·기본 주소 먼저, `PsNtdllExports` 나중** (`PsQuerySystemDllInfo` 가 칸 `+0x20 = 0` 이면 건너뛰니 이 순서여야 한다).
+  - `[정적]` (run48) 이름 표는 19개 중 `PsNtdllExports +0x38`·`+0x98` 두 칸을 안 채운다. `[관찰]` run44 K1 로그 (`ms/logs/04_baggage-read_K1.txt` 1531 ~ 1542줄): 21칸 중 그 두 칸만 0.
 
 ---
 
@@ -3880,7 +3884,8 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.3 | (일부 해결) 남은 것 (run16): 바꿔 끼우기의 실제 값 — `PspUserThreadStartup+0xae`/`+0xb3` 앞뒤 트랩 프레임 `Rip`·`Rcx`·`Rdx`·`Rsp`, `LdrInitializeThunk` 입구 `Rcx`(맡긴 문맥)와 `[Rsp]`(0 인지), `PsNtdllExports` 값, `PspSystemDlls[0]+0x20` 이 ntdll 시작 주소와 같은지, 네 스레드 모두 같은 길인지 — 동적 (Q42) → **run44 `[관찰]`**: P0 (입구) 트랩 프레임 `Rip` `RtlUserThreadStart`·`Rcx` 진입점·`Rdx` PEB·`Rsp` `9b2fcfff48` → P1 트랩 프레임 `Rcx` 맡긴 문맥 `9b2fcffa40`·`Rdx` ntdll 베이스·`Rsp` `9b2fcffa18` (`Rip` 는 멈춤점 +1). `PsNtdllExports` 값 21칸. 남은 것: `[Rsp]` 칸 값, `PspSystemDlls[0]+0x20` (안 읽음), 다른 스레드 셋 |
 | 2.3 | `PspInitializeThunkContext` 곁가지 (run16 `[정적]` 조건만): 계측 콜백(`InstrumentationCallback`) 값, CET 그림자 스택(`+0x295` `KePopulateContinuationContext`)이 이 VM 에서 켜지나, 스레드 만들기 알림 콜백 루프(`PspNotifyEnableMask` bit4)가 어느 알림이고 `PspNotifyThreadCreation`(`+0xa1`)과 어떻게 나누나. (일부 해결) 그림자 스택에 넣은 칸의 쓰임 → run29 `[정적]`: 로더 끝 `KiContinuePreviousModeUser +0x399` `KiVerifyContextIpForUserCet` 가 `CONTEXT.Rip` 와 맞춰 봄 (2.10). 켜지는지는 동적 Q57 |
 | 2.2 · 2.3 | 멈춤 APC 배달 자리 후보 추가 (run16): `PspInitializeThunkContext +0x2f5` `KiCheckForKernelApcDelivery` (APC 막기 구간 끝). `PspUserThreadStartup +0x26` 과 어느 쪽인지 — 동적 (Q42·Q19) |
-| 2.3 | 부팅 안에서 `PsLocateSystemDlls`(← `IoInitSystemPreDrivers +0x10f5`, ntdll 섹션 준비)와 `PspInitPhase2 +0x177` `PspInitializeSystemDlls`(주소 표 채우기)의 앞뒤 순서 (run16, 범위 밖) |
+| 2.3 | (해결됨) 부팅 안에서 `PsLocateSystemDlls`(← `IoInitSystemPreDrivers +0x10f5`, ntdll 섹션 준비)와 `PspInitPhase2 +0x177` `PspInitializeSystemDlls`(주소 표 채우기)의 앞뒤 순서 (run16, 범위 밖) → run48 `[정적]`: `PsLocateSystemDlls` (`IoInitSystem` 안) 가 먼저, `PspInitPhase2` (`Phase1InitializationIoReady +0x1da`) 가 나중 |
+| 2.1 · 2.3 | (run48, 부팅 — 흐름도 범위 앞) 부팅 준비 짐의 실제 값: `PspSystemDlls` 칸 (`+0x20` = `+0x28` 인가, = `lm m ntdll` 인가, `+0x38`), `PsWowX86SharedInformation` — 동적 **Q42** (sast/42 D1·D2). System 프로세스 안 ntdll 뷰·`MiState+0x1000`·뷰 헤더 `ImageBase`·`NtGlobalFlag`/`ExpSysDbgPulledFileTable` (디버거가 붙어서 달라지는 점)·`VslVsmEnabled` — 동적 **Q94** (D3 ~ D8, 부팅 뒤 값만). 부팅 디버깅이 필요한 호출 순서·반환값 (D9 ~ D12) 도 Q94 (낮은 우선순위). 정적 `[공백]`: 뷰 헤더 `ImageBase` 를 고치는 MM 줄, `MmMapViewOfSectionEx` 할당 종류 `0x40000` 뜻, `\SystemRoot` 링크 만드는 곳 (`_calls.tsv` 에 `Phase1InitializationDiscard +0xc31 CreateSystemRootLink` 줄 — 후보 `[추측]`) |
 | 2.3 | (해결됨, 정적) `RtlUserThreadStart` 와의 관계: 트랩 프레임 `Rip` 를 `LdrInitializeThunk` 로 정하는 게 `PspInitializeThunkContext`(`PspUserThreadStartup +0xb3`) 인지, 첫 스레드만 다른 일이 있나 (Q7). 처음 채우는 `KxContextToKframes`(`KiInitializeContextThread +0x1b1`) 본문 `[추측]` → run16 `[정적]`: 처음 `KxContextToKframes` 가 `Rip = RtlUserThreadStart` 로 채우고, `PspInitializeThunkContext` 가 원래 문맥을 유저 스택에 맡긴 뒤(`+0x285 RtlCopyContext`) `Rip = LdrInitializeThunk`(`PsNtdllExports+0x8`), `Rcx` = 맡긴 문맥 주소로 바꿔 끼움 (쓰는 줄 `PspSetContext +0x68`). 첫 스레드만 조건 없음. 주소는 부팅 때 `PspInitializeSystemDlls` 가 이름으로 찾아 둠 |
 | 2.3 | (해결됨, 정적) 첫 스레드 CONTEXT 의 `Rip`·`Rcx`를 누가 어떤 값으로 채우나 (`PspAllocateThread`는 받아서 옮기기만 함, run11). 후보 `PspCreateUserContext` (`NtCreateUserProcess +0xd22`, Q7) `[추측]` → run16 `[정적]` `PspCreateUserContext +0x28`/`+0x2f` (2.1) |
 | 2.3 | (일부 해결) `KeInitThread +0x301` → `KiInitializeContextThread +0x1e1` 이 첫 스택에 `KiStartUserThread` 를 넣고, `KiStartUserThread +0x23`(ret `+0x28`)이 시작 루틴을 부른다 → run13 `[정적]` (`KiStartUserThread` 는 원본 바이트). run15: `KiStartUserThread` = Ghidra `KxStartUserThread +0x60` 이름표, ret `+0x28` = `Kx +0x88`, 들어오는 건 `SwapContext` 끝 `+0x2bf RET` |
@@ -4144,6 +4149,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run45 | (정적, 03_sprint 짐 지도 셋째 바퀴 — 일 목록) 초기화 동안 nt·ntdll 이 하는 일 86개 (짐 지도 칸 69 · 체크리스트 밖 짐 48 · 흐름도만 14), sast/38 callee 637줄 → 일 433 · 공용 146 · 정리 49 · 조각 9 (못 넣은 줄 0, callee 표에 0줄인 일 19). ntdll depth 0 14개 읽기만: **`ProcessParameters` 를 힙으로 옮기는 주인 `+0xc3f RtlpInitParameterBlock`** (환경 `+0xc32 RtlpInitEnvironmentBlock`), `LdrInitializeMrdata` 전역 3개, `+0x180b LdrpInitializeCfgScpHelpers` (test.exe 는 안 탄 것 `[추측]`), `+0x1cd LdrpInitializeNlsInfo` PEB 코드 페이지 칸, `+0x1963` import 리다이렉션 안 탐. PDB 이웃 타입 정의 있음/없음 확정. run44 "161" 두 뜻·트랩 프레임 시점 정정. 그림은 안 바뀜 |
 | run46 | (정적, 03_sprint 짐 지도 넷째 바퀴 — Q78a 프로세스 힙 구간) `LdrpInitializeProcess +0x9ed ~ +0xa50`: test.exe 프로세스 힙 = **NT 힙** (세그먼트 힙 조건 9개 중 8개 "아님", 사진 `0xffeeffee`), 구간 시스템 콜 12개 (`NtOpenKey` 2 · `NtQueryInformationProcess` 1 · `NtQuerySystemInformation` 3 · `NtAllocateVirtualMemoryEx` 3 · `NtAllocateVirtualMemory` 2 · `NtFreeVirtualMemory` 1), run44 큰 예약 둘 = 힙 관리자 희소 비트맵 (`0x2001000`·`0x100020000`, VAD 와 정확히 같음), PEB `+0x30` 쓰는 줄 `LdrpInitializeProcessHeap +0x1a2`, PEB 힙 목록 3칸·ntdll 힙 전역 17개 쓴 자리, `_HEAP` 머리 칸, `RtlCreateHeap` = 껍데기, `RtlInitializeHeapManager` 꼬리 JMP. 그림 2 에 `(정적)` 상자 둘 (`c4` 번호 `(2)` 부터 밀림). run18·run45 정정 (`RtlSetHeapInformation` 조건부, 태그 힙 안 만듦) |
 | run47 | (정적, 03_sprint 짐 지도 다섯째 바퀴 — Q78b exe 섹션 묶음) 커널 다섯 구조체 (`_SECTION`·`_CONTROL_AREA`·`_SEGMENT`·`_SECTION_IMAGE_INFORMATION`·`_FILE_OBJECT`) 모르는 칸 74 → **여전히 모름 0**. `_SECTION` 객체 = 사슬 끝 형제 `MiCreateSection +0x125 MiFinishCreateSection` (`+0x148 ObCreateObjectEx`, 패킷 `+0x50 ~ +0x8f` 사본 통째 복사). exe 파일 객체 사슬 `IopCreateFile → ObOpenObjectByNameEx → ObpLookupObjectName +0xbcd → IopParseDevice +0xe1e IopAllocRealFileObject` (`+0x740 IoCreateFileEx` 는 실패 때만 재시도, `IopParseFile` 은 상대 열기만). 파일 시스템 칸 넷 (`Vpb`·`FsContext*`·`SectionObjectPointer`) 은 nt 에 쓰는 줄 없음. 새 길 / 공유 길은 사진 값으로 못 가름 (→ Q61). 그림 1 에 `(정적)` 상자 하나 (`i6`). 정정: `NumberOfUserReferences` +1 은 `MiReferenceControlArea +0x11d` (짐 지도·run31 문구) |
+| run48 | (정적, 03_sprint 짐 지도 여섯째 바퀴 — Q93 부팅 준비 갈래, **흐름도 범위 앞**) 시스템 DLL 준비는 부팅 `Phase1` 에서 한 번: `Phase1Initialization +0x3b IoInitSystem → +0x17 IoInitSystemPreDrivers → +0x10fa PsLocateSystemDlls` (call `+0x10f5`, 앞뒤 `NtGlobalFlag \|= 0x40000` 임시) `→ +0xa3 PspLocateSystemDll` (표 `PspSystemDlls` 처음 값 `[0]` ntdll · `[1]` SysWOW64 ntdll · `[4]` vertdll → 세 번) `→ ZwOpenFile → MmCreateSpecialImageSection` (exe 와 같은 사슬, 토큰 NULL·서명 수준 `0x0c`·보호 이미지 패킷 플래그) `→ … → +0x238 PspMapSystemDll(…, 0, 1)` — 칸 `+0x20` (뷰 헤더 `ImageBase`)·`+0xc`·`+0x28` (rva `0xb18c2c ~ 0xb18c36`), `+0x38` 재배치량 (`PspLocateSystemDll +0x1aa`). 뒤에 `Phase1InitializationIoReady → PspInitPhase2 +0x177 PspInitializeSystemDlls +0x6b` 가 `PsNtdllExports` 19칸 (`+0x38`·`+0x98` 은 안 채움 — run44 K1 로그도 0), `MmInitSystemDll +0x22` `MiState.Processes.SystemDllBase`. `PspMapSystemDll` 인자4 = 1 이면 칸 채우기, 0 이면 비교만 (`+0x172`). 버그체크 `0x6b` 사이트 7곳. **디버거가 붙어서 달라지는 점**: `+0x7e ZwSystemDebugControl(0x26)` → 디버깅 부팅이면 `ExpKdPullRemoteFileForUser`. 정정 2 (run16 `+0x89` 은 별칭 칸 전용·안 탐, run10 `PspInitPhase3` 은 보안 System 프로세스). 짐 지도 7.6.2 (체크리스트 밖, 단계 `Ⓑ`) |
 | `sample/` 소스 | 의존 관계, 모듈별 TLS 콜백, `/MT` 빌드 |
 
 - run3 ~ run5는 타깃에서 빌드한 test.exe, run6 ~ run8은 디버거 VM에서 빌드해 옮긴 test.exe (같은 소스).
@@ -4199,3 +4205,4 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run45 | `_workspace/sast/39_work-list` | 없음 | 정적만 (대기열 Q81, 짐 지도 바퀴). 다시 analyze 안 함, ntdll depth 0 14개 읽기만 (`_calls.tsv` 1,559 → 1,625줄). 줄별 표 `ms/disassemble/{ntoskrnl,ntdll}/_baggage/callees_by_work.tsv` (커밋 안 함). 사용자 결정 (2026-10-26): Q78 범위 그대로, Q79 넓힘, 새 Q82 (정적) · Q83 ~ Q86 (동적), 나머지 체크리스트 밖 짐은 baggage 7.6 에 기록만 |
 | run46 | `_workspace/sast/40_process-heap` | 없음 | 정적만 (대기열 **Q78a**, Q78 첫 조각 — 사용자 요청 2026-10-27, 짐 지도 바퀴). 다시 analyze 안 함, ntdll 읽기만 (`.asm`/`.c` 225 → 342, `_calls.tsv` 1,625 → 2,165줄, `_refs` 새로 17개 이상). PDB 칸은 `llvm-pdbutil-14` (스크래치). 동적 질문 D1~D13 중 필요한 D1·D4·D5·D9 → 새 **Q91** (오케스트레이터). 결과서 도구 제안 (PDB 구조체 칸 한 줄 명령, sast/26 에 이어 두 번째) 은 하네스라 사용자 검토 |
 | run47 | `_workspace/sast/41_section-chain` | 없음 | 정적만 (대기열 **Q78b**, Q78 둘째 조각 — 사용자 결정 2026-10-28 시간 순서 조각, 짐 지도 바퀴). 다시 analyze 안 함, ntoskrnl depth 0 35개 새로 (+ sast/26 13개 읽기만), `refs` 5번. PDB 칸은 새 도구 `pdb_struct.py` (첫 실사용 — 이름 없는 공용체·겹침 표시 한계 둘은 하네스라 사용자 검토). 동적 질문 D1 → **Q61** 에 합침, D2 ~ D10 → 새 **Q92** (오케스트레이터). ntfs.sys 는 안 뽑음 |
+| run48 | `_workspace/sast/42_system-dll-boot` | 없음 | 정적만 (대기열 **Q93**, 사용자 요청 2026-10-29 — Q78c 앞에 끼움, 짐 지도 바퀴). 다시 analyze 안 함, ntoskrnl depth 0 약 23개 새로 (+ 3개 읽기만), 새 지도 `_map/PsLocateSystemDlls_*` (깊이 3, 43개), 새 `_refs` 10개. 표 처음 값은 PE 바이트 (스크래치 임시 파이썬). 동적 질문 D1·D2 → Q42 출처, D3 ~ D12 → 새 **Q94** (D9 ~ D12 부팅 디버깅, 낮음) |

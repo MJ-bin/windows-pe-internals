@@ -1,5 +1,7 @@
 # 2026-10-22 run16 — 유저 첫 위치가 `LdrInitializeThunk` 로 바뀌는 곳: `PspCreateUserContext` 가 `RtlUserThreadStart` 로 채우고, `PspInitializeThunkContext` 가 원래 문맥을 유저 스택에 맡긴 뒤 바꿔 끼운다 (정적)
 
+> 정정 (run48, sast/42): 아래 ⑤ 절 "정보 칸 `+0x20`·`+0x28` 은 `PspLocateSystemDll +0x238`, `PsLocateSystemDlls +0x89` 에서 채운다" 중 **`PsLocateSystemDlls +0x89` 는 별칭 칸 (플래그 `0x20`) 전용 갈래라 이 빌드 표에선 안 탄다** — 채우는 길은 `PspLocateSystemDll +0x238` 하나 (`+0xc` `SizeOfImage` 도 같이). `IoInitSystemPreDrivers +0x10f5` 는 call 자리 (콜스택 ret 는 `+0x10fa`). "부팅 안 순서 `[공백]`" 은 닫힘: `PsLocateSystemDlls` (IoInitSystem 안) → `PspInitPhase2` → `MmInitSystemDll` → `PspInitPhase3` (`runs/03_sprint/run48-system-dll-boot.md`).
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음).
