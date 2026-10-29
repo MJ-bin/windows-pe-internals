@@ -3,7 +3,7 @@
 ## 기준
 
 - 타깃: Windows 11 24H2, **26100.9457**
-  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32, run33, run34, run41, run42, run43, run45, run47, run48)
+  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32, run33, run34, run41, run42, run43, run45, run47, run48, run49)
   - kernelbase.pdb: `72CCE506944DE0267C172AD64287F9BD1` (run14, run25, run34)
   - kernel32.pdb: `AE9E9D8F7AC1467A645320FDC23235D01` (run25, run34)
   - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20, run21, run22, run23, run24, run26, run27, run28, run29, run34, run35, run36, run38, run39, run41, run43, run45, run46)
@@ -18,8 +18,9 @@
   - (run46) 정적 바퀴. 힙 머리·힙 전역·VAD 값 대조에 run44 P1a 덤프 읽기 로그 (`ms/logs/04_baggage-read_P1a.txt` 구획 06b·16 등) 를 다시 읽었다 (결과서). 새 동적 실행은 없다.
   - (run47) 정적 바퀴. 섹션 묶음·exe 파일 객체 칸 값 대조에 run44 K1 덤프 읽기 로그 (`ms/logs/04_baggage-read_K1.txt` 1381 ~ 1500줄, `K1 07`·`K1 08`) 를 다시 읽었다 (결과서). 새 동적 실행은 없다.
   - (run48) 정적 바퀴. `PsNtdllExports` 21칸 값 대조에 run44 K1 덤프 읽기 로그 (`ms/logs/04_baggage-read_K1.txt` 1531 ~ 1542줄) 를 다시 읽었다 (flow-writer). 새 동적 실행은 없다.
+  - (run49) 정적 바퀴. 프로세스 객체 앞부분 (`_KPROCESS`·`_HANDLE_TABLE`·`_TOKEN`) 값 대조에 run44 K1 덤프 읽기 로그 (`ms/logs/04_baggage-read_K1.txt` `K1 01c`·`K1 04`, `04_baggage-read_supp_K1.txt` `K1 05s`) 와 EPROCESS raw 8장 비교를 다시 읽었다 (결과서). 새 동적 실행은 없다.
   - run44 의 `[관찰]` 은 "그 순간 메모리에 그 값이 있었다" 이다. 호출을 콜스택으로 본 것은 지점 8곳의 `k` 뿐이다 (run44 "지점별 라이브 관찰").
-- 정적 근거: `runs/02_sprint/` run9 ~ run42 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ~ run33 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe, run34 kernel32·KernelBase·ntdll·ntoskrnl·basesrv·csrsrv (+ cmd.exe 참고), run35·run36 ntdll, run37 kernel32·KernelBase·apisetschema **PE 표만** (Ghidra 안 씀), run38·run39 ntdll, run40 dll1·dll2 (sample 빌드), run41 ntdll·ntoskrnl, run42 ntoskrnl. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀) · `runs/03_sprint/` run43 (ntoskrnl·ntdll PDB 타입 레코드·공개 이름 + ntoskrnl `MmCreateTeb` 첫 export — 짐 지도 체크리스트) · run45 (ntdll depth 0 14개 읽기만 + 일 목록 86개·callee 637줄 분류·PDB 타입 정의 확인 — sast/39) · run46 (ntdll 프로세스 힙 구간 depth 1 함수 약 44개 읽기만 + PDB `_HEAP`·`_PEB` 등 칸 — sast/40, 짐 지도 Q78a) · run47 (ntoskrnl 섹션 사슬·exe 열기 depth 0 35개 새로 + sast/26 13개 읽기만, PDB 칸은 `pdb_struct.py` — sast/41, 짐 지도 Q78b) · run48 (ntoskrnl 부팅 준비 갈래 `PsLocateSystemDlls` 등 depth 0 약 23개 새로 + 3개 읽기만, 새 지도 뿌리 `PsLocateSystemDlls`, 표 처음 값은 PE 바이트 — sast/42, Q93. **흐름도 범위 앞 (부팅)**)
+- 정적 근거: `runs/02_sprint/` run9 ~ run42 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ~ run33 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe, run34 kernel32·KernelBase·ntdll·ntoskrnl·basesrv·csrsrv (+ cmd.exe 참고), run35·run36 ntdll, run37 kernel32·KernelBase·apisetschema **PE 표만** (Ghidra 안 씀), run38·run39 ntdll, run40 dll1·dll2 (sample 빌드), run41 ntdll·ntoskrnl, run42 ntoskrnl. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀) · `runs/03_sprint/` run43 (ntoskrnl·ntdll PDB 타입 레코드·공개 이름 + ntoskrnl `MmCreateTeb` 첫 export — 짐 지도 체크리스트) · run45 (ntdll depth 0 14개 읽기만 + 일 목록 86개·callee 637줄 분류·PDB 타입 정의 확인 — sast/39) · run46 (ntdll 프로세스 힙 구간 depth 1 함수 약 44개 읽기만 + PDB `_HEAP`·`_PEB` 등 칸 — sast/40, 짐 지도 Q78a) · run47 (ntoskrnl 섹션 사슬·exe 열기 depth 0 35개 새로 + sast/26 13개 읽기만, PDB 칸은 `pdb_struct.py` — sast/41, 짐 지도 Q78b) · run48 (ntoskrnl 부팅 준비 갈래 `PsLocateSystemDlls` 등 depth 0 약 23개 새로 + 3개 읽기만, 새 지도 뿌리 `PsLocateSystemDlls`, 표 처음 값은 PE 바이트 — sast/42, Q93. **흐름도 범위 앞 (부팅)**) · run49 (ntoskrnl 프로세스 객체 앞부분 depth 0 35개 새로 + 8개 읽기만, PDB 칸은 `pdb_struct.py`, 일부는 `objdump` 로만 — sast/43, 짐 지도 Q78c1)
   - PE 헤더·import·export 표는 `pefile` 로 읽었다 (run25). KERNELBASE·kernel32·ntdll 의 TLS 디렉터리도 PE 파일에서 읽었다 (run28). Ghidra 는 PE 진입점 함수를 PDB 이름 대신 `entry` 로 잡는다 (run25). 글에선 PDB 이름을 쓴다.
   - test.exe 는 sample 빌드라 MS 심볼 서버가 아니라 `sample/bin/` 의 exe·pdb 를 썼다 (run30). run31 의 test.exe PE 헤더 값(`AddressOfEntryPoint`, `ImageBase`, 정렬 등)도 같은 파일을 직접 읽은 것이다. 진입점 rva `0x1d40` = run5 `[관찰]`, run7 `[관찰]` 의 `…67723` 도 맞는다. 단 run3 ~ run5 와 run6 ~ run8 은 따로 빌드한 exe 라 (5장) 올라온 파일이 어느 쪽인지까지는 모른다.
   - dll1·dll2 도 같은 방식으로 `sample/bin/` 의 dll·pdb 를 썼다 (run40). 진입점 rva (dll1 `0x1d60`, dll2 `0x1d50`) 의 PDB 이름 `_DllMainCRTStartup` = run8 `[관찰]` `rcx`, `DllMain` rva `0x12e0` = run6 `[관찰]`, run7 `[관찰]` `LoadLibraryExW` 돌아올 주소 둘의 아래 16비트도 이 파일의 ret 자리와 맞는다. 그래도 VM 에서 돈 파일과 같은 빌드라고 단정하진 않는다 `[추측]`.
@@ -946,7 +947,7 @@ flowchart LR
 
 ## 2. 단계별 설명
 
-### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9, run10, run11, run12, run13, run16, run31, run32, run34, run47, run48 부팅 메모)
+### 2.1 커널 `nt` — 부모 cmd.exe 스레드 안에서 (run3, run9, run10, run11, run12, run13, run16, run31, run32, run34, run47, run48 부팅 메모, run49)
 
 이 구간은 **test.exe가 아니라 부모 cmd.exe**가 일하는 시간이다.
 test.exe는 아직 "만들어지는 중"이라, 자기 코드는 한 줄도 안 돌았다.
@@ -976,6 +977,12 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
  │                      └─ (2) +0x125  MiFinishCreateSection         [정적] _SECTION 객체 (+0x148 ObCreateObjectEx), 패킷 사본 복사 (run47)
  ├─ (4)  +0xc36   PspAllocateProcess                    [관찰]+[정적]
  │                 ├─ (1) +0x163c  MmCreateProcessAddressSpace       [정적] 주소 공간
+ │                 ├─ ·   +0x171e  KeInitializeProcess               [정적] _KPROCESS 몸통 (run49, 그림엔 없음)
+ │                 ├─ ·   +0x1927  PspInitializeProcessSecurity      [정적] 토큰 (run49, 그림엔 없음)
+ │                 │     └─ +0xfc  SeSubProcessToken
+ │                 │          └─ +0x441  SepDuplicateToken          [정적] 부모 토큰 복제 = 새 토큰 객체
+ │                 ├─ ·   +0x1991  ObInitProcess                     [정적] 핸들 표 (run49, 그림엔 없음)
+ │                 │     └─ +0xd1  ExDupHandleTable                 [정적] 부모 표 복제 (상속 비트 켜졌을 때)
  │                 ├─ (2) +0x2095  MmInitializeProcessAddressSpace   [정적] 보통 길로 [추측]
  │                 │     └─ +0x1ce  MiMapProcessExecutable           [정적]
  │                 │          ├─ (1) +0xb8  MmMapViewOfSectionEx     [정적] exe 올리기
@@ -998,6 +1005,7 @@ NtCreateUserProcess                                    (번호 = 코드 순서)
  │                            └─ +0x1b1  KxContextToKframes   [정적] CONTEXT → 트랩 프레임 (처음, run16)
  ├─ (8)  +0xe94   PsTestProtectedProcessIncompatibility [정적]
  ├─ (9)  +0xfc2   PspInsertProcess                      [관찰]+[정적]
+ │                 │  +0x4c  HANDLE_TABLE.UniqueProcessId = 자기 PID     [정적] (run49)
  │                 ├─ (1) +0xa6   PspLockProcessListExclusive  [정적] 목록 잠금 → 직접 잇기
  │                 └─ (2) +0x1e3  ObInsertObjectEx      [정적] 객체 등록 (부모용 핸들 아님)
  ├─ (10) +0x101a  PspInsertThread                       [관찰]+[정적]   (아래 번호 = 흐름 순서)
@@ -1162,6 +1170,12 @@ PE AddressOfEntryPoint (NT 헤더 +0x28, test.exe 0x1d40)
   - R8D 는 9번째 인자 사본 `[RSP+0x90]` (`+0x2ba`/`+0x2c1` 에서 만들고 `+0x625` 에서 꺼냄) = `NtCreateUserProcess` 의 **ProcessFlags** 다 (run34). 사이에 바꾸는 줄이 없다.
   - 그래서 **`CREATE_SUSPENDED` 없이 만들면 (KERNELBASE 가 bit 9 켬) `OwnerProcessId` = 부모 PID 그대로, 있으면 부모 PID `|2`** (2.2 `PspProcessClose` 절).
   - bit 9 를 읽는 곳은 커널에서 이 한 줄로 보인다 (run34: ProcessFlags 를 받는 `PspValidateCreateProcessProtection`·`PspInsertProcess`·`PspImplicitAssignProcessToJob` 은 bit 0·1·2·10 만 본다).
+- `[정적]` (run49, sast/43 — 짐 지도 Q78c1) **프로세스 객체 앞부분 세 덩어리** (대표 지점만, 칸마다는 `runs/03_sprint/baggage.md` 3.12·3.16·3.19):
+  - `+0x55f` `memset` 이 몸통 + `_KPROCESS` 확장 메모리를 한꺼번에 0 으로 민다 (`+0x534 ObCreateObjectEx` 직후).
+  - **`+0x1719` (ret `+0x171e`) `KeInitializeProcess`** — `_KPROCESS` 칸 대부분 (`Header` 종류 3, 목록 머리들, 친화도, 처음 우선순위 `8`, 확장 메모리 포인터 5개). `BasePriority`·`QuantumReset` 은 뒤에 `+0x1a64`·`+0x1a72` 가 계산값으로 덮고, `DirectoryTableBase` 는 `+0x1637 MmCreateProcessAddressSpace → MiCreateNewProcessTopLevelMappings +0x6e` 가 쓴다.
+  - **`+0x1922` (ret `+0x1927`) `PspInitializeProcessSecurity → +0xf7 SeSubProcessToken → +0x43c SepDuplicateToken`** — 토큰은 부모 것을 **복제**한다 (공유 아님). `SepDuplicateToken +0x158 ObCreateObjectEx` 가 새 토큰 객체를 받고, 칸을 옮기고, 새 `TokenId` (`+0x1a1`, 전역 LUID) 를 정한다. 입력 토큰은 `NtCreateUserProcess +0x417 PspReferenceTokenForNewProcess` 가 고른 부모 주 토큰 (핸들 속성이 없을 때 `[추측]`, 동적 Q79 D1). 붙이기는 `PspInitializeProcessSecurity +0x110 ObInitializeFastReference` (`EPROCESS.Token` = 토큰 `| 0xf`).
+  - **`+0x198c` (ret `+0x1991`) `ObInitProcess → +0xcc ExDupHandleTable → +0x5f ExpAllocateHandleTable`** — 핸들 표는 **부모 표 복제 길**. 가르는 줄은 `+0x1978 ~ +0x1986` (`ProcessFlags` 비트 2 = 핸들 상속). 빈 표 길은 `ObInitProcess +0x40 ExCreateHandleTable`. `[관찰]` run44 K1 `Flags` = `0x18` 의 `Duplicated` 를 켜는 줄이 `ExDupHandleTable +0xa6` 하나뿐이라 **사진 + 코드로 확정**, 상속 핸들 4개. 표 머리의 `UniqueProcessId` 처음 값은 `ExpAllocateHandleTable +0x7c` 가 **지금 도는 프로세스 (= 부모 cmd)** 의 PID 를 넣은 것이다 (아래 `PspInsertProcess` 가 고침).
+  - 다른 조건부 호출 (`KeSetCpuSetsProcess +0x1a00`·`KeSetExpectedConcurrencyCountProcess +0x1a19`·`PspSetProcessPriorityClass +0x1a3b`·`KeInitializeProcessUserCetLogging +0x2008`·`PspSetProcessAffinitySafe +0x235f`·`KeSecureProcess +0x279b`) 은 test.exe 에선 안 탄 것으로 보인다 (사진 값과 조건, run49 갈림길 표).
 - `[정적]` (run10) 이 함수를 부르는 곳은 `NtCreateUserProcess` 말고도 `PspCreateProcess`, `PsCreateMinimalProcess`가 있다.
 - `[정적]` (run10) 함수 포인터로 부르는 **간접 호출이 2곳** 있다 (`+0x121a`, `+0x17c4`). 대상은 실행해 봐야 안다 (4장).
 - `[추측]` 비유하면 **가게 건물 짓기**: 땅 다지기(주소 공간) → 설계도대로 건물 올리기(exe) → 관리실 들이기(ntdll) → 안내판 달기(PEB).
@@ -1426,7 +1440,7 @@ ntdll 쪽은 **이미 이 문서에 적힌 줄만** 짝지었다 (run32 는 ntdl
   - 잡: 부모가 잡에 있으면 `PspImplicitAssignProcessToJob` (`+0xd9`) 로 새 프로세스도 같은 잡에. **목록 잠금 전**이다.
   - 디버그 포트: `DbgkCopyProcessDebugPort` (`+0x143`) 로 부모의 디버그 포트를 새 프로세스에 복사.
 - `[관찰]` (run44 사진) K2 (이 함수 입구) 의 test.exe 는 `!process 0 0 test.exe` 에 안 나오고 주소로만 읽힌다. `ActiveProcessLinks` = `[0 - 0]` → **아직 목록에 안 넣음.** K3 에선 이어져 있고 `SequenceNumber` = `0x134`, `Flags.ProcessInserted` = 1. 위 `[정적]` 잇기 (`+0xa6 ~ +0x109`) 가 K2~K3 사이에 있다는 것과 맞다.
-  - `[관찰]` 같은 구간에 핸들 표 `HANDLE_TABLE.UniqueProcessId` 가 `0x19a8` (부모 cmd PID) → `0x1dd0` (자기 PID) 로 바뀐다. 쓰는 줄은 `[공백]` (이 함수 안이거나 `PspInsertThread +0x807` 앞) → 4장.
+  - `[관찰]` 같은 구간에 핸들 표 `HANDLE_TABLE.UniqueProcessId` 가 `0x19a8` (부모 cmd PID) → `0x1dd0` (자기 PID) 로 바뀐다. 쓰는 줄은 ~~`[공백]` (이 함수 안이거나 `PspInsertThread +0x807` 앞) → 4장~~ → `[정적]` (run49) **이 함수 `+0x4c`** `MOV dword [R10+0x28],EAX` — `+0x27` 이 `R10 = EPROCESS.ObjectTable` (`+0x300`), `+0x31` 이 `EAX = EPROCESS.UniqueProcessId` (`+0x1d0`). 함수 입구 바로, 분기 앞이라 K2 (입구) 엔 아직, K3 엔 바뀌어 있다는 사진과 맞다.
 - `[추측]` 비유하면 새 가게를 **상가 명부에 올리기**. 명부를 잠그고 맨 끝 줄에 직접 적은 뒤 잠금을 푼다.
 
 #### `nt!PspInsertThread`
@@ -1735,6 +1749,7 @@ csrsrv!CsrApiRequestThread
 - `[정적]` (run12) `PspInsertThread+0x5e2`(call `+0x5dd`). 오프셋은 뒤쪽이지만 **흐름은 제일 먼저**다. 스레드를 프로세스의 스레드 목록에 달기 **전**, 객체 등록 전.
   - 앞쪽 검사(프로세스 비트 등)를 통과해 실패 길로 안 빠졌을 때만 온다.
 - `[추측]` 본문은 안 뽑았다 (1182바이트). 지도에서 부르는 것이 `KiAcquireProcessLockExclusive`, `KeSelectInitialIdealProcessorForThread`, `KiAdjustProcessIdealProcessorSetsForThreadCreation`, `KiUpdateSharedReadyQueueAffinityThread`, `KiInitializeForegroundBoostThread` 등이라, "어느 CPU 에서 돌지·우선순위 가산" 같은 **스케줄링 준비**로 보인다. 대기 줄에 넣는 호출은 지도에 없다.
+- `[정적]` (run49, sast/43 이 본문을 뽑음) **프로세스 쪽 칸도 여기서 쓴다**: 프로세스 락 (`+0x99` 잡기 · `+0x38d` 놓기) 안에서, 첫 스레드이고 `KiInitialProcess` 가 아니면 `KPROCESS.ProcessListEntry` 를 전역 `KiProcessListHead` 꼬리에 단다 (`+0x247 ~ +0x270`), 스레드를 `KPROCESS.ThreadListHead` 꼬리에 단다 (`+0x2f4 ~ +0x2fe`), 그 뒤 `KPROCESS.StackCount` +8 (`+0x3e9`). `[관찰]` run44 사진에서 이 세 칸이 `K2~K3` 에 바뀌고 `P1a~P1b` 에 둘째 스레드 몫이 더해진다 — 맞다.
 - `[추측]` 그래서 "실행될 수 있는 상태" 가 되는 건 `KeStartThread` 가 아니라 끝의 `KeReadyThread` 쪽이다. 비유하면 `KeStartThread` 는 근무지·근무 시간 정하기, `KeReadyThread` 는 대기 줄에 세우기.
 
 #### 멈춘 첫 스레드가 서는 곳 (test.exe 스레드 안, run13)
@@ -1930,6 +1945,7 @@ KiStartUserThread  (= Kx +0x60 이름표)                       [관찰] run4 �
   6. `RET` → `KiStartUserThread+0x28`
   - 2~4 는 프로세스 `Flags3.Minimal`(`_EPROCESS +0x5fc` bit0) = 0 일 때, 5 는 그에 더해 스레드 `CrossThreadFlags.Terminated`(`_ETHREAD +0x5a0` bit0) = 0 일 때.
   - 이 함수 이름들이 무슨 일을 하는지는 이름으로 본 것이다 `[추측]` (본문은 안 뽑음).
+  - `[정적]` (run49) 1 의 본문은 sast/43 이 읽었다: **토큰 칸은 안 쓴다.** 토큰은 `+0x4e PsReferencePrimaryTokenWithTag` → `+0x59 SeTokenIsAdmin` 으로 읽기만 하고, 쓰는 건 EPROCESS `Flags2.PrimaryTokenFrozen` (`+0x22`)·`Flags3` 의 얼림 비트 (`+0xa4`·`+0xbb`·`+0x111`)·조건부 `SecurityDomain` 지움. `[관찰]` run44 EPROCESS `Flags2` raw `0x5000 → 0xd000` (P0~P1) 와 맞다. 이름 "토큰 바꾸기 막기" 와 맞는 일이다.
 - `[정적]` (run15) **`PspInitializeThunkContext` 는 첫 스레드만이 아니다.** 이 함수 안에 "첫 스레드인지" 가르는 줄이 없다. 조건을 만족하는 **모든 스레드**에 불린다. run4 `[관찰]` "스레드 4개 모두 `LdrInitializeThunk` 에서 출발" 과 모양이 같다. 첫 스레드만 다른 일이 있다면 그 함수 안이다 (Q7).
   - `[정적]` (run16) 그 함수 안에도 "첫 스레드만" 조건이 없다. 갈림은 계측 콜백·CET·알림 마스크뿐이다 (아래 `PspInitializeThunkContext`).
 - `[정적]` (run15) 정상 길이 아닌 갈래 3개 (test.exe 스레드는 안 탈 것 `[추측]`, 값은 동적):
@@ -3844,7 +3860,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.1 | `PspCallProcessNotifyRoutines` 간접 호출 4곳(`+0x152`, `+0x321`, `+0xc3`, `+0x1d4`)의 실제 대상, `PspNotifyEnableMask`·`PspCreateProcessNotifyRoutine` 64칸·BAM/DAM 표 값 — 동적으로만 앎 |
 | 2.1 | (해결됨, 값) `PspInsertThread` 알림 문턱: test.exe 의 `프로세스+0x5fc` bit0, `+0x640` 값과 뜻 (`[추측]` 일반 프로세스 아님 / Pico 표시) → **run44 `[관찰]`**: K3 (알림 입구) 에서 `Flags3` = 0 (bit0 = PDB `Minimal`), `+0x640` = PDB `PicoContext` = 0 → 문턱 통과 (그리고 실제로 K3 에 섬). 이름은 PDB, 뜻 짐작은 그대로 |
 | 2.1 | (해결됨) 프로세스 락(`프로세스+0x1c8`)이 정말 호출자(`PspAllocateProcess +0x26e9`)에서 잡혀 들어오나 (run12 `[정적 + 간접]`) → **run44 `[관찰]`**: `ProcessLock` K1·K2 = 1, K3 = 0 — 호출자가 잡아 들고 들어와 `PspInsertThread` 가 푼다 |
-| 2.1 | `KeStartThread` 본문 (이름·지도로 "스케줄링 준비" `[추측]`) |
+| 2.1 | (일부 해결) `KeStartThread` 본문 (이름·지도로 "스케줄링 준비" `[추측]`) → run49 `[정적]`: 프로세스 쪽 칸 `ProcessListEntry` (`+0x247 ~ +0x270`)·`ThreadListHead` (`+0x2f4 ~ +0x2fe`)·`StackCount` (`+0x3e9`), 프로세스 락 `+0x99`/`+0x38d`. 스레드 쪽 스케줄링 칸은 짐 지도 Q78d |
 | 2.1 | (일부 해결, 정적) `MmCreateTeb` 본문: TEB 에 무엇을 쓰나 → run43 `[정적]`: 본문 처음 뽑음 (811바이트). 붙기 `+0x7a KiStackAttachProcess` → 자리 `+0xa7 MiAllocateFromSubAllocatedRegion` → TEB 대입 약 47줄 (64비트 + WOW64 갈래) → 떼기 `+0x299 KiUnstackDetachProcess` (실패 길 `+0x2d3`). **남은 것**: 칸별로 무엇을 쓰나 — 짐 지도 Q78 (`runs/03_sprint/baggage.md` 7.5) (run44 `[관찰]`: K1~K2 에 처음 값이 생긴 TEB 칸 9개 — 2.1 `MmCreateTeb` 절. 칸별 맞추기 후보) |
 | 2.1 | `PspInsertProcess +0x1e3` `ObInsertObjectEx` 인자 이름·하는 일 (핸들 안 돌려받는 모양까지만 봄) |
 | 2.1 | (해결됨, 정적) exe 진입점이 이미지 정보 `TransferAddress` 에 처음 적히는 곳 (run16 은 `MmGetSectionInformation` 에서 꺼내는 쪽만) → run31 `[정적]`: `MiVerifyImageHeader +0x8a` 가 헤더 `AddressOfEntryPoint` 를 칸 `+0x1c` 에 복사 → **`MiBuildImageControlArea +0x172`** 가 `ImageBase + rva` 를 `TransferAddress` 에. 재배치 때 `MiRelocateImage` 조각 `+0x1b1279` 가 델타를 더함 |
@@ -3892,7 +3908,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.3 | (해결됨) 시작 정보 묶음 `+0x8` 칸(`PspUserThreadStartup`)이 첫 스택의 시작 루틴 자리까지 가는 길 → run15 `[정적]`: `KeInitThread +0x2fc` → `KiInitializeContextThread +0x1c7`/`+0x1cf` (`_KEXCEPTION_FRAME.P3Home`) → `Kx +0x7e` `[RSP+0x10]` |
 | 2.3 | (해결됨) 콜스택의 `KiStartUserThreadReturn` 정체 → run15 `[정적]`: `NOP; RET` 두 바이트, `KiInitializeContextThread +0x1da` 가 쌓은 가짜 돌아올 주소. 남은 것: 그 다음 칸이 `RtlUserThreadStart` 로 풀리는 WinDbg 풀어 보기 규칙 `[추측]`, `KyStartUserThread` 템플릿이 정말 안 도나 |
 | 2.3 | (해결됨) `PspInitializeThunkContext` 가 첫 스레드만인가 → 아니오, `Terminated` = 0 · `Minimal` = 0 인 모든 스레드 → run15 `[정적]` |
-| 2.3 | `PspUserThreadStartup` 정상 길 4개(`PspDisablePrimaryTokenExchange` `+0x3c`, `PsGetSessionLocaleId` `+0x78`, `KeUpdateTebSchedulingPropertiesCurrentThread` `+0x99`, `PspNotifyThreadCreation` `+0xa1`)의 본문 — 하는 일은 이름으로만 `[추측]` |
+| 2.3 | (일부 해결 → run49: `PspDisablePrimaryTokenExchange` 본문은 읽음 — 토큰은 읽기만, EPROCESS `Flags2`·`Flags3` 얼림 비트를 씀) `PspUserThreadStartup` 정상 길 4개(`PspDisablePrimaryTokenExchange` `+0x3c`, `PsGetSessionLocaleId` `+0x78`, `KeUpdateTebSchedulingPropertiesCurrentThread` `+0x99`, `PspNotifyThreadCreation` `+0xa1`)의 본문 — 하는 일은 이름으로만 `[추측]` |
 | 2.3 | `KiStartUserThread` 유저 복귀 길의 조건부 일: `KiInitiateUserApc`(ret `Kx +0x11b`)가 첫 스레드에 불리나, `Kx +0x13d ~ +0x229` 마무리(디버그 레지스터·CET·추측 실행 완화) 중 무엇이 도나 — 동적 (Q42) |
 | 2.4 | (해결됨, 정적) `LdrInitializeThunk +0xe` 대상 이름: 관찰 `LdrpInitializeInternal` vs 정적 Ghidra `LdrpInitialize`(rva `0xe1448`, `+0x3c` 꼬리 점프 → `LdrpInitializeInternal`) (run16 이 `.asm` 에서 봄. 이름 정리는 Q8) → run17 `[정적]`: 부르는 건 `LdrpInitialize`(0xe1448), 꼬리 점프라 콜스택에 안 보임. 콜스택 `LdrpInitialize+0x16c`/`+0xa7` 의 주인은 PDB 이름 `_LdrpInitialize`(0x8bf8c) |
 | 2.4 | (해결됨, 정적) `_LdrpInitialize` 가 "첫 스레드인가"를 무엇으로 가르나 (`[추측]`) → run17 `[정적]`: `+0x3a LOCK CMPXCHG` 전역 `LdrpProcessInitialized` (옛 값 0 = 첫 스레드 / 1 = 하는 중, 기다림 / 2 = 끝남) |
@@ -3985,7 +4001,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.10 | 정적으로 남은 것 (run42) — 정적 **Q75**: (a) **CET_U 칸의 SSP 값이 어디서 오나** — 시동 임시 문맥의 CET_U 칸을 `PspGetContextThreadInternal` (rva `0x90fa40`) / `KeContextFromKframes` (rva `0x3ecaf0`) 가 어떻게 채우나 (`XSAVES`? 현재 MSR?), `RtlCopyContext` 가 그 칸을 복사하나 (`_calls.tsv`: `+0x11c` `RtlpCopyXStateChunk`, `+0x1b3` `RtlpCopyKernelCetChunk`, 본문 안 읽음). "시동 `NtContinue` 뒤 SSP 가 칸 넣기 (−8) 전 값인가" 를 정함 (동적 Q57 `rdmsr` 로도 풀림), (b) `KeVerifyContextIpForUserCet`/`KeVerifyContextRecord` 위 `PspGetSetContextInternal` 이 5번째 칸 값을 쓰나 (`SetThreadContext` 길, 범위 밖), (c) 이름 없는 조각 `FUN_1406f9e12 +0xf4` (`WRUSSQ`+`WRMSR 0x6a7`) 가 어느 함수 조각인가 (`NtContinue` 길과 무관) |
 | 2.1 · 2.3 · 2.4 (짐 지도) | 초기화 함수 15개의 callee 중 **문서 어디에도 이름이 없는 57개** (run43, sast/38 `callees.tsv` 의 `doc=none`): nt 43 — `PspAllocateProcess` 40 · `PspSetupUserProcessAddressSpace` 1 · `MmCreateTeb` 1 · `PspInitializeThunkContext` 1, ntdll 14 — `LdrpInitializeProcess`. 짐을 놓는 호출인지 잡일인지 안 가렸다. 지도(`_map/`)에 `PspUserThreadStartup`·`PspInitializeThunkContext` 가 없음 (`SwapContext` 의 `RET` 로 들어오는 길이라 `NtCreateUserProcess` 뿌리에서 안 닿음, 2.3) — 뿌리 하나 더 만들 후보. → 짐 지도 Q78 (`runs/03_sprint/baggage.md` 7.7) |
 | 2.4 (짐 지도) | (해결됨, 정적 → run45: `LdrpInitializeProcess +0xc3f RtlpInitParameterBlock` — 힙 할당 → 통째 복사 → 포인터 9개 → `PEB+0x20` → 옛 블록 해제, 환경은 앞 `+0xc32 RtlpInitEnvironmentBlock`) **(run44 새로) `PEB.ProcessParameters` 를 누가 옮기나**: ① → ①-a 사이에 `25996cb0000` → 힙 안 `25996f37a50`, 옛 private 영역 해제, 새 블록은 포인터만 새 자리 기준·`EnvironmentVersion` 0 → 3 `[관찰]`. 정적 문서엔 옮기는 줄이 없다 — 정적 **Q78** 후보 (`LdrpInitializeProcess` 앞쪽, `+0x6c5 RtlNormalizeProcessParams` 근처 `[추측]`) |
-| 2.1 (짐 지도) | **(run44 새로)** 핸들 표 `HANDLE_TABLE.UniqueProcessId` 가 K2~K3 에 부모 PID `0x19a8` → 자기 `0x1dd0` `[관찰]` — 쓰는 줄 (`PspInsertProcess` 안 / `PspInsertThread +0x807` 앞) 정적 **Q78** |
+| 2.1 (짐 지도) | (해결됨, 정적 → run49: 처음 값 `ExpAllocateHandleTable +0x7c` (지금 도는 프로세스 = 부모), 자기 PID 로 **`PspInsertProcess +0x4c`**) **(run44 새로)** 핸들 표 `HANDLE_TABLE.UniqueProcessId` 가 K2~K3 에 부모 PID `0x19a8` → 자기 `0x1dd0` `[관찰]` — 쓰는 줄 (`PspInsertProcess` 안 / `PspInsertThread +0x807` 앞) 정적 **Q78** |
 | 2.5 (짐 지도) | **(run44 새로)** kernel32 준비 ~ dll 올리기 구간 (①-a ~ ①-b) 에 `EPROCESS.OwnerProcessId` `0x19a8` → `0x729`, 매개변수 `ConsoleHandle` 4 → `0x60` (`\Connect {ConDrv}`) `[관찰]` — 쓰는 쪽 (KERNELBASE 콘솔 준비 → `NtSetInformationProcess` `[추측]`) 정적 **Q78**. `OwnerProcessId` 는 Q65 남은 것 (`NtSetInformationProcess +0x1ecd`) 과 겹침 — 어디서 할지 사용자와 |
 | 2.2 (짐 지도) | **(run44 새로)** 부모 쪽 마무리 구간 (K3 ~ ⓪) 에 자식 PEB `pShimData`·`SystemDefaultActivationContextData` (새 VAD 2개), EPROCESS `ExceptionPortData`·`Enable…Logging` 비트 5개 `[관찰]` — 쓴 쪽 (부모 KERNELBASE·csrss·커널) 정적 **Q78** / 동적 |
 | 짐 지도 | **(run44 새로)** 사진으로 못 좁힌 것: ntdll `.data`·`.mrdata` 앞 3페이지·`PebLdr` 는 K1 ~ ① 읽기 불가 (`≤P1a` 전역 156 + `PebLdr` 5칸. run45 정정: 전엔 "`≤P1a` 161" — run44 요약의 "전역 못 좁힌 161" (`≤P1a` 156 + `.00cfg` 5) 과 다른 묶음), `.00cfg` 5칸 8장 모두 읽기 불가, VAD 노드 칸 (`!vad` 목록만), `PsDefaultLoaderThreads` 값, 트랩 프레임 ①-a 이후는 디버거·시스템 콜 값 — 짐 지도 `runs/03_sprint/baggage.md` 7.8 |
@@ -3997,6 +4013,10 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.4 (짐 지도) | **(run46 새로) 프로세스 힙 구간 실행 값** (sast/40 결과서 번호 그대로): **D1** `PEB.pShimData` 안 두 바이트 (`+0x11aa` 비트 `0x40`·`+0x11b2` 비트 `0x4`) — NT 힙을 정한 조건이 어느 것인가 (`ntdll!RtlpHpOptIntoSegmentHeap+0x190`, 덤프로도 가능할 수 있음) · **D4** IFEO 열기 두 번 결과와 이 프로세스 첫 IFEO 열기인지 (`RtlpOpenBaseImageFileOptionsKey+0x80`, `RtlpOpenImageFileOptionsKeyEx+0xec`) · **D5** `NtQueryInformationProcess(0x24)` 반환·쿠키 (`RtlpGetModifiedProcessCookie+0x27`, 클래스 이름 `ProcessCookie` `[추측]`) · **D9** 무작위 몫 n 과 `NtFreeVirtualMemory` 실제 여부 (`RtlpCreateHeap+0x459`) — 동적 **Q91**. 사진·정적으로 닫혀 확인만인 것: D2·D6·D7·D8·D10·D11·D12, 덤프로: D13 (힙 머리 나머지 칸), 정적 `[추측]` 으로 남김: D3 (매니페스트 `heapType`) |
 | 2.4 (짐 지도) | **(run46 새로)** 조건부로만 쓰는 힙 전역 8개 (`RtlpHpHeapFeatures`·`RtlpHpAppCompatFlags`·`RtlpGlobalTagHeap`·`g_RegInfo`·`RtlpLowFragHeapGlobalFlags`·`RtlpLargestLfhBlock`·`RtlpDisableHeapLookaside`·`RtlpLowFragHeapRandomData`) — 쓰는 줄은 sast/40 에 있으나 닫힌 칸으로 안 셈, 그리고 이름 없는 자리 (`0x1ce270~`·`0x1ce430`·`0x1ce6e8`) 가 앞 이름 (`LdrpThunkSignature`·`LdrpInitOnceLoadAsDataCrits`·`RtlpDisableHeapLookaside`) 짐작 크기에 묻혀 있었음 → 나머지 정적 **Q78**·**Q80** (짐 지도 7.5) |
 | 2.4 | **(run46 새로)** 묶음 7 의 힙 **뒤** 부분 (`+0xa50 ~ +0xb7d`: 기능 스위치 2개, 로더 스냅 버퍼, 활성화 컨텍스트 스택, `+0xb52` 시스템 정보 클래스 `0xc5` → `RtlpHypervisorSharedUserVa`) 본문은 안 봄 — 짐 지도 칸에 걸리면 나머지 **Q78** |
+
+| 2.1 (짐 지도) | (해결됨, 정적 → run49: 세 구조체 모르는 칸 137 → 여전히 모름 0, 짐 지도 3.12·3.16·3.19) **프로세스 객체 앞부분 칸의 쓴 자리 (Q78c1)** — `_KPROCESS` 는 `PspAllocateProcess +0x1719 KeInitializeProcess` (+ 덮기 `+0x1a64`·`+0x1a72`, `DirectoryTableBase`, `KeStartThread`), 토큰은 `SeSubProcessToken +0x43c SepDuplicateToken` 이 **부모 토큰을 복제**, 핸들 표는 `ObInitProcess +0xcc ExDupHandleTable` (**부모 표 복제 길**, 사진 `Flags.Duplicated` 로 확정) |
+| 2.1 (짐 지도) | **(run49 새로) 프로세스 객체 앞부분 실행 확인** (sast/43 결과서 번호 그대로): 덤프로 — 동적 **Q79** (출처 추가): **D1** 부모 cmd 토큰과 새 토큰 값 대조 (`!process 19a8 0` → `dt nt!_TOKEN`, `TokenId`·`ParentTokenId`·`ModifiedId`·`AuthenticationId`) · **D4** `KPROCESS.Header.WaitListHead` `K3~P0` 대기 블록 `ffff828598adc1c0` 주인 (`dt nt!_KWAIT_BLOCK`) · **D5** 조건 전역 (`KiCacheAwareScheduling`·`KeFeatureBits` bit `0x37`·`MiFlags`·`KiFlushPcid`·KUSD `+0x710` 등). 실행 중 멈춤 — 동적 **Q96**: **D2** `nt!ObInitProcess` 입구 핸들 목록 속성 (`r8d`·`r9`) · **D3** `nt!KeSetProcessPpmPolicy` 입구 `k` — `ProcessFlags.PpmPolicy` 7 을 부르는 쪽이 bam.sys 인가 (`PspBamHostInterface` 표 경유, `[추측]`) · **D6** `TokenFlags` `0x2a00` 단계별 (낮음) |
+| 2.1 (짐 지도) | **(run49 새로)** Q78c1 이 지나가며 본 `_EPROCESS` 쓰는 줄 (`SecurityDomain`·`ParentSecurityDomain`·`Flags2.PrimaryTokenFrozen`·`Flags3` 얼림 비트·`PpmPolicyLock`·`BamPpmPolicy`·`PriorityClass`·`+0x540` 목록 등) → 정적 **Q78c2** (짐 지도 3.11 "Q78c2 에서 볼 것"). 칸 표 없는 짐 후보 7개 (`_KPROCESS` 확장 메모리 안 블록 셋·`_HANDLE_TABLE_FREE_LIST`·핸들 표 낮은 단계 페이지·`_SEP_LOGON_SESSION_REFERENCES`·`_SEP_LUID_TO_INDEX_MAP_ENTRY`) 는 짐 지도 7.6 에 기록만 |
 
 ### 4.1 추측·정적으로 둔 호출 관계 (그림의 `?`, `(정적)` 상자)
 
@@ -4150,6 +4170,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run46 | (정적, 03_sprint 짐 지도 넷째 바퀴 — Q78a 프로세스 힙 구간) `LdrpInitializeProcess +0x9ed ~ +0xa50`: test.exe 프로세스 힙 = **NT 힙** (세그먼트 힙 조건 9개 중 8개 "아님", 사진 `0xffeeffee`), 구간 시스템 콜 12개 (`NtOpenKey` 2 · `NtQueryInformationProcess` 1 · `NtQuerySystemInformation` 3 · `NtAllocateVirtualMemoryEx` 3 · `NtAllocateVirtualMemory` 2 · `NtFreeVirtualMemory` 1), run44 큰 예약 둘 = 힙 관리자 희소 비트맵 (`0x2001000`·`0x100020000`, VAD 와 정확히 같음), PEB `+0x30` 쓰는 줄 `LdrpInitializeProcessHeap +0x1a2`, PEB 힙 목록 3칸·ntdll 힙 전역 17개 쓴 자리, `_HEAP` 머리 칸, `RtlCreateHeap` = 껍데기, `RtlInitializeHeapManager` 꼬리 JMP. 그림 2 에 `(정적)` 상자 둘 (`c4` 번호 `(2)` 부터 밀림). run18·run45 정정 (`RtlSetHeapInformation` 조건부, 태그 힙 안 만듦) |
 | run47 | (정적, 03_sprint 짐 지도 다섯째 바퀴 — Q78b exe 섹션 묶음) 커널 다섯 구조체 (`_SECTION`·`_CONTROL_AREA`·`_SEGMENT`·`_SECTION_IMAGE_INFORMATION`·`_FILE_OBJECT`) 모르는 칸 74 → **여전히 모름 0**. `_SECTION` 객체 = 사슬 끝 형제 `MiCreateSection +0x125 MiFinishCreateSection` (`+0x148 ObCreateObjectEx`, 패킷 `+0x50 ~ +0x8f` 사본 통째 복사). exe 파일 객체 사슬 `IopCreateFile → ObOpenObjectByNameEx → ObpLookupObjectName +0xbcd → IopParseDevice +0xe1e IopAllocRealFileObject` (`+0x740 IoCreateFileEx` 는 실패 때만 재시도, `IopParseFile` 은 상대 열기만). 파일 시스템 칸 넷 (`Vpb`·`FsContext*`·`SectionObjectPointer`) 은 nt 에 쓰는 줄 없음. 새 길 / 공유 길은 사진 값으로 못 가름 (→ Q61). 그림 1 에 `(정적)` 상자 하나 (`i6`). 정정: `NumberOfUserReferences` +1 은 `MiReferenceControlArea +0x11d` (짐 지도·run31 문구) |
 | run48 | (정적, 03_sprint 짐 지도 여섯째 바퀴 — Q93 부팅 준비 갈래, **흐름도 범위 앞**) 시스템 DLL 준비는 부팅 `Phase1` 에서 한 번: `Phase1Initialization +0x3b IoInitSystem → +0x17 IoInitSystemPreDrivers → +0x10fa PsLocateSystemDlls` (call `+0x10f5`, 앞뒤 `NtGlobalFlag \|= 0x40000` 임시) `→ +0xa3 PspLocateSystemDll` (표 `PspSystemDlls` 처음 값 `[0]` ntdll · `[1]` SysWOW64 ntdll · `[4]` vertdll → 세 번) `→ ZwOpenFile → MmCreateSpecialImageSection` (exe 와 같은 사슬, 토큰 NULL·서명 수준 `0x0c`·보호 이미지 패킷 플래그) `→ … → +0x238 PspMapSystemDll(…, 0, 1)` — 칸 `+0x20` (뷰 헤더 `ImageBase`)·`+0xc`·`+0x28` (rva `0xb18c2c ~ 0xb18c36`), `+0x38` 재배치량 (`PspLocateSystemDll +0x1aa`). 뒤에 `Phase1InitializationIoReady → PspInitPhase2 +0x177 PspInitializeSystemDlls +0x6b` 가 `PsNtdllExports` 19칸 (`+0x38`·`+0x98` 은 안 채움 — run44 K1 로그도 0), `MmInitSystemDll +0x22` `MiState.Processes.SystemDllBase`. `PspMapSystemDll` 인자4 = 1 이면 칸 채우기, 0 이면 비교만 (`+0x172`). 버그체크 `0x6b` 사이트 7곳. **디버거가 붙어서 달라지는 점**: `+0x7e ZwSystemDebugControl(0x26)` → 디버깅 부팅이면 `ExpKdPullRemoteFileForUser`. 정정 2 (run16 `+0x89` 은 별칭 칸 전용·안 탐, run10 `PspInitPhase3` 은 보안 System 프로세스). 짐 지도 7.6.2 (체크리스트 밖, 단계 `Ⓑ`) |
+| run49 | (정적, 03_sprint 짐 지도 일곱째 바퀴 — Q78c1 프로세스 객체 앞부분) `_KPROCESS`·`_HANDLE_TABLE`·`_TOKEN` 모르는 칸 137 → 여전히 모름 0 (아는 칸 97 · 아무도 안 씀 40, 짐 지도 3.12·3.16·3.19). `PspAllocateProcess +0x1719 KeInitializeProcess` 가 `_KPROCESS` 몸통 (`+0x55f memset` 뒤, `BasePriority`·`QuantumReset` 은 `+0x1a64`·`+0x1a72` 가 덮음). **토큰은 복제**: `+0x1922 PspInitializeProcessSecurity → +0xf7 SeSubProcessToken → +0x43c SepDuplicateToken` (`+0x158 ObCreateObjectEx` 새 객체, 새 `TokenId`), 입력 = `NtCreateUserProcess +0x417 PspReferenceTokenForNewProcess`. **핸들 표는 부모 표 복제 길**: `+0x198c ObInitProcess → +0xcc ExDupHandleTable` (`ProcessFlags` 비트 2, run44 `Flags` `0x18` 로 확정). `HANDLE_TABLE.UniqueProcessId` 처음 값 `ExpAllocateHandleTable +0x7c` (부모), 자기 PID `PspInsertProcess +0x4c`. `KeStartThread` 가 `ProcessListEntry`·`ThreadListHead`·`StackCount`. `ProcessFlags.PpmPolicy` = `KeSetProcessPpmPolicy +0x43`/`+0x4b` (부르는 쪽 BAM `[추측]`). 정정: `PspDisablePrimaryTokenExchange` 는 토큰 칸을 안 씀 (짐 지도 3.19), 짐 지도 call/ret 오프셋. 일부 근거는 `objdump` 로만 (`MiCreateNewProcessTopLevelMappings`·`MiAllocateProcessShadow`·`ObpAllocateObject` 등) |
 | `sample/` 소스 | 의존 관계, 모듈별 TLS 콜백, `/MT` 빌드 |
 
 - run3 ~ run5는 타깃에서 빌드한 test.exe, run6 ~ run8은 디버거 VM에서 빌드해 옮긴 test.exe (같은 소스).
@@ -4206,3 +4227,4 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run46 | `_workspace/sast/40_process-heap` | 없음 | 정적만 (대기열 **Q78a**, Q78 첫 조각 — 사용자 요청 2026-10-27, 짐 지도 바퀴). 다시 analyze 안 함, ntdll 읽기만 (`.asm`/`.c` 225 → 342, `_calls.tsv` 1,625 → 2,165줄, `_refs` 새로 17개 이상). PDB 칸은 `llvm-pdbutil-14` (스크래치). 동적 질문 D1~D13 중 필요한 D1·D4·D5·D9 → 새 **Q91** (오케스트레이터). 결과서 도구 제안 (PDB 구조체 칸 한 줄 명령, sast/26 에 이어 두 번째) 은 하네스라 사용자 검토 |
 | run47 | `_workspace/sast/41_section-chain` | 없음 | 정적만 (대기열 **Q78b**, Q78 둘째 조각 — 사용자 결정 2026-10-28 시간 순서 조각, 짐 지도 바퀴). 다시 analyze 안 함, ntoskrnl depth 0 35개 새로 (+ sast/26 13개 읽기만), `refs` 5번. PDB 칸은 새 도구 `pdb_struct.py` (첫 실사용 — 이름 없는 공용체·겹침 표시 한계 둘은 하네스라 사용자 검토). 동적 질문 D1 → **Q61** 에 합침, D2 ~ D10 → 새 **Q92** (오케스트레이터). ntfs.sys 는 안 뽑음 |
 | run48 | `_workspace/sast/42_system-dll-boot` | 없음 | 정적만 (대기열 **Q93**, 사용자 요청 2026-10-29 — Q78c 앞에 끼움, 짐 지도 바퀴). 다시 analyze 안 함, ntoskrnl depth 0 약 23개 새로 (+ 3개 읽기만), 새 지도 `_map/PsLocateSystemDlls_*` (깊이 3, 43개), 새 `_refs` 10개. 표 처음 값은 PE 바이트 (스크래치 임시 파이썬). 동적 질문 D1·D2 → Q42 출처, D3 ~ D12 → 새 **Q94** (D9 ~ D12 부팅 디버깅, 낮음) |
+| run49 | `_workspace/sast/43_kprocess-token-htable` | 없음 | 정적만 (대기열 **Q78c1**, Q78c 를 구조체별로 나눈 첫 조각 — 오케스트레이터 기본값 2026-10-29, 짐 지도 바퀴). 다시 analyze 안 함, ntoskrnl depth 0 35개 새로 (+ 8개 읽기만), `_calls.tsv` 3,284 → 3,598줄, `refs` 1번 (`PspBamHostInterface`). PDB 칸은 `pdb_struct.py`. 일부는 `objdump -d` 로만 (`.asm` 없음). 동적 질문 D1·D4·D5 → Q79 출처, D2·D3·D6 → **Q96** |
