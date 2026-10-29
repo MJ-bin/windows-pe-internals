@@ -538,7 +538,7 @@ run 문서 갈림길 표에서 대표만.
 
 - 전: 짐 지도 3.19 "붙이는 곳 `PspUserThreadStartup +0x3c PspDisablePrimaryTokenExchange`" (run43 이 run15 의 이름 짐작을 토큰 절에 붙였다).
 - 후 `[정적]`: 이 함수는 신분증을 **읽기만** 한다 (`+0x4e PsReferencePrimaryTokenWithTag` → `+0x59 SeTokenIsAdmin`).
-  - 쓰는 건 **장부 쪽** 표시들: `Flags2.PrimaryTokenFrozen` (`+0x22`), `Flags3` 의 얼림 비트 (`+0xa4`·`+0xbb`·`+0x111`), 조건부 `SecurityDomain`·`ParentSecurityDomain` 지움 (`+0x94`·`+0xa2`).
+  - 쓰는 건 **장부 쪽** 표시들: `Flags2.PrimaryTokenFrozen` (`+0x22`), `Flags3` 의 얼림 비트 (`+0xc4`·`+0xbb`·`+0x111`), 조건부 `SecurityDomain`·`ParentSecurityDomain` 지움 (`+0x94`·`+0xa2`).
   - 사진 `[관찰]` EPROCESS `Flags2` raw `0x5000 → 0xd000` (`P0~P1`) 와 맞다.
 - 비유: run15 해설의 "**신분증 바꿔치기 금지**" 가 딱 맞는 그림이었다. 신분증에 뭘 적는 게 아니라, 장부에 "**이제 신분증 교체 금지**" 도장을 찍는 일이다.
 - run15 문서는 "이름으로 본 것" 이라고 적었으니 틀린 말은 아니라서 안 고쳤다.

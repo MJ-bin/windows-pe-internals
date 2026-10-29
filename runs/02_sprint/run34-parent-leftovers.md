@@ -1,5 +1,7 @@
 # 2026-10-24 run34 — 부모 유저 쪽 남은 넷: **`kernel32!CreateProcessW` 껍데기** (ret `+0x54`), csrss 알림 `0x1001d` = **`basesrv!BaseSrvCreateProcess2`**, ntdll 스텁 번호 `0xd1`·`0x52`, ProcessFlags bit 9 = **`PspAllocateProcess +0x707`** (정적)
 
+> **정정 (run51)**: 이 문서의 "`OwnerProcessId` = 부모 PID" 는 정확히는 **`NtCreateUserProcess` 를 부른 프로세스의 PID** 다 (`PspAllocateProcess +0x6f1` 이 지금 도는 프로세스 `GS:[0x188]→+0xb8` 의 `+0x1d0` 을 읽음 — cmd 가 부모이자 호출한 쪽이라 값은 같음). 그리고 이 칸은 뒤에 KERNELBASE `ConsoleCommitState` 가 부르는 `NtSetInformationProcess` 클래스 `0x31` (`+0x1ecd`) 이 **콘솔 호스트 PID `|1`** 로 덮는다 (Q65 닫힘). `runs/03_sprint/run51-eprocess-later.md`.
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 결과서 날짜.

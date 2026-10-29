@@ -2,6 +2,8 @@
 
 > **정정 (run34)**: 아래 "일반 생성에서는 이 비교(`OwnerProcessId` == 닫는 쪽 PID)가 맞기 어려워 보인다" 는 틀렸다. `[RSP+0x90]` bit 9 는 KERNELBASE 가 **`CREATE_SUSPENDED` 가 없을 때** 켜는 ProcessFlags bit 9 라서, 보통 생성에선 `|2` 가 안 붙고 `OwnerProcessId` = 부모 PID 그대로다 (`|2` 는 `CREATE_SUSPENDED` 때만). 나머지(읽는 곳 둘, Q64 짐작)는 그대로. → `run34-parent-leftovers.md` "정정"
 
+> **정정 (run51)**: 이 문서의 "`OwnerProcessId` = 부모 PID" 는 정확히는 **`NtCreateUserProcess` 를 부른 프로세스의 PID** 다 (`PspAllocateProcess +0x6f1` 이 지금 도는 프로세스 `GS:[0x188]→+0xb8` 의 `+0x1d0` 을 읽음 — cmd 가 부모이자 호출한 쪽이라 값은 같음). 그리고 이 칸은 뒤에 KERNELBASE `ConsoleCommitState` 가 부르는 `NtSetInformationProcess` 클래스 `0x31` (`+0x1ecd`) 이 **콘솔 호스트 PID `|1`** 로 덮는다 (Q65 닫힘). `runs/03_sprint/run51-eprocess-later.md`.
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 작성일.
