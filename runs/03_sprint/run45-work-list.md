@@ -2,6 +2,8 @@
 
 > **정정 (run46)**: 1장 일 52 의 사슬 중 `+0xa39 RtlSetHeapInformation` 은 **조건부** (`LdrSystemDllInitBlock+0xa0` 비트 12~13, test.exe 는 안 탐) 이고, "태그 힙" 은 test.exe 에선 만들지 않는다 (`RtlCreateTagHeap` 가 `NtGlobalFlag & 0x800` 이 아니면 0 반환). → `run46-process-heap.md` "정정"
 
+> **정정 (run57)**: 1장 일 47 의 "`NtGetNlsSectionPtr` ×3" (그리고 트리의 ×2 · ×1) 은 **부르는 자리 수**다. 실행 횟수는 조건에 달려 (ANSI == OEM 이면 코드 페이지 쪽 1번, `UseCaseMapping` 0 이면 대문자 쪽 0번) test.exe 는 2번으로 보인다 `[추측]`. 그리고 PEB `ActiveCodePage`·`OemCodePage` 를 K1 전에 처음 쓴 쪽 (`[공백]`) = 커널 `MmCreatePeb +0x546`·`+0x555` (`UseCaseMapping` 은 `+0x564`) `[정적]`. → `run57-nls-apiset.md` "정정"·"확인된 것"
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 결과서 날짜.
