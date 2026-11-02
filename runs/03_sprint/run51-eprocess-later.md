@@ -1,5 +1,7 @@
 # 2026-10-30 run51 — 프로세스 객체 뒤 구간 (Q78c2b): `_EPROCESS` 남은 모름 30 → **여전히 모름 1** (`SharedCommitCharge`). 뒤 구간 29칸은 nt 직접 12 · test.exe 가 부른 syscall 안 5 · 다른 프로세스·드라이버가 부름 12. `OwnerProcessId` 둘째 쓰기 = **`NtSetInformationProcess` 클래스 `0x31` `+0x1ecd`**, 부르는 쪽 **`KERNELBASE!ConsoleCommitState +0xe9`** (같은 함수가 매개변수 `ConsoleHandle` 도 씀) (정적)
 
+> 정정 (run59, sast/54): 아래 `Cookie` 줄의 ntdll 호출자 `RtlInitializeHeapManager → RtlpGetModifiedProcessCookie` 는 **첫 호출이 아니다.** 코드 순서상 이 프로세스의 첫 `NtQueryInformationProcess(0x24)` 는 `LdrpInitializeProcess +0x12f` (ret `+0x134`) `RtlEncodePointer(0)` 안 `+0x43` (ret `+0x48`) — 커널 `EPROCESS.Cookie` 를 처음 만드는 것도 이쪽이고, 힙 관리자 쪽 (`+0x9ed`) 은 이미 만든 값을 읽는다. → `run59-init-leftovers.md` "정정"
+
 ## 요약 표 (30칸 + `OwnerProcessId` 둘째 쓰기 → ?)
 
 - 결과서 맨 앞 표 그대로 (구간별). 열 뜻:
