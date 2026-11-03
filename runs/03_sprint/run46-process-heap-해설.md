@@ -1,5 +1,7 @@
 # run46 process-heap — 해설
 
+> **정정 (run61)**: run46 때 적은 "시스템 콜 12개"·"`RtlRandom` 두 번 … 시스템 콜 없이" 는 틀렸다. 첫 `RtlRandom` 이 난수 벡터를 처음 켜면서 `NtQueryInformationProcess(0x24)` 를 한 번 더 불러 힙 구간 시스템 콜은 **13개** (n = 0 이면 12개), `NtQueryInformationProcess` 는 2번이다. 본문도 run61 에 맞춰 고쳤다 — 옛 숫자는 ~~취소선~~, 고친 곳엔 "(run61)". `#` 번호는 run46 문서처럼 **새 번호** 로 바꿨다 (맨 앞에 새 #1 `RtlpInitRandomExVector +0x29` 가 들어가 옛 #n = 새 #n+1). → `run61-random-ex-init.md` "정정", `run46-process-heap.md` 맨 앞 표, [run61 해설](run61-random-ex-init-해설.md) 2.8
+
 > 이 글은 [run46 문서](run46-process-heap.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서·짐 지도(`baggage.md`)를 따른다.
 
@@ -44,7 +46,7 @@
 | 무엇 | 답 (run 문서 그대로) |
 |---|---|
 | test.exe 프로세스 힙의 종류 | **NT 힙** (세그먼트 힙 아님) |
-| 구간 `LdrpInitializeProcess +0x9ed ~ +0xa50` 안 시스템 콜 | **12개** (무작위 몫 n 이 0 이면 11개) |
+| 구간 `LdrpInitializeProcess +0x9ed ~ +0xa50` 안 시스템 콜 | ~~12개 (n 이 0 이면 11개)~~ → **13개** (무작위 몫 n 이 0 이면 12개) (run61 정정) |
 | run44 사진의 큰 예약 둘의 주인 | **힙 관리자** (희소 비트맵). 크기 `0x2001000` · `0x100020000` 이 사진과 **정확히 같음** |
 | PEB `+0x30 ProcessHeap` 을 쓰는 줄 | **`LdrpInitializeProcessHeap +0x1a2`** |
 | PEB 힙 목록 3칸 (`NumberOfHeaps` · `MaximumNumberOfHeaps` · `ProcessHeaps`) | 힙보다 **먼저** `RtlInitializeHeapManager` 가 준비, 첫 힙을 넣을 때 `RtlpProcessHeapsInsert` 가 마무리 |
@@ -153,6 +155,7 @@ run 문서 "호출 관계" 를 대표만 줄였다. `+0x..` 는 ret 자리 (WinD
 LdrpInitializeProcess
  ├─ +0x9f2  RtlInitializeHeapManager           ① 창고 관리실 차리기                     [정적]
  │       ├─ +0x12   RtlHpGlobalsInitialize           난수 상태·키
+ │       │       └─ +0x51  RtlRandom (첫) → RtlpInitRandomExVector   NtQueryInformationProcess 0x24 (#1, run61)
  │       ├─ +0x2d   RtlpHpOptIntoSegmentHeap         세그먼트 힙? → test.exe 0 (NT 힙)
  │       ├─ +0x7d   RtlpHpQueryGCTimerInterval       NtOpenKey ×2 (IFEO)
  │       ├─ +0xa2   RtlpGetModifiedProcessCookie     NtQueryInformationProcess 0x24
@@ -171,7 +174,7 @@ LdrpInitializeProcess
          └─ +0x1a2  PEB +0x30 ProcessHeap = 힙 주소
 ```
 
-- 시스템 콜 12개가 어디 붙는지는 2.12 표.
+- 시스템 콜 ~~12개~~ **13개** (run61) 가 어디 붙는지는 2.12 표.
 - `⇒` 는 꼬리 JMP. 2.5 에서 본다.
 
 ### 2.3 한 줄 읽기 — `+0x1a2` (PEB `ProcessHeap` 을 쓰는 줄)
@@ -253,11 +256,11 @@ RtlpHpEnvAllocVA+0xe2 ← RtlCSparseBitmapStart+0xc0 ← RtlHpHeapManagerStart+0
 - **IFEO** (Image File Execution Options): exe 이름별로 실행 옵션을 적어 두는 레지스트리 자리 `[추측]` (일반적으로 알려진 설명) → [run10 해설 3.4](../02_sprint/run10-allocate-process-해설.md#34-144줄-중-어디쯤인가).
   - 비유: 관리사무소 서랍의 **가게 이름별 특별 지시** 폴더 (run18 해설). "test.exe 가게는 이렇게 다뤄 줘" 같은 쪽지가 있을 수 있다.
 
-#### 여기서 무엇을 여나 — 시스템 콜 #1 · #2
+#### 여기서 무엇을 여나 — 시스템 콜 #2 · #3 (run61 새 번호, 옛 #1 · #2)
 
 - 왜 힙 관리자가 IFEO 를 보나: **GC 간격** 이라는 힙 설정값을 IFEO 에서 찾으려고 (`RtlpHpQueryGCTimerInterval`, 값 이름 `GCInterval`) `[정적]`.
-- #1 `NtOpenKey` — IFEO **바탕 키** (`…\Image File Execution Options`) 를 연다. 핸들은 전역 `0x1ce430` 에 캐시 `[정적]`. 사진 `0x1ce430` = `0x10` `[관찰]` → 열렸다.
-- #2 `NtOpenKey` — 그 아래 `test.exe` 키를 **열기만** 한다 `[정적]`.
+- #2 `NtOpenKey` — IFEO **바탕 키** (`…\Image File Execution Options`) 를 연다. 핸들은 전역 `0x1ce430` 에 캐시 `[정적]`. 사진 `0x1ce430` = `0x10` `[관찰]` → 열렸다.
+- #3 `NtOpenKey` — 그 아래 `test.exe` 키를 **열기만** 한다 `[정적]`.
   - test.exe 키가 없으면 실패 (기대 `0xC0000034`) → GC 간격 기본값 1000ms, 값 읽기 · 닫기 줄은 안 탄다 `[정적]`.
   - 사진: GC 간격 전역 `0x1ce278` = −10,000,000 (= 기본 1000ms × −10000) `[관찰]` → 기본값이 들어갔다 = 키가 없었을 것 (간접).
 
@@ -269,7 +272,7 @@ RtlpHpEnvAllocVA+0xe2 ← RtlCSparseBitmapStart+0xc0 ← RtlHpHeapManagerStart+0
 - 다른 길 (`LdrpInitializeProcess +0x8f2`, 스택 추적 DB) 도 조건이 안 맞아 안 탄다 (`NtGlobalFlag` = 0 `[관찰]`).
 - 그래서 이 프로세스에서 IFEO 를 처음 여는 건 **힙 관리자의 GC 간격 조회** 다 `[정적]`. 실제 순서는 동적으로 확인할 거리 (D4).
 - 비유: 부모가 개업 서류에 "특별 지시 폴더에 우리 가게 쪽지 없음" 이라고 표시해 줬다. 그래서 관리실은 서랍 확인을 건너뛰었다. 그런데 창고 관리실은 "GC 간격" 하나 보려고 **서랍을 직접 연다**. 결과는 역시 쪽지 없음.
-- 덤: 구간 **앞**의 `Segment Heap` 레지스트리 키 (`NtOpenKey`) 는 IFEO 를 건너뛰어도 **항상** 연다 (`RtlSetGlobalHeapFeatures` 아래) `[정적]`. 구간 밖이라 12개엔 안 셌다.
+- 덤: 구간 **앞**의 `Segment Heap` 레지스트리 키 (`NtOpenKey`) 는 IFEO 를 건너뛰어도 **항상** 연다 (`RtlSetGlobalHeapFeatures` 아래) `[정적]`. 구간 밖이라 ~~12개~~ 13개 (run61) 엔 안 셌다.
 
 ### 2.7 새 말 — 예약 / 확정
 
@@ -294,25 +297,25 @@ RtlpHpEnvAllocVA+0xe2 ← RtlCSparseBitmapStart+0xc0 ← RtlHpHeapManagerStart+0
 
 | # | 누가 | 크기 | 확정 | 사진 VAD (P1a) |
 |---|---|---|---|---|
-| #6 · #7 | `RtlHpHeapManagerStart +0x31` → `RtlCSparseBitmapStart` → `RtlpHpEnvAllocVA` | 예약 `0x2001000` (32MB + 4KB) | 1쪽 (요약 쪽) | `7ff5ed090 – 7ff5ef090` (`0x2001` 쪽, 확정 1쪽) |
-| #8 | `RtlHpHeapManagerStart +0x56` → `RtlpHpVaMgrCtxStart` → (같은 아래) | 예약 `0x100020000` (4GB + 128KB) | 없음 | `7ff4ed070 – 7ff5ed08f` (`0x100020` 쪽, 확정 0) |
+| #7 · #8 | `RtlHpHeapManagerStart +0x31` → `RtlCSparseBitmapStart` → `RtlpHpEnvAllocVA` | 예약 `0x2001000` (32MB + 4KB) | 1쪽 (요약 쪽) | `7ff5ed090 – 7ff5ef090` (`0x2001` 쪽, 확정 1쪽) |
+| #9 | `RtlHpHeapManagerStart +0x56` → `RtlpHpVaMgrCtxStart` → (같은 아래) | 예약 `0x100020000` (4GB + 128KB) | 없음 | `7ff4ed070 – 7ff5ed08f` (`0x100020` 쪽, 확정 0) |
 
 - 둘 다 `NtAllocateVirtualMemoryEx` 에 형 `0x102000` (`MEM_RESERVE | MEM_TOP_DOWN`) 이다 `[정적]`. 위에서부터 잡으니 32MB 쪽이 위, 4GB 쪽이 바로 아래 (사진 주소와 같은 순서).
 
 #### 왜 "힙 관리자 것" 이라고 말할 수 있나 — 단계별로
 
-1. 근거 (정적): 크기는 **사용자 공간 끝** 에서 계산된다. #5 `NtQuerySystemInformation` 클래스 `0x3e` 로 그 값을 알아낸 뒤 `[정적]`:
-   - #6: 비트 수 `0xFFFFFFE` (사용자 공간 끝 ÷ 1MB × 2) → 32MB 비트맵 + 4KB 요약 → 예약 `0x2001000`. 요약이 `0x1000` 이하라 요약 1쪽만 확정 (#7).
-   - #8: 비트 수 `0x800000000` → 예약 `0x100020000`. 요약 쪽이 `0x20000` 으로 `0x1000` 을 넘어서 확정 없음.
+1. 근거 (정적): 크기는 **사용자 공간 끝** 에서 계산된다. #6 `NtQuerySystemInformation` 클래스 `0x3e` 로 그 값을 알아낸 뒤 `[정적]`:
+   - #7: 비트 수 `0xFFFFFFE` (사용자 공간 끝 ÷ 1MB × 2) → 32MB 비트맵 + 4KB 요약 → 예약 `0x2001000`. 요약이 `0x1000` 이하라 요약 1쪽만 확정 (#8).
+   - #9: 비트 수 `0x800000000` → 예약 `0x100020000`. 요약 쪽이 `0x20000` 으로 `0x1000` 을 넘어서 확정 없음.
 2. 근거 (사진): 사진 VAD 쪽 수 `0x2001` · `0x100020`, 확정 1 · 0 — 계산과 **정확히 같다** `[관찰]`. 시작 주소도 덤프의 `RtlpHpHeapManager` 칸 (`0x1ce910+0x8`, `0x1ce958+0x28`) 값과 같다.
 3. 그래서: 요청서 짐작 "힙 관리자 것" 이 맞다. 다만 "4GB" 가 아니라 정확히 **4GB + 128KB** 다.
 4. 아직 아닌 것: 세 번 부른 **순서** 와 `MEM_TOP_DOWN` 효과는 실행을 봐야 안다 (D7, 사진으로 대부분 답돼서 낮은 우선순위).
 
 #### test.exe 는 NT 힙인데 왜 이걸 만드나
 
-- 결과서 질문 2: #5 가 실패하면 `RtlHpHeapManagerStart` 를 건너뛰고, 그러면 큰 예약 둘이 안 생긴다. 이때 **NT 힙 프로세스 힙은 영향이 없고, 세그먼트 힙을 나중에 만들면 실패** 한다 `[정적]`.
+- 결과서 질문 2: #6 (run61 새 번호, 결과서는 #5) 이 실패하면 `RtlHpHeapManagerStart` 를 건너뛰고, 그러면 큰 예약 둘이 안 생긴다. 이때 **NT 힙 프로세스 힙은 영향이 없고, 세그먼트 힙을 나중에 만들면 실패** 한다 `[정적]`.
 - 그래서 이 둘은 세그먼트 힙 쪽 준비물로 보인다 `[추측]` — 이유: 없을 때 깨지는 게 세그먼트 힙뿐이고, 받는 부품 `RtlpHpEnvAllocVA` 를 세그먼트 힙 길도 쓴다 (짐 지도 6장). 코드가 "무엇에 쓰려고" 를 적어 두진 않았다.
-- 어쨌든 힙 종류와 상관없이 **항상** 만든다 (#5 성공이면) `[정적]`.
+- 어쨌든 힙 종류와 상관없이 **항상** 만든다 (#6 성공이면) `[정적]`.
 - 비유: 창고 관리실은 옛날식 창고만 지을 예정이어도, 새식 창고용 체크표 책을 일단 맡아 둔다. 펼치진 않는다.
 - 짐 지도 쪽 의미: run44 에서 "누구 것인지 모르는 아주 큰 VAD 둘" 이던 게, 이제 주인 (ntdll 전역 `RtlpHpHeapManager`) 과 쓴 자리를 갖는다 (3.8).
 
@@ -325,11 +328,11 @@ RtlpHpEnvAllocVA+0xe2 ← RtlCSparseBitmapStart+0xc0 ← RtlHpHeapManagerStart+0
 
 순서 (시스템 콜만, run 문서 표):
 
-1. **#9** `NtQuerySystemInformation` 클래스 0 — 사용자 공간 최대 주소를 전역 `0x1ce6e8` 에 캐시. 이 프로세스 첫 `RtlpCreateHeap` 이라서 부른다 `[정적]`. 사진 `0x1ce6e8` = `7ffffffeffff` `[관찰]`.
+1. **#10** `NtQuerySystemInformation` 클래스 0 — 사용자 공간 최대 주소를 전역 `0x1ce6e8` 에 캐시. 이 프로세스 첫 `RtlpCreateHeap` 이라서 부른다 `[정적]`. 사진 `0x1ce6e8` = `7ffffffeffff` `[관찰]`.
    - 뒤에 `RtlpCreateHeap` 를 또 부르는 쪽 (`LdrpInitializeTlsHeap`, `CsrpConnectToServer` 등) 은 캐시가 있어 이 호출이 없다 (결과서).
-2. **#10** `NtAllocateVirtualMemory` **예약** `0x100000 + n×0x10000` — 2.10.
-3. **#11** `NtFreeVirtualMemory` (`MEM_RELEASE`) 앞쪽 `n×0x10000` 만 풀기 — n ≠ 0 일 때만.
-4. **#12** `NtAllocateVirtualMemory` **확정** `0x2000` — `0x1000` 을 8KB 단위로 올린 값.
+2. **#11** `NtAllocateVirtualMemory` **예약** `0x100000 + n×0x10000` — 2.10.
+3. **#12** `NtFreeVirtualMemory` (`MEM_RELEASE`) 앞쪽 `n×0x10000` 만 풀기 — n ≠ 0 일 때만.
+4. **#13** `NtAllocateVirtualMemory` **확정** `0x2000` — `0x1000` 을 8KB 단위로 올린 값.
 
 그다음은 시스템 콜 없이 창고 안을 꾸민다 `[정적]`:
 
@@ -354,12 +357,14 @@ RtlpHpEnvAllocVA+0xe2 ← RtlCSparseBitmapStart+0xc0 ← RtlHpHeapManagerStart+0
 n 은 어디서 오나 `[정적]`:
 
 1. `RtlHpGlobalsInitialize` 가 난수 상태를 심는다. 씨앗 = TEB 스레드 ID ^ KUSD 틱 값 → `RtlRandom` 두 번.
+   - (run61) 그 **첫** `RtlRandom` 이 이 프로세스에서 처음 불리는 `RtlRandom` 이라, 안에서 난수 벡터를 처음 채우며 `RtlpInitRandomExVector` 안 `NtQueryInformationProcess(0x24)` 를 한 번 부른다 (#1). 둘째는 이미 채워져 있어 안 부른다 `[정적]` → [run61 해설](run61-random-ex-init-해설.md) 2.4.
 2. 상태는 전역 `RtlpHpHeapGlobals +0x40` 에 있고, 쓸 때마다 한 칸씩 돌린다 (xorshift 계열).
 3. 같은 상태가 키 (`RtlpHeapKey` · `RtlpLFHKey`), 무작위 몫, `_HEAP` 인코딩에 차례로 쓰인다.
-4. **시스템 콜 없이** 만든다. 직원 번호표와 로비 게시판 시계만 보고 주사위를 굴리는 셈이다.
+4. ~~**시스템 콜 없이** 만든다.~~ → (run61 정정) 첫 `RtlRandom` 만 시스템 콜 1번 (#1, 난수 벡터 첫 켜기), **그 뒤 난수는 시스템 콜 없이** 만든다.
+   - 비유: 직원 번호표와 로비 게시판 시계로 주사위를 굴린다. 다만 주사위 **상자를 처음 열 때 한 번**, 관리사무소 창구에 열쇠 번호를 물어 상자를 채운다 (run61 해설 2.11).
 
-- 그래서 시스템 콜 개수가 "12개 (n = 0 이면 11개)" 다. n = 0 이면 풀 것이 없어 #11 이 빠진다 (32번에 1번).
-- 실제 n 과 #11 이 정말 불렸는지는 동적 D9.
+- 그래서 시스템 콜 개수가 ~~"12개 (n = 0 이면 11개)"~~ → "**13개** (n = 0 이면 12개)" (run61) 다. n = 0 이면 풀 것이 없어 #12 (옛 #11) 가 빠진다 (32번에 1번).
+- 실제 n 과 #12 가 정말 불렸는지는 동적 D9.
 
 ### 2.11 PEB 힙 4칸 — 누가 언제 쓰나
 
@@ -377,29 +382,32 @@ n 은 어디서 오나 `[정적]`:
   - `ProcessHeap` 은 **맨 마지막**. `RtlpProcessHeapsInsert` 가 도는 동안엔 아직 0 이다. 바로 그래서 2.1 의 "첫 노드는 새 힙 자신에서" 길을 탄다.
 - 비유: 가게 장부에 "창고 목록" 쪽을 먼저 만들어 두고 (빈 칸 16개), 창고를 짓자마자 첫 칸에 적고, 맨 마지막에 장부 앞면 "우리 창고" 칸에 주소를 적는다.
 
-### 2.12 시스템 콜 12개 — 한 표로
+### 2.12 시스템 콜 ~~12개~~ 13개 (run61) — 한 표로
 
 run 문서 맨 앞 표를 줄였다. 모두 `[정적]`. "사진" 열은 run44 P1a 값이 그 결과와 맞는다는 뜻 (실행을 멈춰 본 것 아님).
 
+- (run61) 맨 앞 #1 을 새로 넣었다. 옛 #1 ~ #12 → **#2 ~ #13**.
+
 | # | 부르는 함수 (ret) | 시스템 콜 | 무엇 | 사진 |
 |---|---|---|---|---|
-| 1 | `RtlpOpenBaseImageFileOptionsKey +0x80` | `NtOpenKey` | IFEO 바탕 키 | `0x1ce430` = `0x10` |
-| 2 | `RtlpOpenImageFileOptionsKeyEx +0xec` | `NtOpenKey` | `test.exe` 키 (없으면 실패 기대) | GC 간격 기본 (간접) |
-| 3 | `RtlpGetModifiedProcessCookie +0x27` | `NtQueryInformationProcess` | 클래스 `0x24`, 4바이트 | — (곧 0 으로 덮임) |
-| 4 | `RtlpInitializeLowFragHeapManager +0x89` | `NtQuerySystemInformation` | 클래스 0, 프로세서 수 | `RtlpAffinityState` = 2 |
-| 5 | `RtlHpInitializeHeapManager +0xae` | `NtQuerySystemInformation` | 클래스 `0x3e`, 사용자 공간 끝 | 큰 예약 둘 있음 = 성공 |
-| 6 | `RtlpHpEnvAllocVA +0xe2` | `NtAllocateVirtualMemoryEx` | 예약 `0x2001000` | VAD 32MB + 4KB |
-| 7 | `RtlpHpEnvAllocVA +0xe2` | `NtAllocateVirtualMemoryEx` | 확정 `0x1000` | 확정 1쪽 |
-| 8 | `RtlpHpEnvAllocVA +0xe2` | `NtAllocateVirtualMemoryEx` | 예약 `0x100020000` | VAD 4GB + 128KB, 확정 0 |
-| 9 | `RtlpCreateHeap +0xe0c` | `NtQuerySystemInformation` | 클래스 0, 최대 주소 캐시 | `0x1ce6e8` = `7ffffffeffff` |
-| 10 | `RtlpCreateHeap +0x45e` | `NtAllocateVirtualMemory` | 예약 `0x100000 + n×0x10000` | 힙 VAD 1MB |
-| 11 | `RtlpSecMemFreeVirtualMemory +0x2f` | `NtFreeVirtualMemory` | 앞 `n×0x10000` 풀기 (n ≠ 0) | 흔적 없음 |
-| 12 | `RtlpCreateHeap +0x517` | `NtAllocateVirtualMemory` | 확정 `0x2000` | — |
+| 1 | (run61 새로) `RtlpInitRandomExVector +0x29` (← `RtlRandom +0x53` ← `RtlHpGlobalsInitialize +0x51`) | `NtQueryInformationProcess` | 클래스 `0x24`, 4바이트 — 첫 `RtlRandom` 만, 난수 벡터 씨앗 | `0x1ce878` = 2 (run61) |
+| 2 | `RtlpOpenBaseImageFileOptionsKey +0x80` | `NtOpenKey` | IFEO 바탕 키 | `0x1ce430` = `0x10` |
+| 3 | `RtlpOpenImageFileOptionsKeyEx +0xec` | `NtOpenKey` | `test.exe` 키 (없으면 실패 기대) | GC 간격 기본 (간접) |
+| 4 | `RtlpGetModifiedProcessCookie +0x27` | `NtQueryInformationProcess` | 클래스 `0x24`, 4바이트 | — (곧 0 으로 덮임) |
+| 5 | `RtlpInitializeLowFragHeapManager +0x89` | `NtQuerySystemInformation` | 클래스 0, 프로세서 수 | `RtlpAffinityState` = 2 |
+| 6 | `RtlHpInitializeHeapManager +0xae` | `NtQuerySystemInformation` | 클래스 `0x3e`, 사용자 공간 끝 | 큰 예약 둘 있음 = 성공 |
+| 7 | `RtlpHpEnvAllocVA +0xe2` | `NtAllocateVirtualMemoryEx` | 예약 `0x2001000` | VAD 32MB + 4KB |
+| 8 | `RtlpHpEnvAllocVA +0xe2` | `NtAllocateVirtualMemoryEx` | 확정 `0x1000` | 확정 1쪽 |
+| 9 | `RtlpHpEnvAllocVA +0xe2` | `NtAllocateVirtualMemoryEx` | 예약 `0x100020000` | VAD 4GB + 128KB, 확정 0 |
+| 10 | `RtlpCreateHeap +0xe0c` | `NtQuerySystemInformation` | 클래스 0, 최대 주소 캐시 | `0x1ce6e8` = `7ffffffeffff` |
+| 11 | `RtlpCreateHeap +0x45e` | `NtAllocateVirtualMemory` | 예약 `0x100000 + n×0x10000` | 힙 VAD 1MB |
+| 12 | `RtlpSecMemFreeVirtualMemory +0x2f` | `NtFreeVirtualMemory` | 앞 `n×0x10000` 풀기 (n ≠ 0) | 흔적 없음 |
+| 13 | `RtlpCreateHeap +0x517` | `NtAllocateVirtualMemory` | 확정 `0x2000` | — |
 
-- 합: `NtOpenKey` 2 · `NtQueryInformationProcess` 1 · `NtQuerySystemInformation` 3 · `NtAllocateVirtualMemoryEx` 3 · `NtAllocateVirtualMemory` 2 · `NtFreeVirtualMemory` 1 = **12**.
+- 합: `NtOpenKey` 2 · `NtQueryInformationProcess` ~~1~~ **2** · `NtQuerySystemInformation` 3 · `NtAllocateVirtualMemoryEx` 3 · `NtAllocateVirtualMemory` 2 · `NtFreeVirtualMemory` 1 = ~~12~~ **13** (run61 정정).
 - 클래스 `0x24` 이름 `ProcessCookie` 는 PDB 열거형에 없어 공개 헤더 이름 `[추측]`. 클래스 0 · `0x3e` 이름은 PDB `[정적]`.
 
-#### 한 줄 읽기 — #10
+#### 한 줄 읽기 — #11 (옛 #10)
 
 - **누가**: `RtlpCreateHeap`.
 - **어디서**: call `+0x459`, ret `+0x45e` (콜스택에 보일 자리).
@@ -514,7 +522,7 @@ run 문서 맨 앞 표를 줄였다. 모두 `[정적]`. "사진" 열은 run44 P1
 
 ## 5. 더 읽기
 
-- run 문서: [`run46-process-heap.md`](run46-process-heap.md) — 맨 앞 시스템 콜 12개 표와 "안 타는 시스템 콜", 호출 지점 표, 호출 관계 트리, 갈림길 표, 쓰는 상태, run44 사진과 맞춰 보기, 정정, 아직 확인 필요 (D1 ~ D13)
+- run 문서: [`run46-process-heap.md`](run46-process-heap.md) — 맨 앞 시스템 콜 ~~12개~~ 13개 (run61) 표와 "안 타는 시스템 콜", 호출 지점 표, 호출 관계 트리, 갈림길 표, 쓰는 상태, run44 사진과 맞춰 보기, 정정, 아직 확인 필요 (D1 ~ D13)
 - 결과서: [`_workspace/sast/40_process-heap_result.md`](../../_workspace/sast/40_process-heap_result.md) — 질문 1 (사슬, `RtlCreateHeap` 껍데기), 질문 2 (크기 계산 · 무작위 몫 식), 질문 3 (조건 9개 표), 질문 4 (읽는 입력), 질문 5 (`_HEAP` 머리 3.x 표), 질문 6, "Q78 에서 이 조각으로 닫히는 칸"
 - 요청서: [`_workspace/sast/40_process-heap.md`](../../_workspace/sast/40_process-heap.md) — "왜 이 구간을 먼저 (Q78a)"
 - 짐 지도: [`baggage.md`](baggage.md) — 2장 (넷째판 숫자), 3.1 PEB `+0x30` · `+0xe8` · `+0xec` · `+0xf0`, 3.8 힙 전역, 6장 공용 부품 첫 표, 7.6.1 `_HEAP` 머리, 7.9 동적 질문
