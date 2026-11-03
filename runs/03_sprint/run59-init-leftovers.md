@@ -1,5 +1,7 @@
 # 2026-11-02 run59 — 초기화 남은 일 (Q109 나머지 B·C·D·E, PE_emulator 요청 4-B~E): `LdrpInitialize` 가 부르는 세 함수 본문 — `InitSecurityCookie` 는 쿠키 칸을 **callee `LdrInitSecurityCookie` 안에서** `NtProtectVirtualMemory` 로 풀고 써서 `SecurityCookieInitialized` = 1 (`+0x42`), `InitSpecialMachineFrames` 는 표 2칸을 풀림 정보 주소로 바꿈 (syscall 없음), `__cpu_features_init` 은 `__isa_info` 1바이트만 (syscall 없음). `RtlEncodePointer` 는 캐시가 0 일 때만 `NtQueryInformationProcess(0x24)` — **이 프로세스의 첫 호출은 `LdrpInitializeProcess +0x12f`** (힙 관리자 쪽 아님). `RtlpInitializeNonVolatileFlush` 는 시스템 정보 `0xc0` 으로 전역 넷. 커널은 PEB `BitField` 비트별 출처 · `+0x138` · `+0x7c8` · `+0x90` 쓰는 줄. 환경 변수 이름 47개 (K1 덤프) (정적 + 덤프)
 
+> 정정 (run62, sast/57): 아래 `RtlpFcProcessManager` "전부 0" 은 `LdrpInitializeProcess +0x21c ~ +0x286` 직후 값이다. 같은 함수 뒤 `+0xaad` (ret `+0xab2`) 의 **첫 기능 상태 검사**가 `RtlpFcUpdateLocalConfiguration +0xff` (ret `+0x104`) `RtlpFcBufferManagerUpdateBuffers` 로 설정 버퍼 두 벌·도장 (`+0xe0`) 을 채운다 (사진 P1a 값). 그 길의 syscall `NtQuerySystemInformationEx(0xd3)` + `NtMapViewOfSection`·`NtClose` 각 k 도 여기 없었다 → `runs/03_sprint/run62-tp-etw-init.md` "정정".
+
 ## PE_emulator 쪽에서 쓸 것
 
 결과서 (`_workspace/sast/54_init-leftovers_result.md`) 의 표 둘을 **글자 하나 안 바꾸고** 아래 1절·2절에 옮겼다. 표 밑 글머리와 3절은 flow-writer 가 `.asm` 의 `CALL … ret=` 줄로 다시 맞춘 것이다. 오프셋 읽는 법:

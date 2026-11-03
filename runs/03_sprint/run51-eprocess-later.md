@@ -2,6 +2,8 @@
 
 > 정정 (run59, sast/54): 아래 `Cookie` 줄의 ntdll 호출자 `RtlInitializeHeapManager → RtlpGetModifiedProcessCookie` 는 **첫 호출이 아니다.** 코드 순서상 이 프로세스의 첫 `NtQueryInformationProcess(0x24)` 는 `LdrpInitializeProcess +0x12f` (ret `+0x134`) `RtlEncodePointer(0)` 안 `+0x43` (ret `+0x48`) — 커널 `EPROCESS.Cookie` 를 처음 만드는 것도 이쪽이고, 힙 관리자 쪽 (`+0x9ed`) 은 이미 만든 값을 읽는다. → `run59-init-leftovers.md` "정정"
 
+> 정정 (run62, sast/57): 아래 `EtwDataSource` 줄·호출 지점 표·사슬의 ETW **"Once" 를 타는 자리**가 틀렸다. `EtwpRegisterTpNotificationOnce` (→ `NtTraceControl(0x1b)`) 는 첫 `EtwpRegisterProvider` 한 번뿐이고, 그 첫 번째는 `LdrpInitializeProcess +0xbee` (ret `+0xbf3`) `TraceLoggingRegisterEx_EtwEventRegister_EtwEventSetInformation +0x55` (ret `+0x5a`) → `EtwEventRegister` 다. `+0xc06`·`+0xc23` 의 `EtwEventRegister` 는 `NtTraceControl(0xf)` 만 부른다. `EtwEventRegister +0x1e` 아래 사슬은 그대로 맞다 → `runs/03_sprint/run62-tp-etw-init.md` "정정".
+
 ## 요약 표 (30칸 + `OwnerProcessId` 둘째 쓰기 → ?)
 
 - 결과서 맨 앞 표 그대로 (구간별). 열 뜻:
