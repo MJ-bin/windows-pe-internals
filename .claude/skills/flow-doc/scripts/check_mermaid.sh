@@ -12,6 +12,7 @@ trap 'rm -rf "$TMP"' EXIT
 echo "== lint =="
 python3 "$HERE/mmd_lint.py" "$MD" --extract-dir "$TMP"
 LINT=$?
+ls "$TMP"/block_*.mmd >/dev/null 2>&1 || { echo "SKIP: mermaid 블록 없음"; exit 0; }
 
 echo "== parse =="
 if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
