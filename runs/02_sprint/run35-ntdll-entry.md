@@ -1,5 +1,7 @@
 # 2026-10-24 run35 — ntdll 의 로더 항목: **`LdrpInitializeNtdllDataTableEntry`** 는 새 항목을 만들어 (`+0x67`) **적재·메모리 순서 목록 + 해시 표** (`+0xf2 LdrpInsertDataTableEntry`) 와 **트리 색인 둘** (`+0x111`) 에 넣고 **State 9** 로 끝낸다 (`+0x150`). 둘째 호출 = 패치 ntdll 항목 (정적)
 
+> 이음 (run60, sast/55): 아래 "아직 확인 필요" **Q67 (a)** (ntdll 예외 표를 등록하는 곳) 의 답은 후보 **둘 다** `[정적]` — `LdrpInitializeProcess +0x415` (ret `+0x41a`) `RtlInsertInvertedFunctionTable(ntdll 시작, SizeOfImage)` 가 역함수 표 칸 1 에 올리고, `+0x44e ~ +0x467` 이 칸 0 에 직접 놓고, `+0x470` (ret `+0x475`) `RtlRemoveInvertedFunctionTable` 이 칸 1 을 정렬 구간에서 뺀다. 그래서 `InExceptionTable` 을 미리 켜 `LdrpProcessMappedModule +0x177` 을 건너뛴다는 이 문서의 `[추측]` 이 맞다. 자세히는 `runs/03_sprint/run60-func-table-mrdata.md`.
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 결과서 날짜.
