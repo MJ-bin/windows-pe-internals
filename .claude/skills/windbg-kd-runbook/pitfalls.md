@@ -28,6 +28,32 @@ runbook을 만들 때 이번 계획에 해당하는 것만 골라 넣는다. 번
 | P22 | **call 자리와 ret 자리를 섞음** | 멈춤점이 한 명령 어긋나거나, 콜스택 `caller+0x..` 와 문서 라벨이 안 맞음 (run18: `LdrpInitializeProcess +0x1bb6` call / `+0x1bbb` ret) | 라벨·콜스택 비교는 `_calls.tsv` 의 ret_off, "호출 직전 값"을 볼 땐 call_off 에 건다. 명령 길이가 다르다: `CALL RAX` 2바이트(`LdrpInitializeProcess +0x17fc` → ret `+0x17fe`), `CALL rel32` 5바이트, `CALL [rip+X]` 6바이트 — 손으로 더하지 말고 `_calls.tsv` 를 본다. 확인은 `ub <caller+ret> L1` | run18·run19·run20 (정적) |
 | P23 | CFG 검사 thunk 를 거치는 간접 호출의 대상을 call 줄에서 찾음 | `ln` 에 검사 함수(`__guard_dispatch_icall_fptr` 등)만 보임 | call 자리에 멈춰 `ln @rax` — 진짜 대상은 호출 직전 `rax` (예: `LdrpInitializeKernel32Functions +0x1aa` → `KERNELBASE!KernelbasePostInit` 예상) | sast/15·run20 (정적, 관찰 전) |
 | P24 | **주소로만 넘겨지는 콜백** 입구에만 멈춤점 (`ntdll!LdrpWorkCallback`) | 일이 돌았는데 안 섬 — 스레드 풀이 같은 반복문 복사본을 직접 돌 수 있음 (`TppWorkpExecuteCallback +0x1b4` 에서 콜백 주소 비교) `[정적]`, 관찰 전 | 복사본 쪽 ret `ntdll+0x19050`(`TppWorkpExecuteCallback +0x2e0`)이나 그 안에서 부르는 `LdrpProcessWork` 입구(`ntdll+0x17140`)에도 같이 건다 | sast/19·run24 (정적, 관찰 전) |
+| P25 | `!vtop` 에 심볼·식을 줌 | 주소를 못 풂 | `!vtop` 은 **숫자 VA 만** — 먼저 `? <식>` 으로 숫자를 얻어 넣는다 | dast/01·02 |
+| P26 | 멈춘 동안 시각을 `.time` 으로 잼 | 멈춘 동안 `.time` 이 안 바뀜 | 시각은 호스트 `vmware.log` 줄 시각으로 잰다 | dast/01·02 |
+| P27 | 스냅샷 직후 바로 `g` | lazy 스냅샷이 덜 써짐 | `vmware.log` 에 `Done with snapshot` 이 뜬 뒤에 `bc *` → `g` | dast/02 |
+| P28 | `vmss2core` 덤프의 레지스터를 멈춘 지점 값으로 읽음 | `r` 이 디버거 루프 문맥을 보여 줌 | 오프라인에선 `.trap <트랩 프레임>` 이나 `_CONTEXT` 로 지점 값을 본다 | dast/02 |
+| P29 | 로그를 그대로 믿음 | 로그 중간에 `.help` 덩어리가 끼어듦 (원인 모름) | 판정 때 `.help` 덩어리는 건너뛰고 읽는다 | dast/02 |
+| P30 | Break 직후 바로 유저 주소·이름 확인 | 엉뚱한 프로세스 문맥 | 먼저 `.process /r /p <대상 EPROCESS>` | dast/03 |
+| P31 | `KTHREAD.TrapFrame` 으로 유저 레지스터를 찾음 | null | `InitialStack − 0x190` 에서 트랩 프레임. int3 지점이면 `Rip` 은 +1 된 값 | dast/03 |
+| P32 | 유저 멈춤점 지점의 트랩 프레임 값을 짐으로 셈 | int3 가 만든 프레임이라 초기화 값이 아님 | 트랩 프레임은 문맥 확인용으로만, 짐 값으로 쓰지 않는다 (P31 보완) | run44 |
+| P33 | 라이브 창과 덤프 창을 헷갈림 | 엉뚱한 대상에 명령 | 오프라인 뒤 덤프 창을 닫고, 새 창 첫 명령은 `vertarget` | dast/03 |
+| P34 | `$$>a<` 스크립트에 `${$arg1}` | 인자가 안 풀림 | 서버에서 `sed` 로 값을 박은 파일을 만들어 `$$<` 로 돌린다 | dast/04 |
+| P35 | `$$<` 로 긴 명령 파일 실행 | 줄 앞이 잘려 일부 명령이 안 돎 | 로그에서 잘린 줄을 grep 해 그 줄만 다시 친다 | dast/04 |
+| P36 | `dt <타입> <심볼>` | 심볼 주소로 안 풀림 | `r $t0 = <심볼>; dt <타입> @$t0` | dast/04 |
+| P37 | 덤프에서 KUSD 를 유저 주소 `7ffe0000` 으로 읽음 | 값이 없거나 다름 | 커널 주소 `fffff78000000000` 로 읽는다 | dast/04 |
+| P38 | 사진끼리 `dt` 출력으로 비교 | 표시 형식 차이로 다른 값처럼 보임 | 비교는 raw `dq` 기준 | run44 |
+| P39 | 사진 K1 (`PspAllocateThread` 입구) 에서 새 스레드 주소를 읽음 | 옛 객체 값이 보임 | 스레드 칸 대조는 K2 부터 | run52 (flow-writer) |
+| P40 | 아주 자주 지나가는 유저 자리에 조건 없이 멈춤 (snap 안 IAT 쓰기 `ntdll+0x3aca7`, `LdrpLoadDependentModuleInternal` 입구 `ntdll+0x21ab0`, ntdll 유저 주소 전반) | 모든 프로세스·모듈에서 수십~천 번 섬 (kernel32 1274·kernelbase 750, 입구 104) `[정적]` | test.exe 조건 + 모듈(부모 = KERNEL32 등) 조건 + 횟수 제한. forwarder `0x103` 미룸이면 같은 모듈 snap 입구가 두 번 | run36·run37·run38 (정적, 관찰 전) |
+| P41 | `LdrpSearchPath`·`LdrpResolveDllName` 멈춤점 | `LoadLibraryExW` ×3 때도 섬 | 입구에서 `dS @rcx` 로 이름을 같이 찍어 가려 읽는다 (P40 과 같이) | run39 (정적, 관찰 전) |
+| P42 | sample dll 에 고정 주소 `ba` | 다른 dll 이 그 자리에 올라와 이름을 잘못 붙임 | `lm` 으로 그때 베이스를 얻어 `dllN+rva` 로 | run7·run40 |
+| P43 | 같은 부팅에서 두 번째 실행에 이미지 섹션 함수 멈춤 (`MiCreateNewSection`·`MiCreateImageFileMap`·`MiBuildImageControlArea`) | 안 섬 — 섹션은 파일마다 한 번 만들고 공유 `[정적]` | 재부팅 직후 첫 실행, 또는 exe 를 다른 이름으로 복사 | run31 (정적, 관찰 전) |
+| P44 | 부모 cmd 스레드가 도는 함수 (`PspCopyAndFixupParameters`·`PspPrepareSystemDllInitBlock`) 에서 새 PEB·`LdrSystemDllInitBlock` 을 읽음 | 엉뚱한 프로세스 주소 공간 `[추측]` | `.process /r /p <새 EPROCESS>` 뒤에 읽는다 | run32 (정적, 관찰 전) |
+| P45 | csrss 안 `basesrv!`/`csrsrv!` 에 멈춤점 | 보호 프로세스라 안 섬 `[추측]` | csrss 문맥 (`.process /i` 등) 먼저 | run34 (정적, 관찰 전) |
+| P46 | Ghidra 조각 `FUN_…` 이름·주소로 멈춤 | `.pdata` 상 본래 함수라 WinDbg 에선 다른 이름 (`NtContinueEx` 뒤쪽 `FUN_1406ae17a` → `nt!NtContinueEx+0x426`) `[추측]` | bp 는 rva (`nt+0x6ae216`) 로 | sast/24·run29 (정적) |
+| P47 | CFG 중개 (`_guard_dispatch_icall`) 를 콜스택에서 찾음 | JMP 뿐이라 `k` 에 안 보임 | 콜백 바로 위 프레임 = `ImageTlsCallbackCaller+0x1b`, 진입점 바로 위 = `LdrpCallInitRoutineInternal+0x22` `[정적]` | sast/23·run28 (정적, 관찰 전) |
+| P48 | `ln` 결과를 요약해서 적음 | 나중에 "근처" 인지 정확한지 다시 못 따짐 (run8) | `ln` 은 출력 그대로 (`Exact matches:` 줄 포함) 남기고 `? @rcx - <모듈>` 로 rva 도 찍는다 | run25 |
+| P49 | 디버거 VM 심볼 경로에 sample PDB 없음 | `test+0x1c0f` 처럼 rva 로만 보임 `[추측]` | 심볼 경로에 `sample/bin` (test.pdb·dll pdb) 를 더한다 | run30 |
+| P50 | `LdrpInitializeNtdllDataTableEntry +0xf7` (ret) 에서 새 항목을 RAX 로 읽음 | RAX 가 아님 | 새 항목은 RBX. `+0x154` 전엔 `LdrpNtDllDataTableEntry` = 0 이라 그 칸으로 못 찾음 | run35 (정적, 관찰 전) |
 
 ## 값 읽는 법 (자주 씀)
 
