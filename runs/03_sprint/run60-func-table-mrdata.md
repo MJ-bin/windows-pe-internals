@@ -1,5 +1,7 @@
 # 2026-11-03 run60 — 역함수 표·`.mrdata` 열고 닫기 (Q111, PE_emulator 요청 5): `LdrpInitializeProcess +0x3e6 ~ +0x4a4` 는 **ntdll 을 역함수 표 칸 0 에 놓는 한 묶음** (넣기 → 되읽기 → 칸 0 직접 쓰기 → 빼기). `.mrdata` 는 **파일 값 1** 인 중첩 카운터 `LdrpMrdataUnprotected` 로 열고 닫고, 0 ↔ 1 을 넘을 때만 `NtProtectVirtualMemory` — 이 구간의 유일한 syscall 은 `+0x488` 닫기 (그때 `LdrpLocateMrdata` 가 `LdrpMrdataSize`·`LdrpMrdataBase` 를 처음 씀). CFG 내보내기 억제 확인은 test.exe 에서 0. 덤: `.data 0x1ce268` = 프로세스 속성 `0xa0022` (세그먼트 힙 요청) 값 (정적)
 
+> 정정 (run63, sast/58): 아래 "결과서와 다르게 적은 곳" 의 `LdrpMrdataHeap`·`HeapUnprotected` 두 `[추측]` ("test.exe 에선 쓰기까지 안 간 것", "`LdrEnsureMrdataHeapExists +0xa` 의 CFG 확인도 그 갈래일 것") 은 맞았다 → `[정적]`. 단 갈림 자리는 `RtlAddGrowableFunctionTable` 쪽이 아니다 — `+0x40` (ret `+0x45`) 은 인자 검사 `+0x27`/`+0x3a` 뒤 **늘** `LdrEnsureMrdataHeapExists` 를 부르고, CFG 확인은 그 안 `+0xa/+0xf LdrControlFlowGuardEnforced` · `+0x11 JZ +0x1f` (test.exe 0 → 바로 0 반환) 다. "② 조건부" 의 조건 = 그 안 갈래 → `runs/03_sprint/run63-cfg-func-table.md` "정정"
+
 ## PE_emulator 쪽에서 쓸 것
 
 결과서 (`_workspace/sast/55_func-table-mrdata_result.md`) 의 "PE_emulator 가 그대로 쓸 작은 표" 를 1절에 옮겼다. 표 밑 글머리와 2 ~ 4절은 flow-writer 가 `.asm` 의 `CALL … ret=` 줄로 다시 맞춘 것이다. 오프셋 읽는 법:

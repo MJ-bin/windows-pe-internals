@@ -4,6 +4,8 @@
 
 > 정정 (run62, sast/57): 아래 `EtwDataSource` 줄·호출 지점 표·사슬의 ETW **"Once" 를 타는 자리**가 틀렸다. `EtwpRegisterTpNotificationOnce` (→ `NtTraceControl(0x1b)`) 는 첫 `EtwpRegisterProvider` 한 번뿐이고, 그 첫 번째는 `LdrpInitializeProcess +0xbee` (ret `+0xbf3`) `TraceLoggingRegisterEx_EtwEventRegister_EtwEventSetInformation +0x55` (ret `+0x5a`) → `EtwEventRegister` 다. `+0xc06`·`+0xc23` 의 `EtwEventRegister` 는 `NtTraceControl(0xf)` 만 부른다. `EtwEventRegister +0x1e` 아래 사슬은 그대로 맞다 → `runs/03_sprint/run62-tp-etw-init.md` "정정".
 
+> 정정 (run63, sast/58): 아래 `InvertedFunctionTable` 줄과 동적 질문 **F7** 의 "ntdll 안 CFG 갈래로 syscall 까지 가는지 `[공백]`" 은 **정적으로 거의 닫혔다**. 갈림은 CFG 가 아니라 `RtlpInsertOrRemoveScpCfgFunctionTable +0x58` 의 `NtQueryVirtualMemory` 클래스 `0xe` (이미지 뒤 확장 쪽) 출력이고, 진짜 VM 의 ntdll 노드 `Flags 0x20a2c4` 비트 21 `[관찰]` (`ms/logs/04_baggage-read_P1a.txt:2795`) 은 `RtlAddGrowableFunctionTable` → `NtSetInformationProcess(0x35)` 가 성공해야만 켜진다 (`LdrpProcessMappedModule +0x1a9`). 남은 것은 풀 블록 내용 직접 확인뿐 → `runs/03_sprint/run63-cfg-func-table.md` "정정"
+
 ## 요약 표 (30칸 + `OwnerProcessId` 둘째 쓰기 → ?)
 
 - 결과서 맨 앞 표 그대로 (구간별). 열 뜻:
