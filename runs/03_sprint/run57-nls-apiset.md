@@ -1,5 +1,7 @@
 # 2026-11-01 run57 — NLS 글자표와 ApiSet 지도 (Q108, PE_emulator 요청 4-A): NLS 는 **부팅 때 커널이 `\NLS\NlsSectionCP<번호>`·`\NLS\NlsSectionCASE` 이름의 영구 섹션을 파일에서 만들어 두고**, ntdll 이 syscall `NtGetNlsSectionPtr` (종류 `0xb`·`0xe`) 로 그 섹션을 열어 **읽기 전용 뷰**로 받는다. ApiSet 은 **부팅 때 `MiInitializeApiSets` 가 로더가 넘긴 표를 그대로 복사한 pagefile 섹션**이고, `MmMapApiSetView +0x92` 가 새 PEB `+0x68 ApiSetMap` 에 뷰 주소를 쓴다. PEB 코드 페이지 세 칸의 첫 주인은 `MmCreatePeb +0x546/+0x555/+0x564` (정적)
 
+> **정정 (run64, sast/60)**: 아래 "`MiInitializeApiSets` 는 부팅 **위상 0** (`InitBootProcessor +0x595 MmInitSystem(0)` → `MmInitSystem +0x144` → `MiInitSystem +0x638`)" 은 틀렸다. **위상 1** 이다: `Phase1Initialization +0x1e` → `Phase1InitializationDiscard +0xc65 MmInitSystem(1)` → `MmInitSystem +0xf0 MiInitSystem(1)` → `MiInitSystem +0x638` (`+0x77 JNZ` 는 ECX ≠ 0 일 때 `+0x428` 로 간다 — 거꾸로 읽었음). `RtlNlsInitState` 는 위상 0 그대로. 전역 세 칸은 PDB 공개 심볼은 없고 타입 이름이 있다 (`MiState+0x1c0` `_MI_SECTION_STATE` 의 `ApiSetSection`·`ApiSetSchema`·`ApiSetSchemaSize`). 순서 (`Ⓑ1` 보다 앞, `ExInitializeNls` 보다 앞) 는 그대로 → `runs/03_sprint/run64-apiset-phase.md`
+
 ## PE_emulator 쪽에서 쓸 것
 
 결과서 (`_workspace/sast/52_nls-apiset_result.md`) "작은 표 둘" 을 옮기고, 오프셋을 `.asm` 으로 한 번 더 맞췄다 (flow-writer). 오프셋은 모두 `ms/disassemble/<모듈>/<함수>.asm` 의 `+0x` 줄이다 (이 폴더는 커밋 안 함). ntoskrnl 에도 ntdll 과 같은 이름의 커널 사본 (`RtlInitCodePageTable`·`RtlpInitCodePageTables`·`RtlpInitUppercaseTables`·`RtlpQueryNlsSystemCodePages`) 이 있다. 이 문서에서 모듈을 안 붙인 이 네 이름은 **ntdll 사본**이고, 커널 사본은 "커널 사본" 이라고 붙인다.
@@ -31,8 +33,8 @@
 | 항목 | 값 |
 |---|---|
 | 섹션 출처 | 부트 로더가 `LOADER_PARAMETER_BLOCK.Extension` 의 `ApiSetSchema` (`+0xaa0`) / `ApiSetSchemaSize` (`+0xaa8`) 로 넘긴 표를 **바이트 그대로 복사** (합치기 없음). 그 표가 `apisetschema.dll` `.apiset` 원본 그대로인지는 정적으로 못 정함 `[공백]` |
-| 만드는 함수 | `MiInitializeApiSets` (rva `0xc6920c`, 221B) — 부팅 위상 0: `InitBootProcessor +0x595 MmInitSystem(0)` → `MmInitSystem +0x144 MiInitSystem` → **`MiInitSystem +0x638`** (ret `+0x63d`). 안: `+0x52 MmCreateSection` (접근 `0xf001f`, 크기 `&ApiSetSchemaSize`, 보호 `4` PAGE_READWRITE, SEC_COMMIT, 파일 없음 = **pagefile 섹션**) → `+0x73` 커널 시스템 공간 뷰 (같은 주소 이름 2개, 후보: `MmMapViewInSessionSpace`·`MmMapViewInSystemSpace`) → `+0xac` 메모리 복사 (같은 주소 이름 4개, 후보: `RtlCopyMemory`·`RtlMoveMemory`·`memcpy`·`memmove`) |
-| 커널 쪽 전역 | `ntoskrnl +0xe2d818` (섹션 개체, `+0xb1`) · `+0xe2d820` (커널 뷰 주소, `+0xb8`) · `+0xe2d828` (크기, `+0xce`). PDB 공개 이름 없음. 쓰는 곳은 `MiInitializeApiSets` 하나 (`_refs/0xe2d818.tsv`). 두 칸 주소는 `MmQueryApiSetSchema` (rva `0x4c2d1c`) 가 돌려줌 |
+| 만드는 함수 | `MiInitializeApiSets` (rva `0xc6920c`, 221B) — 부팅 ~~위상 0: `InitBootProcessor +0x595 MmInitSystem(0)` → `MmInitSystem +0x144 MiInitSystem`~~ → (run64 정정) **위상 1**: `Phase1Initialization +0x1e` → `Phase1InitializationDiscard +0xc65 MmInitSystem(1)` → `MmInitSystem +0xf0 MiInitSystem(1)` → **`MiInitSystem +0x638`** (ret `+0x63d`). 안: `+0x52 MmCreateSection` (접근 `0xf001f`, 크기 `&ApiSetSchemaSize`, 보호 `4` PAGE_READWRITE, SEC_COMMIT, 파일 없음 = **pagefile 섹션**) → `+0x73` 커널 시스템 공간 뷰 (같은 주소 이름 2개, 후보: `MmMapViewInSessionSpace`·`MmMapViewInSystemSpace`) → `+0xac` 메모리 복사 (같은 주소 이름 4개, 후보: `RtlCopyMemory`·`RtlMoveMemory`·`memcpy`·`memmove`) |
+| 커널 쪽 전역 | `ntoskrnl +0xe2d818` (섹션 개체, `+0xb1`) · `+0xe2d820` (커널 뷰 주소, `+0xb8`) · `+0xe2d828` (크기, `+0xce`). ~~PDB 공개 이름 없음.~~ → (run64) PDB 공개 심볼은 없다. 칸 이름은 PDB 타입: `MiState` (rva `0xe2cb80`) `+0x1c0 Sections` → `_MI_SECTION_STATE` `+0xad8 ApiSetSection` · `+0xae0 ApiSetSchema` · `+0xae8 ApiSetSchemaSize` (sast/60). 쓰는 곳은 `MiInitializeApiSets` 하나 (`_refs/0xe2d818.tsv`). 두 칸 주소는 `MmQueryApiSetSchema` (rva `0x4c2d1c`) 가 돌려줌 |
 | 프로세스에 올리는 함수 | `MmMapApiSetView` (rva `0x930e78`, 273B) ← `PspSetupUserProcessAddressSpace +0x250` (ret `+0x255`) ← `PspAllocateProcess +0x2397` — `NtCreateUserProcess` 길 (test.exe). 다른 caller `PspAllocateProcess +0x25ba` (ret `+0x25bf`) 는 `PspCreateProcess` (`NtCreateProcessEx` 류) 로 만든 프로세스 길로 보임 `[추측]` |
 | 어느 섹션 | 보통 프로세스 (`EPROCESS.ServerSilo` = NULL → `PsIsHostSilo` 참): `+0x36` 위 전역 `[0x140e2d818]`. 서버 silo 안 프로세스: `+0x103 PsGetServerSiloGlobals` → `+0x108 [RAX+0x3e8]` (그 silo 자기 섹션, 만드는 쪽 `PspSiloLoadApiSets` 는 이름만 `[추측]`) |
 | `MmMapViewOfSection` 인자 (`+0x7b`, ret `+0x80`) | 프로세스 = 새 프로세스 (`+0x78`) · 시작 주소 0 → 커널이 고름 (`+0x73`) · ZeroBits 0 · CommitSize 0 · 섹션 안 위치 0 · **크기 0 = 섹션 전체** (`+0x56`) · 상속 1 (`+0x52`) · 할당 종류 `0x400000` (`+0x45`) · **보호 `2` PAGE_READONLY** (`+0x3d`) |
@@ -145,9 +147,12 @@
 | `nt!PspSetupUserProcessAddressSpace` | `+0x250` | `+0x255` | `nt!MmMapApiSetView` | [정적] (run10·run32) |
 | `nt!PspAllocateProcess` | `+0x25ba` | `+0x25bf` | `nt!MmMapApiSetView` (다른 길, test.exe 아님 `[추측]`) | [정적] |
 | `nt!MmMapApiSetView` | `+0x1e` · `+0x29` · `+0x7b` · `+0x103` | `+0x23` · `+0x2e` · `+0x80` · `+0x108` | `PsGetProcessServerSilo` · `PsIsHostSilo` · `MmMapViewOfSection` · `PsGetServerSiloGlobals` (silo 만) | [정적] |
-| `nt!InitBootProcessor` | `+0x10c` · `+0x595` | `+0x111` · `+0x59a` | `nt!RtlNlsInitState` · `nt!MmInitSystem` | [정적] (부팅) |
+| `nt!InitBootProcessor` | `+0x10c` · `+0x595` | `+0x111` · `+0x59a` | `nt!RtlNlsInitState` · `nt!MmInitSystem` (run64: `+0x595` 는 `MmInitSystem(0)` — ApiSet 길 아님) | [정적] (부팅) |
+| `nt!Phase1Initialization` | `+0x1e` | `+0x23` | `nt!Phase1InitializationDiscard` (run64 더함) | [정적] (부팅) |
+| `nt!Phase1InitializationDiscard` | `+0xc65` | `+0xc6a` | `nt!MmInitSystem(1)` (`+0xc63 MOV ECX,EBX` ← `+0xa8f MOV EBX,1`, run64 더함) | [정적] (부팅) |
 | `nt!MmInitSystem` | `+0x144` | `+0x149` | `nt!MiInitSystem` (위상 0·2 가 같은 자리, `+0xb6 XOR ECX,ECX` / `+0x13c MOV ECX,2`) | [정적] (부팅) |
-| `nt!MiInitSystem` | `+0x638` | `+0x63d` | `nt!MiInitializeApiSets` (위상 0 쪽, `+0x75 TEST ECX` / `+0x77 JNZ`) | [정적] (부팅) |
+| `nt!MmInitSystem` | `+0xf0` | `+0xf5` | `nt!MiInitSystem` (run64 더함: 위상 1 자리, `+0xe3 MOV ECX,EBX` = 1 — **이 길이 ApiSet**) | [정적] (부팅) |
+| `nt!MiInitSystem` | `+0x638` | `+0x63d` | `nt!MiInitializeApiSets` (~~위상 0 쪽, `+0x75 TEST ECX` / `+0x77 JNZ`~~ → run64 **위상 1 쪽**: `+0x77 JNZ` 는 ECX ≠ 0 이면 `+0x428` 로 → `+0x42a JNZ +0x64a` 가 ECX = 1 에서 안 뜀 → `+0x430 ~ +0x649`) | [정적] (부팅) |
 | `nt!Phase1InitializationIoReady` | `+0x27` | — | `nt!ExInitializeNls` (`_refs`) | [정적] (부팅) |
 | `nt!ExInitializeNls` | `+0x28` · `+0x63` · `+0x79` · `+0x91` · `+0x96` | `+0x2d` · `+0x68` · `+0x7e` · `+0x96` · `+0x9b` | `ZwCreateDirectoryObject` (`\NLS`) · `PsGetCurrentServerSiloGlobals` · 커널 사본 `RtlpQueryNlsSystemCodePages` · `RtlpInitCodePageTables` · `RtlpInitUppercaseTables` | [정적] (부팅) |
 | 커널 사본 `RtlpInitCodePageTables` | `+0x69` · `+0x91` | `+0x6e` · `+0x96` | `nt!NtGetNlsSectionPtr` (종류 `0xb`) | [정적] (부팅) |
@@ -157,22 +162,25 @@
 
 ```
 (부팅 — 흐름도 범위 앞, 단계 Ⓑ)
-KiInitializeKernel +0x7fe → InitBootProcessor                                    (결과서)
+KiInitializeKernel +0x7fe → InitBootProcessor          위상 0                    (결과서)
  ├─ +0x111  RtlNlsInitState              커널 silo 전역 +0x408 NLS 상태 = UTF-8 기본값
- └─ +0x59a  MmInitSystem(0)
-          └─ +0x149  MiInitSystem(0)
-                   └─ +0x63d  MiInitializeApiSets(로더블록)
-                            ├─ +0x57  MmCreateSection        pagefile 섹션, 크기 = ApiSetSchemaSize
-                            ├─ +0x78  (시스템 공간 뷰, 이름 2개)
-                            ├─ +0xb1  (메모리 복사, 이름 4개)  로더 표 → 뷰, 그대로
-                            │  +0xb1 · +0xb8 · +0xce          전역 nt+0xe2d818 · 820 · 828
-Phase1Initialization → … → Phase1InitializationIoReady
- └─ +0x27  ExInitializeNls
-          ├─ +0x2d  ZwCreateDirectoryObject   \NLS (영구)
-          ├─ +0x96  (커널 사본) RtlpInitCodePageTables
-          │        └─ +0x6e · +0x96  NtGetNlsSectionPtr(0xb, ANSI/OEM)   커널 모드 → 열기 실패 → 파일로 만들기 → 시스템 공간 뷰
-          └─ +0x9b  (커널 사본) RtlpInitUppercaseTables
-                   └─ +0x30  NtGetNlsSectionPtr(0xe)
+ └─ +0x59a  MmInitSystem(0) → +0x149 MiInitSystem(0)   ApiSet 아님 (run64 정정 — 옛 그림은 여기 아래에 MiInitializeApiSets 를 달았음)
+Phase1Initialization                                   위상 1 (run64 정정, sast/60)
+ ├─ +0x23  Phase1InitializationDiscard
+ │        └─ +0xc6a  MmInitSystem(1)
+ │                  └─ +0xf5  MiInitSystem(1)
+ │                           └─ +0x63d  MiInitializeApiSets(로더블록)
+ │                                    ├─ +0x57  MmCreateSection        pagefile 섹션, 크기 = ApiSetSchemaSize
+ │                                    ├─ +0x78  (시스템 공간 뷰, 이름 2개)
+ │                                    ├─ +0xb1  (메모리 복사, 이름 4개)  로더 표 → 뷰, 그대로
+ │                                    │  +0xb1 · +0xb8 · +0xce          전역 nt+0xe2d818 · 820 · 828
+ └─ … → Phase1InitializationIoReady
+      └─ +0x27  ExInitializeNls
+               ├─ +0x2d  ZwCreateDirectoryObject   \NLS (영구)
+               ├─ +0x96  (커널 사본) RtlpInitCodePageTables
+               │        └─ +0x6e · +0x96  NtGetNlsSectionPtr(0xb, ANSI/OEM)   커널 모드 → 열기 실패 → 파일로 만들기 → 시스템 공간 뷰
+               └─ +0x9b  (커널 사본) RtlpInitUppercaseTables
+                        └─ +0x30  NtGetNlsSectionPtr(0xe)
 
 (부모 cmd 스레드, ① — NtCreateUserProcess 안)
 PspAllocateProcess
@@ -226,7 +234,7 @@ LdrpInitializeProcess
 - `[정적]` ntdll 의 `NtGetNlsSectionPtr` 부르는 자리는 3곳이고, 실행 횟수는 조건에 달린다: ANSI == OEM 이면 코드 페이지 쪽 1번, `UseCaseMapping` 이 0 이면 대문자 쪽 0번, 둘 중 하나라도 `0xfde9` 면 섹션 안 얻음. test.exe 는 사진 값 (ACP = OCP = `0x3b5`, `UseCaseMapping` `0x6a5`) 으로 보면 **2번** (`+0x46` + `+0x3b`) `[추측]` — P1a 에 NLS VAD 가 한 개씩인 것과 맞음.
 - `[정적]` `LdrpFusionManifestCodePages` 는 매니페스트 없는 exe 에서 "없음" (`AL = 0`). 그래서 test.exe 의 코드 페이지는 레지스트리 (`RtlpQueryNlsSystemCodePages`) 에서 온다.
 - `[정적]` `RtlInitCodePageTable` 은 CALL·syscall 이 없는 단말 함수다. 표가 NULL 이거나 `0xfde9` 면 `Utf8TableInfo` 를 복사한다.
-- `[정적]` ApiSet 섹션은 부팅 위상 0 `MiInitSystem +0x638 MiInitializeApiSets` 가 로더 표를 복사해 만든 pagefile 섹션이다. 호스트 쪽 섹션엔 합치기 (`ApiSetComposeSchema`) 가 없다 — 그걸 부르는 곳은 `PspSiloLoadApiSets +0x4e` 하나 (서버 silo).
+- `[정적]` ApiSet 섹션은 부팅 ~~위상 0~~ (run64 정정) 위상 1 `MiInitSystem +0x638 MiInitializeApiSets` 가 로더 표를 복사해 만든 pagefile 섹션이다. 호스트 쪽 섹션엔 합치기 (`ApiSetComposeSchema`) 가 없다 — 그걸 부르는 곳은 `PspSiloLoadApiSets +0x4e` 하나 (서버 silo).
 - `[정적]` **`PEB.ApiSetMap` 을 쓰는 줄은 `MmMapApiSetView +0x92`** 다 (부르는 쪽이 아님). `[관찰]` run44 K1 값 `25996cd0000` = 읽기 전용 pagefile 섹션 0x2a쪽 VAD 와 맞는다.
 - `[정적]` **PEB `ActiveCodePage`·`OemCodePage`·`UseCaseMapping` 은 커널 `MmCreatePeb +0x546`·`+0x555`·`+0x564` 가 먼저 쓴다.** run45 의 "K1 전에 처음 쓴 쪽은 모름" 의 답이다. `[관찰]` run44 "K1 부터 `0x3b5`·`0x6a5`" 와 맞는다.
 - `[정적]` ntdll `LdrpPreprocessDllName +0x82` 가 `PEB.ApiSetMap` 을 읽고 `+0xc3` 이 0 검사 없이 첫 바이트를 읽는다.
@@ -249,7 +257,7 @@ LdrpInitializeProcess
 - 3.1 `_PEB` 줄 3개 더함: `+0x68 ApiSetMap` (① nt `MmMapApiSetView +0x92`), `+0x34c`·`+0x34e` (① nt `MmCreatePeb +0x546`·`+0x555`, 기존 ② ntdll 줄 앞), `+0x350 UseCaseMapping` (① nt `MmCreatePeb +0x564`). 모르던 칸 2개 (`ApiSetMap`·`UseCaseMapping`) 가 아는 칸이 됨.
 - 3.8 ntdll `.data` 줄 9개 더함: `GlobalRtlNlsState` 6줄 · `NlsAnsiCodePage` · `NlsMbOemCodePageTag` · `NlsMbCodePageTag`. 모르던 전역 4개가 "쓴 자리 아는 것" 이 됨. `+0x80`·`+0x88` 은 syscall 로 커널이 씀 → 그 전역은 nt·ntdll 양쪽에 셈.
 - 4장 짝 `PEB.ApiSetMap` 줄 고침 (쓰는 줄 `[공백]` → `+0x92`) + NLS 짝 두 줄 (뷰 ↔ `\NLS` 섹션, PEB 코드 페이지 ↔ silo 전역 NLS 상태).
-- 5장 `Ⓑ` 에 둘 (`ⒷA` 위상 0 ApiSet, `ⒷN` `ExInitializeNls`), ① `MmCreatePeb`·`MmMapApiSetView`, ② NLS 순서.
+- 5장 `Ⓑ` 에 둘 (`ⒷA` ~~위상 0~~ (run64 정정) 위상 1 ApiSet — NLS 상태 `RtlNlsInitState` 는 위상 0, `ⒷN` `ExInitializeNls`), ① `MmCreatePeb`·`MmMapApiSetView`, ② NLS 순서.
 - 7.6.3 새 절 (체크리스트 밖 — NLS·ApiSet 뷰와 부팅 때 놓인 섹션, C8 일부), 7.18 새 절 (동적 질문 1~5).
 - 2장 숫자: `_PEB` nt 22 → 26 · 모름 88 → 86, `.data` nt 1 → 2 · ntdll 64 → 68 · 모름 373 → 369. 구조체 아는 칸 702 → 704, 모름 337 → 335. 전역 쓴 자리 아는 것 76 → 80, 모름 417 → 413.
 

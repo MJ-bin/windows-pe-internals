@@ -2,6 +2,8 @@
 
 > 이 글은 [run57 문서](run57-nls-apiset.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **정정 (run64)**: 아래 "ApiSet 섹션은 부팅 **위상 0** (`InitBootProcessor` → `MmInitSystem(0)` → …)" 은 틀렸다. **위상 1** 이다: `Phase1Initialization` → `Phase1InitializationDiscard` → `MmInitSystem(1)` → `MiInitSystem(1)` → `MiInitializeApiSets`. 틀린 줄에 "(run64 정정: 위상 1)" 을 달았다. 자세한 건 `runs/03_sprint/run64-apiset-phase.md`.
 
 - 대기열: **Q108**: PE_emulator 요청 4-A — 2-I (kernel32·kernelbase 올리기) 전에 꼭 필요한 셋. (1) NLS 글자표, (2) ApiSet 뷰, (3) `PEB.ApiSetMap` 첫 읽기 알림 (`_workspace/plan.md`, 이번에 **끝**)
   - 사용자 결정 (2026-11-01) 으로 맨 앞에 끼운 항목이다 (Q104 VM 단계 앞).
@@ -73,7 +75,7 @@
 
 ```
 (부팅 — test.exe 실행보다 훨씬 전, 흐름도 범위 앞)
- InitBootProcessor → MmInitSystem → MiInitSystem → MiInitializeApiSets   ApiSet 섹션 만들기  ← 이번
+ InitBootProcessor → MmInitSystem → MiInitSystem → MiInitializeApiSets   ApiSet 섹션 만들기  ← 이번   (run64 정정: 위상 1 — Phase1Initialization → Phase1InitializationDiscard → MmInitSystem(1) → MiInitSystem(1) → MiInitializeApiSets)
  Phase1InitializationIoReady → ExInitializeNls → … NtGetNlsSectionPtr    NLS 섹션 만들기    ← 이번
 
 cmd.exe 의 부탁 (그림 1, 부모 스레드 ①)
@@ -140,7 +142,7 @@ run 문서 "호출 관계" 를 줄였다. `+0x..` 는 ret 자리 (콜스택 숫�
 (부팅)
 InitBootProcessor
  ├─ +0x111  RtlNlsInitState          커널 NLS 상태 = UTF-8 기본값
- └─ +0x59a  MmInitSystem(0) → +0x149 MiInitSystem(0)
+ └─ +0x59a  MmInitSystem(0) → +0x149 MiInitSystem(0)   (run64 정정: 위상 1 — 아래 줄은 여기가 아니라 Phase1InitializationDiscard +0xc6a MmInitSystem(1) → +0xf5 MiInitSystem(1) 밑)
               └─ +0x63d  MiInitializeApiSets         로더 표 → pagefile 섹션, 그대로 복사
 Phase1InitializationIoReady
  └─ +0x27  ExInitializeNls
@@ -199,9 +201,9 @@ LdrpLoadDll +0xc2 → LdrpPreprocessDllName   +0x82 ApiSetMap 읽기 → +0xc3 �
 #### 누가 만드나
 
 - `MiInitializeApiSets` (rva `0xc6920c`, 221B) 다.
-- 부르는 길 (부팅 위상 0):
-  - `InitBootProcessor +0x595 MmInitSystem(0)` → `MmInitSystem +0x144 MiInitSystem` → **`MiInitSystem +0x638`** (ret `+0x63d`).
-  - **새 말 — 부팅 위상** = 부팅을 몇 단계로 나눈 것 중 몇 번째인지. 위상 0 = 아주 이른 단계 `[추측]` (일반적으로 알려진 설명). `MmInitSystem` 은 위상 0·2 가 같은 call 자리를 쓰고, `MiInitSystem` 안에서 위상 0 쪽일 때만 이 함수로 간다 (`+0x75 TEST ECX` / `+0x77 JNZ`).
+- 부르는 길 (부팅 위상 0): (run64 정정: 위상 1)
+  - `InitBootProcessor +0x595 MmInitSystem(0)` → `MmInitSystem +0x144 MiInitSystem` → **`MiInitSystem +0x638`** (ret `+0x63d`). (run64 정정: 위상 1 — `Phase1Initialization +0x1e` → `Phase1InitializationDiscard +0xc65 MmInitSystem(1)` → `MmInitSystem +0xf0 MiInitSystem(1)` → `MiInitSystem +0x638`)
+  - **새 말 — 부팅 위상** = 부팅을 몇 단계로 나눈 것 중 몇 번째인지. 위상 0 = 아주 이른 단계 `[추측]` (일반적으로 알려진 설명). `MmInitSystem` 은 위상 0·2 가 같은 call 자리를 쓰고, `MiInitSystem` 안에서 위상 0 쪽일 때만 이 함수로 간다 (`+0x75 TEST ECX` / `+0x77 JNZ`). (run64 정정: 위상 1 — 위상 1 은 `MmInitSystem +0xf0` 자리를 따로 쓰고, ECX = 1 일 때만 이 함수로 간다 `+0x428 CMP ECX,EBX` · `+0x42a JNZ`)
 
 #### 무엇으로 만드나
 
@@ -213,7 +215,7 @@ LdrpLoadDll +0xc2 → LdrpPreprocessDllName   +0x82 ApiSetMap 읽기 → +0xc3 �
 - **새 말 — pagefile 섹션** = 뒤에 받치는 **파일이 없는** 섹션. 내용은 메모리에만 있고, 밀려나면 페이징 파일로 간다 `[추측]` (일반적으로 알려진 설명).
   - 비유: 설계도 (파일) 를 보고 짠 세트가 아니라, 관리사무소가 **빈 상자를 하나 만들어 받은 표를 옮겨 적은** 물건.
   - `[관찰]` run44 K1 VAD 도 "Pagefile section" 이라고 적혀 있다 (`ms/logs/04_baggage-read_K1.txt:1373`).
-- 다 만든 걸 커널 전역 셋에 둔다: `nt+0xe2d818` (섹션 개체) · `+0xe2d820` (커널 뷰 주소) · `+0xe2d828` (크기). PDB 에 공개 이름이 없다. 이 셋을 쓰는 곳은 `MiInitializeApiSets` 하나뿐이다 (`_refs`).
+- 다 만든 걸 커널 전역 셋에 둔다: `nt+0xe2d818` (섹션 개체) · `+0xe2d820` (커널 뷰 주소) · `+0xe2d828` (크기). PDB 에 공개 이름이 없다. (run64 정정: 공개 심볼은 없고, 타입에 칸 이름이 있다 — `MiState+0x1c0` 의 `ApiSetSection`·`ApiSetSchema`·`ApiSetSchemaSize`) 이 셋을 쓰는 곳은 `MiInitializeApiSets` 하나뿐이다 (`_refs`).
 
 #### 합치기는 없다
 
@@ -539,7 +541,7 @@ run45 가 남긴 "K1 전에 처음 쓴 쪽은 모름" 의 답이다.
 - 3.8 ntdll `.data`: 줄 9개 더함 — `GlobalRtlNlsState` 6줄 · `NlsAnsiCodePage` · `NlsMbOemCodePageTag` · `NlsMbCodePageTag`. 모르던 전역 4개가 "쓴 자리 아는 것" 이 됐다.
   - `+0x80`·`+0x88` 은 syscall 로 **커널이 써 준다** → 그 전역은 nt·ntdll 양쪽에 센다.
 - 4장 짝: `PEB.ApiSetMap` 줄 (쓰는 줄 `[공백]` → `+0x92`) + NLS 짝 두 줄 (뷰 ↔ `\NLS` 섹션, PEB 코드 페이지 ↔ silo 전역 NLS 상태).
-- 5장 단계: `Ⓑ` 에 둘 (`ⒷA` 위상 0 ApiSet, `ⒷN` `ExInitializeNls`), ① `MmCreatePeb`·`MmMapApiSetView`, ② NLS 순서.
+- 5장 단계: `Ⓑ` 에 둘 (`ⒷA` 위상 0 ApiSet (run64 정정: 위상 1), `ⒷN` `ExInitializeNls`), ① `MmCreatePeb`·`MmMapApiSetView`, ② NLS 순서.
 - 7.6.3 새 절 (체크리스트 밖 — NLS·ApiSet 뷰와 부팅 때 놓인 섹션, C8 일부), 7.18 새 절 (동적 질문).
 - 2장 숫자:
 
