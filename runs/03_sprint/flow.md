@@ -3,11 +3,12 @@
 ## 기준
 
 - 타깃: Windows 11 24H2, **26100.9457**
-  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32, run33, run34, run41, run42, run43, run45, run47, run48, run49, run50, run51, run52, run53, run54, run55, run56, run57, run59, run60, run63, run64, run65)
+  - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32, run33, run34, run41, run42, run43, run45, run47, run48, run49, run50, run51, run52, run53, run54, run55, run56, run57, run59, run60, run63, run64, run65, run66)
   - kernelbase.pdb: `72CCE506944DE0267C172AD64287F9BD1` (run14, run25, run34, run51)
   - kernel32.pdb: `AE9E9D8F7AC1467A645320FDC23235D01` (run25, run34)
-  - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20, run21, run22, run23, run24, run26, run27, run28, run29, run34, run35, run36, run38, run39, run41, run43, run45, run46, run51, run54, run56, run57, run58, run59, run60, run61, run62, run63, run65)
+  - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20, run21, run22, run23, run24, run26, run27, run28, run29, run34, run35, run36, run38, run39, run41, run43, run45, run46, run51, run54, run56, run57, run58, run59, run60, run61, run62, run63, run65, run66)
   - basesrv.pdb: `4B0951C4FAD4CCBDDFDAA284D1ED2C2E1`, csrsrv.pdb: `32C5AA2B9D0AF671C35069A02C5A0C041` (run34 — csrss 프로세스 안에서 도는 DLL, 처음 analyze. run51 csrsrv `CsrSetExceptionPort` 한 함수 더)
+  - ahcache.pdb: `D54D2D17350903291E74D1E13B85E1831` (run66 — `System32\drivers\ahcache.sys`, 커널 드라이버. `NtApphelpCacheControl` 이 IOCTL 을 던지는 곳이라 처음 analyze)
   - cmd.pdb: `6E820A0DD74C2CA6E23F25DEBA1651261` (run34 — 부모 cmd.exe. Ghidra 로 안 걸고 `objdump` 줄에 이름만 붙임, 참고용)
   - test.pdb: `C66E7084C5CA4874B1677F6F1C36A0511` (run30. MS 것이 아니라 sample 빌드의 로컬 pdb, 사용자가 VM 에서 돌린 `sample/bin/` 파일)
   - dll1.pdb: `B1FF0915-FAC1-447A-AEB8-10FF10AD0564` age 1, dll2.pdb: `FC67F681-4188-49D8-83B5-609127E1DE39` age 1 (run40. test.pdb 와 같은 sample 빌드 로컬 pdb, dll 의 CodeView 서명과 짝 확인)
@@ -35,6 +36,7 @@
   - (run63) 정적 바퀴. CFG·ScpCfg 함수 표 갈래 값 대조에 run44 P1a 덤프 읽기 로그 (`ms/logs/04_baggage-read_P1a.txt` — ntdll `lm` 59줄, ntdll VAD 1551줄 (이미지보다 5쪽 김), test.exe 노드 `Flags 0x22c4` 2690·2712줄, **ntdll 노드 `Flags 0x20a2c4`·`ScpInExceptionTable 0y1` 2795·2817줄**, `DependentLoadFlags 0x800` 2846줄) 를 다시 읽었다 (결과서 + flow-writer). ntdll 구역 `SCPCFG*`·내보내기 `RtlpScpCfgNtdllExports`·로드 구성 값은 결과서가 PE 바이트를 읽은 것. 새 동적 실행은 없다.
   - (run64) 정적 바퀴 (정정). 부팅 위상 갈래는 `.asm` 의 `CMP`/`JNZ` 와 점프 목적지로만 정했다. 값 대조할 사진 칸은 없다 (부팅 중 일이라 run44 사진 범위 앞). 새 동적 실행은 없다.
   - (run65) 정적 바퀴. 초기화 묶음 본문 값 대조에 run44 P1a 덤프 읽기 로그 (`ms/logs/04_baggage-read_P1a.txt` — 매개변수 `CurrentDirectory` 2552 ~ 2553줄 `Length 0x84`·`Handle 0x58`, `HeapPartitionName` 2543줄, TEB `+0x58` 1979·3430 ~ 3433줄, TEB `+0x1850` 2108줄, KUSD `CurDirDevicesSkippedForDlls` 2927줄) 와 짐 지도 7.3 의 사진 분류 (전역 14개) 를 다시 읽었다 (결과서 + flow-writer). 새 동적 실행은 없다.
+  - (run66) 정적 바퀴. apphelp 캐시 길 값 대조에 run44 덤프 읽기 로그 (`ms/logs/04_baggage-read_P1b.txt` — 모듈 항목 `LoadNotificationsSent` 3392·3497·3602·3707·3812·3917줄, `ShimEngineCalloutSent` 3400 ~ 3925줄, `g_pShimmedModuleList` 6165줄, `0x1cd7cc` 4948줄, PEB `NtGlobalFlag` 2468줄. `_P1a.txt` 5046 ~ 5048·3830·1770줄, `_P2.txt` 6176 ~ 6177·4960·2480줄) 를 다시 읽었다 (flow-writer). 새 동적 실행은 없다.
   - run44 의 `[관찰]` 은 "그 순간 메모리에 그 값이 있었다" 이다. 호출을 콜스택으로 본 것은 지점 8곳의 `k` 뿐이다 (run44 "지점별 라이브 관찰").
 - 정적 근거: `runs/02_sprint/` run9 ~ run42 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ~ run33 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe, run34 kernel32·KernelBase·ntdll·ntoskrnl·basesrv·csrsrv (+ cmd.exe 참고), run35·run36 ntdll, run37 kernel32·KernelBase·apisetschema **PE 표만** (Ghidra 안 씀), run38·run39 ntdll, run40 dll1·dll2 (sample 빌드), run41 ntdll·ntoskrnl, run42 ntoskrnl. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀) · `runs/03_sprint/` run43 (ntoskrnl·ntdll PDB 타입 레코드·공개 이름 + ntoskrnl `MmCreateTeb` 첫 export — 짐 지도 체크리스트) · run45 (ntdll depth 0 14개 읽기만 + 일 목록 86개·callee 637줄 분류·PDB 타입 정의 확인 — sast/39) · run46 (ntdll 프로세스 힙 구간 depth 1 함수 약 44개 읽기만 + PDB `_HEAP`·`_PEB` 등 칸 — sast/40, 짐 지도 Q78a) · run47 (ntoskrnl 섹션 사슬·exe 열기 depth 0 35개 새로 + sast/26 13개 읽기만, PDB 칸은 `pdb_struct.py` — sast/41, 짐 지도 Q78b) · run48 (ntoskrnl 부팅 준비 갈래 `PsLocateSystemDlls` 등 depth 0 약 23개 새로 + 3개 읽기만, 새 지도 뿌리 `PsLocateSystemDlls`, 표 처음 값은 PE 바이트 — sast/42, Q93. **흐름도 범위 앞 (부팅)**) · run49 (ntoskrnl 프로세스 객체 앞부분 depth 0 35개 새로 + 8개 읽기만, PDB 칸은 `pdb_struct.py`, 일부는 `objdump` 로만 — sast/43, 짐 지도 Q78c1) · run50 (ntoskrnl 프로세스 객체를 만들 때 depth 0 27개 새로 + 12개 읽기만, 끝까지 0 칸은 커널 전체 `objdump` 훑기 (오프셋 숫자 일치 — 오탐 가능), 칸은 sast/38 `struct__EPROCESS.tsv` — sast/44, 짐 지도 Q78c2a) · run51 (ntoskrnl 프로세스 객체 뒤 구간 depth 0 21개 새로 + 14개 읽기만, 부르는 쪽 찾기로 ntdll 4·kernelbase 1·csrsrv 1, 드라이버 (`mssecflt.sys`·`bam.sys`)·win32k 는 `objdump` + 공개 PDB 이름만 — sast/45, 짐 지도 Q78c2b) · run52 (ntoskrnl 스레드 객체 앞부분을 만들 때 depth 0 9개 새로 + 8개 읽기만, 끝까지 0 칸은 커널 전체 `objdump` 훑기 (오프셋 숫자 일치 — 오탐 가능, `LEA` 뒤 쓰기는 못 잡음), 칸은 `pdb_struct.py` + sast/38 `struct__KTHREAD.tsv` — sast/46, 짐 지도 Q78d1) · run53 (ntoskrnl 스레드 객체 나머지·트랩 프레임을 만들 때 depth 0 10개 새로 + 나머지 읽기만, 끝까지 0 칸은 커널 전체 `objdump` 훑기 (먼 조각 포함, 오프셋 숫자 일치 — 오탐 가능, `LEA` 뒤 쓰기는 못 잡음) — sast/47, 짐 지도 Q78d2) · run54 (ntoskrnl·ntdll TEB 를 채울 때 depth 0 25개 새로 (커널 9 · ntdll 16) + 나머지 읽기만, 끝까지 0 칸은 ntdll·커널·KERNELBASE·KERNEL32 전체 TEB 오프셋 `objdump` 훑기 (`gs:[0x30]`·`KTHREAD.Teb` 레지스터 추적 — 오탐·누락 가능), 칸은 `pdb_struct.py` (`_TEB`·`_TEB32`) — sast/48, 짐 지도 Q78d3) · run55 (ntoskrnl `RtlGetExtendedContextLength2` depth 0 1개 새로 + `RtlGetExtendedContextLength3`·`PspInitializeThunkContext`·`RtlpValidateContextFlags2` 읽기만 — sast/49, Q103 PE_emulator 요청 1) · run56 (ntoskrnl 시스템 콜 입구·칸 풀기·출구 depth 0 10개 + `_refs` 7개, ntdll 스텁 바이트 스캔, `KiSystemCall64` 는 Ghidra 함수가 아니라 `objdump` 로만, 번호표는 PE 파일 `KiServiceTable`·`KiArgumentTable` 을 임시 스크립트로 — sast/51, Q106 PE_emulator 요청 3) · run57 (NLS·ApiSet 길 — ntoskrnl depth 1 뿌리 셋 (26개) · ntdll depth 1 뿌리 둘 (7개) + depth 0 17개 (요청 5 · 결과서가 넓힌 12, ntoskrnl 에 ntdll 과 같은 이름의 커널 사본 넷 포함) + `_refs` 13개, 문자열·`apisetschema.dll` 머리는 `pefile` — sast/52, Q108 PE_emulator 요청 4-A. 부팅 쪽 (`MiInitializeApiSets`·`ExInitializeNls`) 은 **흐름도 범위 앞**) · run59 (초기화 남은 일 — ntdll depth 1 뿌리 다섯 (14개) + `LdrpGenSecurityCookie`, ntoskrnl depth 1 뿌리 다섯 (18개) + depth 0 여섯 + `_refs`, `PEB+0x7b8` 읽는 함수는 `objdump` 검색, import 스텁·`.data` 처음 값·test.exe 자원은 PE 바이트 — sast/54, Q109 나머지 PE_emulator 요청 4-B~E. 부팅 쪽 `ExInitializeLeapSecondData` 는 **흐름도 범위 앞**) · run61 (RandomEx 난수 벡터 첫 켜기 — ntdll depth 0 7개 새로 (`RtlpInitRandomExVector`·`RtlRunOnceComplete`·`RtlpRunOnceWaitForInit`·`RtlHeapTrkInitialize` + IFEO 길 셋) + 8개 읽기만, `_refs` 7개, 앞쪽 닿는 길은 지도 `_map/LdrInitializeThunk_edges.tsv` — sast/56, Q116 PE_emulator 요청 9) · run62 (스레드 풀·ETW 등록·기능 상태 — ntdll depth 0 대상 13개 + 줄기를 끝까지 가려고 보탠 약 50개 (`Tp*`·`Tpp*`·`Etwp*`·`wil_details_*`·`RtlpFc*`) + depth 1 넷, `_refs` 약 40개, GUID·TraceLogging 메타데이터는 ntdll 파일 바이트 — sast/57, Q118 PE_emulator 요청 10) · run63 (CFG·ScpCfg 함수 표 — ntdll 대상 10개 + 길 따라 11개, ntoskrnl 대상 3개 (`NtQueryVirtualMemory`·`MmQueryVirtualMemory`·`MiQueryImageExtensionInformation`) + 값의 출처를 따라 12개 (`MiGetImageExtensionBaseAddress`·`MiMapViewOfImageSection`·`PsInitializeScpCfgPages` 등) 모두 depth 0, 새 `_refs` (ntoskrnl) 4개, ntdll 구역·내보내기·로드 구성 값은 PE 바이트 — sast/58, Q120a PE_emulator 요청 11 의 1 ~ 6) · run64 (ApiSet 부팅 위상 정정 — Ghidra 안 씀, 이미 있는 ntoskrnl `.asm` 13개·`_calls.tsv`·`_refs` 넷 + PDB 타입 `_MI_SYSTEM_INFORMATION`·`_MI_SECTION_STATE`·공개 심볼 `MiState` — sast/60, Q120c PE_emulator 요청 11 의 8번) · run65 (`LdrpInitializeProcess` 줄기 위 초기화 본문 — ntdll 대상 24개 + 길 따라 8개 depth 0 새로 + 16개 읽기만, ntoskrnl `NtQuerySystemInformation`·`ExpQuerySystemInformation` (클래스 `0xfa` 갈래만)·`KiSetFeatureBits`·`PspSchedulerSharedDataRegionCreate` depth 0, 새 `_refs` ntdll 9 · ntoskrnl 3, 마스크 표 바이트·test.exe TLS 디렉터리·`TimeDateStamp` 는 PE 파일 — sast/59, Q120b PE_emulator 요청 11 의 7번)
   - PE 헤더·import·export 표는 `pefile` 로 읽었다 (run25). KERNELBASE·kernel32·ntdll 의 TLS 디렉터리도 PE 파일에서 읽었다 (run28). Ghidra 는 PE 진입점 함수를 PDB 이름 대신 `entry` 로 잡는다 (run25). 글에선 PDB 이름을 쓴다.
@@ -262,6 +264,12 @@
 - `p4c`: 안쪽 `RtlRbInsertNodeEx` 두 번 모두 빈 트리 갈래 (회전 없음) 라는 한 마디를 붙였다.
 - `LdrpInitializeProcess` 가 부르는 `RtlpInitCurrentDir` (`+0x151c`) · `RtlInitializeProcessorFeaturesBitMap` (`+0x1766`) · `LdrpAllocateSchedulerSharedData` (`+0x182c`) · `LdrpAcquireSchedulerSharedDataSlot` (`+0x183c`) · `LdrpInitializeTls` (`+0x18d0`) 와 `LdrpInitializePolicy` (`+0xfca`) 는 상자로 안 넣었다. run62 와 같은 까닭이다: 넣으면 `(8)` 부터 번호가 모두 밀리는데, 이 구간은 칸·syscall 만 늘고 흐름 (모듈·스레드) 은 안 바뀐다. syscall 8번·칸은 2.4 글과 짐 지도에. 넣을지는 사용자와 정한다.
 
+그림 2 에 **올린 뒤 알림 → apphelp 캐시 묻기 사슬을 넣었다** (run66 `[정적]`, 2.5 끝 절). PE_emulator 가 kernel32 를 올리다 멈춘 syscall (`NtApphelpCacheControl`) 이 이 사슬 끝이라 대표 지점으로 넣었다.
+- `(1) kernel32 준비` 의 `LdrpPrepareModuleForExecution` (`k5`) 아래 `(1) +0x7b` **`LdrpNotifyLoadOfGraph`** [KERNEL32 추정] → `(1) +0x66` 재귀 [KERNELBASE 추정] / `(2) +0x25` **`LdrpSendPostSnapNotifications`** → `+0xbb LdrpCheckModule` → `+0x25 CompatCachepLookupCdb` → `+0xb9` 스텁 `NtApphelpCacheControl`. 같은 `Prepare` 아래 `(2) +0x8d LdrpDynamicShimModule`. 원래 있던 켜기 `+0xef` 는 `(3)` 이 됐다.
+- 스텁에서 굵은 화살표 `SYSCALL 0x4c` 로 `nt` 상자 안 새 단계 상자 **`(3) apphelp 캐시 묻기`** (`nt!NtApphelpCacheControl` → `+0xf7 IofCallDriver`) 로 간다. 그다음 `?` 로 새 모듈 상자 **`ahcache.sys`** (`AhcDriverDispatchDeviceControl` → `+0x3d AhcDispatch` → `+0x1d8 AhcApiLookupCdb`). `IofCallDriver` 안의 간접 호출은 안 봐서 `?` (4.1).
+- `(1)~(2) 사이` 의 exe `Prepare` (`j3`) 아래에도 `(2) +0x7b` `LdrpNotifyLoadOfGraph` [test.exe 추정] 상자 하나만 넣었다 (원래 `+0x12f` 그래프 정리는 `(1)`). 안쪽은 kernel32 쪽과 같은 코드라 다시 안 그렸다 — KERNELBASE 재귀 상자도 같은 까닭으로 안쪽을 안 그렸다.
+- 상자 안 `SbUpdateSwitchContextBasedOnDll`·`LdrpSendDllNotifications`·`LdrpLogDllState`·shim 간접 호출·`AVrfDllLoadNotification`, 커널의 `IoGetDeviceObjectPointer`·`IoBuildDeviceIoControlRequest` 는 상자로 안 넣고 2.5 글에만 적었다.
+
 > 왜 2장인가: 서로 화살표로 이어지지 않은 덩어리는 머메이드가 위아래 순서를 마음대로 정한다 (실험해보니 ③ → ② → ① 거꾸로 나왔다). 두 스레드 사이엔 호출 관계가 없어서 화살표로 이을 수 없으니, 그림을 나누고 **문서 순서로 시간 순서**를 보인다.
 
 ### 읽는 법
@@ -281,11 +289,11 @@
   - 같은 번호가 둘이면 **값에 따라 둘 중 하나만** 탄다 (라벨에 갈리는 조건을 적었다).
 - **상자 = 묶음.**
   - 가장 큰 상자 = 스레드
-  - 그 안의 상자 = 모듈 (`nt`, `ntdll`, `KERNELBASE`, `KERNEL32`, `dll2`, `dll1`, `test.exe`)
+  - 그 안의 상자 = 모듈 (`nt`, `ntdll`, `KERNELBASE`, `KERNEL32`, `dll2`, `dll1`, `test.exe`, (run66) 커널 드라이버 `ahcache.sys`)
   - `ntdll` 상자 안의 상자 = `LdrpInitializeProcess`가 차례로 하는 일 `(0)` `(1)` `(1)~(2) 사이` `(2)` `(3)`, 그리고 로더가 끝난 뒤 (`(0)` 과 `(1)~(2) 사이` 는 코드로만 본 것. 상자 번호는 단계 이름이고, 화살표 `(n)` 호출 순서와는 따로다)
-  - `nt` 상자 안의 상자 = 같은 스레드에서 따로 일어나는 단계 (그림 1 `(3) 풀어 주기` = 나중의 다른 시스템 콜, 그림 2 `(1) 멈춤 APC 처리` = 멈춰 둔 스레드일 때만, 그림 2 `(2) 로더 끝 NtContinue` = 로더가 끝난 뒤 ntdll 이 다시 들어오는 시스템 콜)
+  - `nt` 상자 안의 상자 = 같은 스레드에서 따로 일어나는 단계 (그림 1 `(3) 풀어 주기` = 나중의 다른 시스템 콜, 그림 2 `(1) 멈춤 APC 처리` = 멈춰 둔 스레드일 때만, 그림 2 `(2) 로더 끝 NtContinue` = 로더가 끝난 뒤 ntdll 이 다시 들어오는 시스템 콜, 그림 2 `(3) apphelp 캐시 묻기` = 모듈을 올린 뒤 모듈마다 들어오는 시스템 콜 — run66)
   - `ntdll` 상자가 크게 자리를 차지해서, 다른 모듈 상자는 오른쪽에 모여 그려진다. **오른쪽 모듈 상자의 위치는 호출 깊이와 상관없다.**
-- **함수 상자 색 = 모듈.** 분홍 `nt` · 파랑 `ntdll` · 초록 `KERNELBASE`/`KERNEL32` · 보라 `dll2` · 노랑 `dll1` · 청록 `test.exe`
+- **함수 상자 색 = 모듈.** 분홍 `nt` (run66 부터 커널 드라이버 `ahcache.sys` 도 분홍 — 커널 공간이라 같은 색, 상자 이름으로 가름) · 파랑 `ntdll` · 초록 `KERNELBASE`/`KERNEL32` · 보라 `dll2` · 노랑 `dll1` · 청록 `test.exe`
   - 회색 = **모듈을 모르는 함수.** 함수 포인터로 부르는 간접 호출이라 대상이 실행 때 정해진다. 상자 글은 "어디서 주소를 꺼내나" 이지 함수 이름이 아니다.
 - **점선 테두리** = 이름이나 실행이 확실하지 않은 것. **노란 메모** = 같은 무렵 다른 스레드에서 일어난 일.
 - `[dll1 추정]`처럼 대괄호 = 그 함수가 그때 맡은 모듈. "추정"이 붙으면 추측이다.
@@ -461,7 +469,7 @@ flowchart LR
     class cb1,cb2,cb3,cb4 unkg
 ```
 
-### 그림 2 — test.exe 메인 스레드 (run4 ~ run8, run13, run14 메모, run15, run16, run17, run18, run19, run20, run21, run22, run23, run24, run25, run26, run27, run28, run29, run30, run33, run35, run36, run38, run39, run40, run44, run46, run56, run61, run62, run63, run65)
+### 그림 2 — test.exe 메인 스레드 (run4 ~ run8, run13, run14 메모, run15, run16, run17, run18, run19, run20, run21, run22, run23, run24, run25, run26, run27, run28, run29, run30, run33, run35, run36, run38, run39, run40, run44, run46, run56, run61, run62, run63, run65, run66)
 
 ```mermaid
 flowchart LR
@@ -519,6 +527,11 @@ flowchart LR
                 ncc["nt!KiInitializeUserApc<br/>(정적 run42: 원래 문맥을 유저 스택 CONTEXT 로 복사,<br/>트랩 Rsp = 그 자리, Rip = KiUserApcDispatcher)"]:::kerng
                 kx2["nt!KiKernelExit<br/>(정적: KiKvaShadow 켜졌을 때만)"]:::kerng
             end
+            subgraph T2NTH["(3) apphelp 캐시 묻기 — syscall 0x4c 클래스 6, 모듈마다 (정적 run66)"]
+                direction LR
+                ah0["nt!NtApphelpCacheControl<br/>(정적: 스스로 대답 안 함. g_AhcDeviceObject 가 0 이면<br/>IoGetDeviceObjectPointer 로 \Device\ahcache 를 잡아 둠.<br/>IOCTL 0x22001B, 입력 = 유저 버퍼 그대로 0x188, 출력 없음)"]:::kerng
+                ah1["nt!IofCallDriver<br/>(정적: IRP 를 드라이버에 넘김.<br/>돌아온 값이 그대로 syscall 반환)"]:::kerng
+            end
         end
 
         subgraph T2DLL["ntdll"]
@@ -563,6 +576,13 @@ flowchart LR
                 kf2["ntdll!LdrpFindOrPrepareLoadingModule<br/>(정적: 목록에서 찾거나 새 항목 준비 추정.<br/>지도상 아래 KnownDll 길 → NtMapViewOfSection)"]:::ntg
                 kf3["ntdll!LdrpProcessWork<br/>(정적: 앞 결과가 0xc0000135 일 때만.<br/>지도상 아래 파일 길 NtOpenFile·NtCreateSection·NtMapViewOfSection.<br/>그 본문은 dll1 상자와 같은 함수들, run26)"]:::ntg
                 k5["ntdll!LdrpPrepareModuleForExecution<br/>(정적: 노드 State 5~7 이고 로드 문맥<br/>+0x20 비트 0 이 0 일 때만 +0xef 켜기)"]
+                kn1["ntdll!LdrpNotifyLoadOfGraph [KERNEL32 추정]<br/>(정적 run66: 의존 노드 State 6 이면 먼저 재귀,<br/>그다음 +0x19 자기 State = 7 → 알림)"]:::ntg
+                kn2["ntdll!LdrpNotifyLoadOfGraph [KERNELBASE 추정]<br/>(정적 run66: 재귀. 안쪽은 오른쪽 KERNEL32 알림 사슬과<br/>같은 코드 — 그림엔 안 그림, 글 2.5 끝 절)"]:::ntg
+                kn3["ntdll!LdrpSendPostSnapNotifications [KERNEL32 추정]<br/>(정적 run66: 인자 = 노드. 락 LdrpDllNotificationLock 안, 모듈마다.<br/>들어갈 때 g_pShimmedModuleList 가 0 이면 CheckModule.<br/>모듈 Flags 비트 3 LoadNotificationsSent 켬 — 사진 run44 다섯 모듈과 맞음)"]:::ntg
+                kn4["ntdll!LdrpCheckModule [KERNEL32 추정]<br/>(정적 run66: 인자 = 전체 경로, 앞 조건 없음.<br/>반환 1 일 때만 shim 목록 g_pShimmedModuleList 에 붙임)"]:::ntg
+                kn5["ntdll!CompatCachepLookupCdb [KERNEL32 추정]<br/>(정적 run66: 버퍼 0x188 과 출력 DWORD 를 먼저 0 으로.<br/>파일 이름만 보냄, 마스크 0x10. 반환 0 또는 1)"]:::ntg
+                kn6["ntdll!NtApphelpCacheControl [KERNEL32 추정]<br/>(정적 run66: 스텁 EAX = 0x4c. ECX = 6, RDX = 버퍼, 인자 2)"]:::ntg
+                kn7["ntdll!LdrpDynamicShimModule<br/>(정적 run66: shim 목록이 0 이면 바로 끝.<br/>있으면 apphelp 를 올리는 shim 길 입구)"]:::ntg
                 kf4["ntdll!LdrpPinModule<br/>(정적: LdrInitState == 0 일 때만)"]:::ntg
                 k6["ntdll!LdrpInitializeGraphRecurse"]
                 k7["ntdll!LdrpInitializeGraphRecurse<br/>(재귀)"]
@@ -669,6 +689,7 @@ flowchart LR
                 cg2["ntdll!LdrpCondenseGraphRecurse [test.exe 추정]<br/>(정적)"]:::ntg
                 cg3["ntdll!LdrpCondenseGraphRecurse<br/>(재귀) [dll1 추정]"]:::ntg
                 cg4["ntdll!LdrpCondenseGraphRecurse<br/>(재귀) [dll2 추정]"]:::ntg
+                en1["ntdll!LdrpNotifyLoadOfGraph [test.exe 추정]<br/>(정적 run66: dll2 → dll1 → exe 순으로 노드마다 State = 7 →<br/>LdrpSendPostSnapNotifications → 모듈마다 apphelp 캐시 묻기 syscall 0x4c.<br/>안쪽 사슬은 (1) kernel32 준비 상자와 같은 코드 — 그림엔 안 그림)"]:::ntg
             end
 
             subgraph PH2["(2) import DLL 초기화: dll2 → dll1 (→ exe 노드는 정적)"]
@@ -745,6 +766,12 @@ flowchart LR
             z3["RSP+0x58 칸의 함수<br/>(정적: kernelbase 에서 이름 KernelbasePostInit 로<br/>찾은 주소. CFG 검사 거침, 인자 안 실음)"]:::unkg
             z2["PEB.PostProcessInitRoutine 칸의 함수<br/>(정적: 값이 있을 때만)"]:::unkg
         end
+        subgraph T2AHC["ahcache.sys — 커널 드라이버 (정적 run66, 처음 analyze)"]
+            direction LR
+            ah2["ahcache!AhcDriverDispatchDeviceControl<br/>(정적: DriverEntry +0xda 가 드라이버 객체 MajorFunction 14 칸에 넣은 함수.<br/>클래스 = IOCTL 코드의 2번째 비트부터 8비트)"]:::kerng
+            ah3["ahcache!AhcDispatch<br/>(정적: 유저 모드면 0x188 바이트를 스택 사본으로.<br/>클래스 6 이고 AhcEnabled 가 0 이 아닐 때만 아래, 아니면 0xC0000225)"]:::kerng
+            ah4["ahcache!AhcApiLookupCdb<br/>(정적: AVL 표 AhcCdbHandle 에서 파일 이름 찾기, 대소문자 무시.<br/>못 찾으면 출력 0 + STATUS_SUCCESS. 표 내용은 동적)"]:::kerng
+        end
     end
 
     %% 커널 → 유저
@@ -805,7 +832,19 @@ flowchart LR
     k4 -->|"(3) +0x210"| kf3
     k4 -->|"(4) +0x284"| k5
     k4 -->|"(5) +0x337"| kf4
-    k5 -->|+0xef| k6
+    k5 -->|"(1) +0x7b"| kn1
+    kn1 -->|"(1) +0x66"| kn2
+    kn1 -->|"(2) +0x25"| kn3
+    kn3 -->|+0xbb| kn4
+    kn4 -->|+0x25| kn5
+    kn5 -->|+0xb9| kn6
+    kn6 ==>|"SYSCALL 0x4c — 유저 → 커널 (정적, 처리기 KiSystemCall64 는 생략)"| ah0
+    ah0 -->|+0xf7| ah1
+    ah1 -->|"?"| ah2
+    ah2 -->|+0x3d| ah3
+    ah3 -->|+0x1d8| ah4
+    k5 -->|"(2) +0x8d"| kn7
+    k5 -->|"(3) +0xef"| k6
     k6 -->|"(1) +0x96"| k7
     k7 -.-> k6
     k7 -->|+0x6a| k8
@@ -909,7 +948,8 @@ flowchart LR
     jw11 -->|+0xb66| ps4
     ps4 -->|+0x93| ht4
     c4 -->|"(12) +0x1af2"| j3
-    j3 -->|+0x12f| cg1
+    j3 -->|"(1) +0x12f"| cg1
+    j3 -->|"(2) +0x7b"| en1
     cg1 -->|+0x26| cg2
     cg2 -->|+0x13d| cg3
     cg3 -->|+0x13d| cg4
@@ -2897,7 +2937,7 @@ LdrpInitializeProcess
 
 ---
 
-### 2.5 `ntdll` → `KERNELBASE` / `KERNEL32` 준비 (run7, run8, run19, run20, run21, run22, run23, run24, run25, run26, run28, run37, run38, run57, run65)
+### 2.5 `ntdll` → `KERNELBASE` / `KERNEL32` 준비 (run7, run8, run19, run20, run21, run22, run23, run24, run25, run26, run28, run37, run38, run57, run65, run66)
 
 먼저 두 단어를 나눈다. 이 구간에서 **관찰한 건 전부 "켜기"** 다.
 
@@ -2925,6 +2965,7 @@ LdrpInitializeProcess
       │               ├─ [e] +0x21a  LdrpDrainWorkQueue(1) 늘 · +0x317 토큰 Unset · +0x240 LdrpHandleReplacedModule · +0x262 LdrpCondenseGraph (LoadContext ≠ 0)   [정적] run21
       │               ├─ [f] +0x284  LdrpPrepareModuleForExecution    상태 칸 ≥ 0 일 때만                              [관찰] run7 + [정적] run21
       │               │    │   (State 5 → +0x12f LdrpCondenseGraph, 8·9 → 바로 return 0) → +0x6f LdrpAddNodeServiceTag (조건부) → +0x7b LdrpNotifyLoadOfGraph → +0x8d LdrpDynamicShimModule
+      │               │    │   run66: +0x7b 안 = (의존 노드 State 6 이면 +0x66 재귀) → +0x19 State = 7 → +0x25 LdrpSendPostSnapNotifications → 모듈마다 +0xbb LdrpCheckModule → +0x25 CompatCachepLookupCdb → +0xb9 NtApphelpCacheControl(6) = syscall 0x4c   [정적] run66 (아래 절)
       │               │    │   → LoadContext ≠ 0 이고 LoadContext+0x20 비트 0 == 0 일 때만 +0xd6 락 → +0xef → +0xfe 락 풀기      [정적] run21
       │               │    └─ +0xef   LdrpInitializeGraphRecurse
       │               │         ├─ (1) +0x96  LdrpInitializeGraphRecurse (재귀)
@@ -3127,6 +3168,55 @@ LdrpInitializeProcess
   - `[추측]` 그래서 KERNEL32 를 켜기 전에 KERNELBASE 가 켜져 있어야 한다. 위 "KERNELBASE 를 먼저 켠다" `[추측]` 과 맞는다.
 - `[정적]` (run20) 시작 함수와 별개로, 켜기가 끝난 뒤 ntdll 이 **이름으로 찾아 쓰는** 함수가 셋 있다: kernel32 `BaseThreadInitThunk`·`TermsrvGetWindowsDirectoryW`, kernelbase `KernelbasePostInit` (마지막 것은 바로 부름). 시작 함수 이름 확인(정적 Q13)에서 같이 본다.
   - `[정적]` (run25) 셋 다 export 표에 있고 **forwarder 가 아니다**: `BaseThreadInitThunk` rva `0x2cd70` (ordinal 75), `TermsrvGetWindowsDirectoryW` `0x35f10` (1511), `KernelbasePostInit` `0xf4780` (1062). 셋 다 같은 주소에 다른 PDB 이름 없음.
+
+#### 올린 뒤 알림과 apphelp 캐시 묻기 — `LdrpNotifyLoadOfGraph` → `LdrpSendPostSnapNotifications` → `LdrpCheckModule` → `CompatCachepLookupCdb` → `NtApphelpCacheControl` (run66 `[정적]`, sast/61, Q125 — PE_emulator 요청 13 의 8번)
+
+모듈을 다 올리고 주소를 이은 뒤, 켜기 전에 ntdll 이 "이 모듈에 호환성 고침 (shim) 이 필요한가" 를 커널에 한 번 묻는다. 이사 비유로는 짐을 다 들인 뒤 관리실에 "이 가전은 리콜 대상인가요?" 하고 묻는 것이다.
+
+```
+LdrpPrepareModuleForExecution  (노드 State 5 → +0x12f 정리 → 6, 또는 6. 7 은 +0x115 → +0xbf 로 알림 없이, 8·9 는 끝)
+ ├─ +0x7b  LdrpNotifyLoadOfGraph (노드)
+ │          ├─ (1) +0x66  LdrpNotifyLoadOfGraph (의존 노드)      의존 노드 State == 6 일 때만 (7 이상은 건너뜀, 그 밖은 오류)
+ │          └─ (2) +0x25  LdrpSendPostSnapNotifications (노드)   바로 앞 +0x19 State = 7 (실패면 +0x29 에서 6)
+ │                         │  +0x4f 락 LdrpDllNotificationLock 잡기 … +0xf7 풀기. 노드의 모듈마다:
+ │                         ├─ +0xa8   SbUpdateSwitchContextBasedOnDll                늘
+ │                         ├─ +0x127  간접 (CFG) = 푼 g_pfnSE_DllLoaded            g_ShimsEnabled · 푼 값 ≠ 0 · g_ShimsLoading == 0 — test.exe 안 탐
+ │                         ├─ +0xbb   LdrpCheckModule (FullDllName.Buffer)          들어갈 때 g_pShimmedModuleList == 0 (+0x23 → +0x46 R15 → +0xad · +0xb0)
+ │                         │           └─ +0x25  CompatCachepLookupCdb (경로, 마스크 0x10)
+ │                         │                      ├─ +0x2e  memset (버퍼 0x188 → 0) · +0x33 출력 DWORD = 0
+ │                         │                      ├─ +0x42  wcsrchr (파일 이름만) · +0x71 wcslen (> 0x7ffe 글자면 syscall 없이 0)
+ │                         │                      └─ +0xb9  NtApphelpCacheControl (ECX 6, RDX 버퍼) → SYSCALL 0x4c
+ │                         ├─ +0xc6   LdrpSendDllNotifications (모듈, 1)              늘 (등록된 알림 없으면 바로 끝)
+ │                         ├─ +0xdd   LdrpLogDllState                                늘 (앞 +0xce 항목 Flags |= 8 LoadNotificationsSent)
+ │                         └─ +0x135  AVrfDllLoadNotification                        PEB.NtGlobalFlag & 0x100 — test.exe 안 탐
+ └─ +0x8d  LdrpDynamicShimModule (노드)                            g_pShimmedModuleList == 0 이면 바로 끝 (+0x3d · +0x44 → +0x6f)
+
+nt!NtApphelpCacheControl (커널, 클래스 6)
+ ├─ (조건) +0x13e  IoGetDeviceObjectPointer (\Device\ahcache)    g_AhcDeviceObject 가 0 일 때만 → +0x148 저장
+ ├─ +0xd4  IoBuildDeviceIoControlRequest (IOCTL 0x22001B, 입력 = 유저 버퍼 그대로, 길이 0x188 고정, 출력 없음)
+ └─ +0xf7  IofCallDriver ── ? ──► ahcache!AhcDriverDispatchDeviceControl (DriverEntry +0xda 가 MajorFunction[14] 에 넣음)
+                                   └─ +0x3d  AhcDispatch
+                                              └─ +0x1d8  AhcApiLookupCdb (이름, 출력 포인터, 4)   클래스 6 · AhcEnabled ≠ 0
+```
+
+- `[정적]` (run66) **부르는 쪽 둘, 노드마다 한 번.** `LdrpInitializeProcess +0x1af2` (exe 노드 — exe 의 정적 import 그래프 전체가 이 한 번의 재귀로) 와 `LdrpLoadDllInternal +0x284` (`LdrLoadDll` 마다, kernel32 준비 길 2.5 위 트리 `[f]`). 노드 `State` 6 → 7 은 `LdrpNotifyLoadOfGraph +0x19` 한 번뿐이라 두 번 알림이 안 간다. 의존 노드가 먼저 (깊이 우선).
+  - test.exe 추정 `[추측]`: kernel32 길 KERNELBASE → KERNEL32 (2번), exe 길 dll2 → dll1 → exe (3번), ntdll 노드는 `State 9` 라 0번 → **syscall 5번**.
+  - `[관찰]` (run44 사진 P1b, run66 대조) 모듈 항목 `Flags.LoadNotificationsSent` (이 함수 `+0xce` 가 켜는 비트 3) 가 **test.exe · KERNEL32 · KERNELBASE · dll1 · dll2 는 1, ntdll 은 0** (`ms/logs/04_baggage-read_P1b.txt:3392` · `3602` · `3707` · `3812` · `3917` · `3497`). 위 추정과 맞는다. 이 비트를 켜는 다른 줄이 없는지는 안 봤다 → 5번은 `[추측]` 그대로 (강한 받침).
+  - `[관찰]` 같은 사진 `ShimEngineCalloutSent` (비트 11, `+0x127` 이 켬) 는 여섯 모듈 모두 0 (`:3400 ~ :3925`) — shim 간접 호출은 안 탔다.
+- `[정적]` (run66) **`LdrpCheckModule` 을 부르는 조건은 하나**: 들어갈 때 `g_pShimmedModuleList == 0`. 노드 칸·PEB 비트·`ShimData`·`g_pfnApphelpCheckModuleProc` 는 안 본다. `+0xa8 TEST RSI,RSI` · `+0xab JNZ` (→ `+0x113`) 갈래는 shim 콜아웃을 **앞에 끼워 넣고** 두 길 모두 `+0xad` 로 돌아온다 (`+0x11a JNZ` · `+0x12b JMP` — run66 "결과서와 같음").
+  - `[관찰]` (run44 사진) `g_pShimmedModuleList` 8바이트 = 0 — P1a·P1b·P2 (`_P1a.txt:5047` · `_P1b.txt:6165` · `_P2.txt:6177`). 그러니 이 구간의 알림마다 `LdrpCheckModule` 을 불렀다 `[정적 + 관찰 값]`.
+  - `[관찰]` `PEB.NtGlobalFlag` = 0 (`_P1a.txt:1770` · `_P1b.txt:2468` · `_P2.txt:2480`) → `AVrfDllLoadNotification` 갈래는 안 탔다.
+- `[정적]` (run66) **`CompatCachepLookupCdb` 는 부르기 전에 출력을 0 으로 비운다** (`+0x29/+0x2e memset(RSP+0x20, 0, 0x188)`, `+0x33 [RSP+0x1d0] = 0`). 돌아온 뒤 음수면 0 (`+0xbb JS`), 아니면 `(출력 & 마스크) != 0` 일 때만 1 (`+0xbd` · `+0xc4`). 상태값은 위로 안 넘긴다.
+  - 버퍼 꼴: `+0xf8` 이름 `UNICODE_STRING` (`Length`·`MaximumLength`·`Buffer@+0x100`, 파일 이름만), `+0x178` 출력 DWORD 주소, `+0x180` 출력 크기 4. 나머지 0. (run66 문서 표)
+  - 호출자 다섯: `LdrpCheckModule` (마스크 `0x10`, 이 길) · `LdrpSnapModule` ×2 (`0x80`, 못 찾음 오류 처리 안 — run36, 2.6) · `LdrpLogDeprecatedDllEtwEvent` (`0x4`) · `LdrpCheckComponentOnDemandEtwEvent` (`0x100`).
+- `[정적]` (run66) **반환 1 (= 출력 비트 `0x10`) 이면 shim 길 입구**: `LdrpCheckModule` 이 전체 경로를 NUL 로 이은 힙 목록 `g_pShimmedModuleList`·길이 `g_pShimmedModuleListLength` 를 만들고 (`+0x7e RtlAllocateHeap` → `+0xb0` · `+0xb7`), 바로 뒤 `LdrpPrepareModuleForExecution +0x8d LdrpDynamicShimModule` 이 그 목록을 보고 `+0x9d/+0xa2 LdrpGetProcApphelpCheckModule` (apphelp 올리기, 본문 범위 밖) 로 간다. 목록이 0 이면 `LdrpDynamicShimModule` 은 상태 DWORD (`ntdll+0x1cd7cc`, 파일 값 1) 를 같은 값으로 다시 쓰고 (`+0x7b`) 끝 — 사진 P1a·P1b·P2 모두 1 `[관찰]` (`_P1a.txt:3830` · `_P1b.txt:4948` · `_P2.txt:4960`).
+- `[정적]` (run66) **커널은 스스로 대답하지 않는다.** `nt!NtApphelpCacheControl` (rva `0x9f46c0`) 클래스 6 은 기본값 `0xC0000225` (`+0x79`) 로 시작해 `\Device\ahcache` 장치에 IOCTL `0x22001B` (`클래스 × 4 | 0x220003`, `+0x42` · `+0x4d`) 를 보내고 `IofCallDriver` 반환을 그대로 돌려준다 (`+0xf7 MOV EBX,EAX`). 입력 길이는 늘 `0x188` (`+0xab`) — 사용자 크기를 안 본다. 장치를 못 얻으면 기본값, IRP 를 못 만들면 `0xC0000001`.
+  - 클래스 9 만 커널 안 `AhcCacheQueryHwId` (`+0x16f/+0x174`) 로 따로 간다. 클래스 ≥ `0xc` 는 `0xC000000D`.
+- `[정적]` (run66, ahcache.sys 처음 analyze) **대답은 드라이버가 정한다.** `AhcDispatch` 는 사용자 모드면 4바이트 정렬·범위 검사 뒤 `0x188` 바이트를 스택 사본으로 복사하고, 클래스 6 이면 `AhcEnabled == 0` 일 때 `0xC0000225` (`+0x1ae` · `+0x1b5` → `+0x121`), 아니면 `AhcApiLookupCdb` (`+0x1d3/+0x1d8`). 이 함수는 AVL 표 (`AhcCdbHandle`) 에서 파일 이름을 대소문자 무시로 찾고 (`+0x24d/+0x254 RtlLookupElementGenericTableAvl`), **못 찾으면 출력 0 + `STATUS_SUCCESS`** (`+0x262` 내부 `0xC0000225` → `+0x292 ~ +0x296` 출력 0 → `+0x2b0` 쓰기 → `+0x2b4 JMP` → `+0x2dc XOR EDI,EDI`).
+  - `AhcEnabled` = 1 은 `AhcInitialize +0x23c` (`EDI` = `+0x152` 의 1) — 앞 단계 (`AhcCdbCreate` → `AhcCdbHandle`, `AhcCdbReadRegistry` 등) 가 성공한 뒤. `DriverEntry +0x192/+0x197` 이 `AhcInitialize` 를 부르고, `+0x114 IoCreateDevice` 가 `\Device\ahcache` 를 만든다. 드라이버가 언제 올라오는지 (부팅 때) 는 `[추측]`.
+  - 표에 `kernel32.dll` 등이 있는지·플래그 `0x10` 이 켜졌는지는 sysmain.sdb·레지스트리 내용이라 **정적으로 안 정해진다** → 동적 (4장).
+- `[추측]` `IofCallDriver` → `AhcDriverDispatchDeviceControl` (그림의 `?`): 드라이버 객체 `MajorFunction[14]` 칸 (`_DRIVER_OBJECT +0x70` + 14 × 8 = `+0xe0`) 에 이 함수를 넣는 줄은 `[정적]` (`DriverEntry +0xd3` · `+0xda`, run66 flow-writer). `IofCallDriver` 안의 간접 호출은 안 봤고, 14 = `IRP_MJ_DEVICE_CONTROL` 이름도 `[추측]`.
+- PE_emulator 에 준 한 줄: **`Service == 6` 이면 `STATUS_SUCCESS`, 출력은 안 써도 됨** (비트 `0x10` 만 켜지 말 것). 상태값 표·버퍼 표는 run66 문서 "PE_emulator 쪽에서 쓸 것".
 
 ---
 
@@ -3732,6 +3822,7 @@ LdrpCondenseGraph(노드)                              노드 State < 6 일 때�
     1. 현재 스레드가 전역 `LdrpDllNotificationLock` 의 주인(`+0x10` 칸)이면 바로 `return 0` (`+0x2b`). DLL 알림 콜백 안에서 다시 들어온 경우 막기 `[추측]`.
     2. 노드 `State`(`DdagNode +0x38`, PDB `_LDR_DDAG_STATE`)로 갈림 (`+0x31`): 5 `Snapped` → `+0x12f LdrpCondenseGraph` 후 다음 / 6 `Condensed` → 다음 / 7 `ReadyToInit` → 6번으로 바로 / **8 `Initializing`·9 `ReadyToRun` → 바로 `return 0`** / 그 밖 → `0xc00000e5`.
     3. `+0x6f LdrpAddNodeServiceTag` (항목 `Flags` 비트 5 `ProcessStaticImport` 꺼짐 + TEB `SubProcessTag ≠ 0` 일 때) → `+0x7b LdrpNotifyLoadOfGraph` → `+0x8d LdrpDynamicShimModule` (음수면 끝).
+       - (run66 `[정적]`) `+0x7b` 안쪽 = 노드마다 `State = 7` → `LdrpSendPostSnapNotifications` → 모듈마다 apphelp 캐시 묻기 (`NtApphelpCacheControl` 클래스 6, syscall `0x4c`). `+0x8d` 는 그 결과 shim 목록이 0 이면 바로 끝. 2.5 끝 절.
     4. **`항목->LoadContext(+0xb0) ≠ 0` 이고 `LoadContext +0x20` 의 비트 0 이 0 일 때만** (`+0xbf ~ +0xcf`) → `+0xd6` 로더 락 → **`+0xef LdrpInitializeGraphRecurse(노드, 상태 칸, &바이트 0)`** → `+0xfe` 락 풀기.
   - `[정적]` (run21) **exe 길이 켜기를 건너뛰는 이유 = 4번의 비트.** `LdrpInitializeProcess` 는 exe 항목을 만들 때 넘긴 로드 문맥(`[RSP+0x2b0]`, `+0x1351`, run19)의 `+0x20` 칸(`[RSP+0x2d0]`)에 **`+0x1a94 OR [RSP+0x2d0], R12D`** (`+0x1a8e` 에서 `R12D = 1`) 로 비트 0 을 켜 둔 **뒤** `+0x1aa9 LdrpMapAndSnapDependency` 와 `+0x1af2 LdrpPrepareModuleForExecution(exe 항목)` 을 부른다. 그래서 exe 로 부른 `Prepare` 는 `+0xcf` 에서 켜기를 건너뛰고, 켜기는 `LdrpInitializeProcess` 가 직접 로더 락 안에서 `+0x1bbb` 로 한다.
     - run8 이 dll1·dll2 의 `LdrpInitializeNode` 를 `+0x1bbb` 아래에서 본 것 `[관찰]` 과 맞는다.
@@ -4595,6 +4686,10 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.4 (짐 지도) | **(run65 새로) 초기화 묶음 실행 확인** (sast/59 결과서 "동적" — 정적 결론은 run44 사진과 이미 맞음) — 동적 **Q104 VM 단계**: **1 (가장 중요)** 클래스 `0xfa` 진짜 값 — `nt!ExpQuerySystemInformation+0xf4f` 근처 (test.exe 일 때) `dq nt!KeProcessorFeaturesBuffer L2`, `ntdll!RtlInitializeProcessorFeaturesBitMap+0x2a` `r eax` · `dq ntdll!RtlProcessorFeaturesBuffer L2` (정적 "모두 0" 은 레지스터 기준 쓰기를 `_refs` 가 놓쳤을 수 있어 반증 가능) · **2** `ntdll!RtlRbInsertNodeEx` 입구 4번 `r rcx, rdx, r8b, r9` (`LdrpModuleBaseAddressIndex` 둘째 노드 방향 `r8b` = 0?) · **3** `ntdll!LdrpFindKnownDll` 입구 `du @rcx`·반환, `ntdll!NtOpenSection` 입구 수, `LdrpInitializeProcess+0xe95` 뒤 `du poi(ntdll!LdrpKnownDllPath+8)` · **4** 힙 해제 뒤 첫 8바이트 (진짜 VM 은 `+0x1563` 안 탐 — PE_emulator 와 같은 빈 현재 디렉터리 입력일 때만 `ba w8`). 확인용 (선택): `LdrpPolicyBits` `0x16`, `LdrpIncludeAlternateForwarders`·`LdrpCheckAppDirType` 입구 안 걸림, `dq ntdll!RtlpCurDirRef L1`, `LdrpAllocateSchedulerSharedData+0x31` `[rsp+0x30]` 핸들, `dd ntdll!LdrpTlsBitmap L1` = 9 · `db ntdll!LdrpStaticTlsBitmapVector L2` = `01 00`. 멈춤점은 run65 문서 "아직 확인 필요" |
 | 2.4 (짐 지도) | **(run65 새로) 정적으로 남은 것** (대기열 번호 없음 — 오케스트레이터가 붙임): ① `LdrpPolicyBits` 를 짐 지도 7.3 에서 3.8 로 옮길지 (쓰는 줄 `LdrpInitializePolicy +0x7e`·`+0x26b`·`+0x305`·`+0x31d`·`+0x329` 는 패키지 갈래뿐, 처음 값 = 파일 `0x16` — 결과서 14개 목록에 없어 그대로 둠) ② `LdrpInitializeExecutionOptions +0x733 LdrpQueryIllegalCWDDevices` 가 IFEO 키 없을 때도 닿는지 (마스크 값은 어느 쪽이든 0) ③ exe TLS 블록 크기 (`LdrpAllocateTls` 안 셈 — 결과서 반영거리 `0x11`B 의 근거 줄) |
 | 2.4 (짐 지도) | **(run65 새로) 결과서와 다르게 적은 곳**: ① `RtlProcessorFeaturesBuffer` 사진 `끝까지 0*` 대조를 보탬 (결과서엔 없음 — 7.3 분류, syscall 실패여도 0 이라 동적 1 은 그대로) ② 짐 지도 TLS 블록 크기는 `[추측]` (결과서 값, 셈 줄 없음) ③ 짐 지도 3.9 `LdrpKnownDllDirectoryHandle` `[추측]` → `[정적]`, 쓴 주인 ntdll (주소 넘김) → nt (syscall, test.exe 가 부름) — 짐 지도 규칙대로 |
+| 2.5 (짐 지도) | (해결됨, 정적 → run66: Q125 — PE_emulator 요청 13 의 8번. `NtApphelpCacheControl(0x6, …)` 근거: `LdrpSendPostSnapNotifications` 의 `LdrpCheckModule` 조건 = 들어갈 때 `g_pShimmedModuleList == 0` 하나, `LdrpCheckModule` 은 앞 조건 없이 `CompatCachepLookupCdb(경로, 0x10)`, **출력을 syscall 전에 0 으로 비움** (`+0x29/+0x2e`·`+0x33` — 요청서 U1 걱정 닫힘), 스텁 번호 `0x4c`·인자 2, 커널은 `\Device\ahcache` IOCTL `0x22001B` 로 넘기고 ahcache.sys 가 대답 (못 찾음 = 출력 0 + `STATUS_SUCCESS`), 노드마다 한 번. 2.5 끝 절) |
+| 2.5 (짐 지도) | **(run66 새로) apphelp 캐시 길 실행 확인** (sast/61 결과서 "동적" 7줄 중 사진으로 못 답한 것) — 동적 **Q104 VM 단계** (커널 `ahcache!` 멈춤점은 test.exe 조건 필수): **1** `lm m ahcache` · `dd ahcache!AhcEnabled L1` (1?) · `dq ahcache!AhcCdbHandle L1` · 덤 `dq nt!g_AhcDeviceObject L1` · **2** `ntdll!CompatCachepLookupCdb` 입구 `du @rcx` · `r edx` · **히트 수** (추정 5) · **3** `ntdll!CompatCachepLookupCdb+0xb9` `r eax` (추정 0) · `dd @rsp+1d0 L1` (추정 0) · **4** `ahcache!AhcApiLookupCdb+0x254` `r rax` (0 = 못 찾음) / 찾았으면 `dd poi(@rax+0x28) L1` · `+0x2b0` `r esi` · **5** `ntdll!LdrpNotifyLoadOfGraph+0x19` 히트마다 노드 첫 모듈 이름 (`poi(@rbx)-0xa0`) — KERNELBASE·KERNEL32·dll2·dll1·exe 순서 추정. (사진으로 답함: `g_pShimmedModuleList` 0 · `NtGlobalFlag` 0 — P2 ~ `NtContinue` 사이만 남음, 선택) |
+| 2.5 (짐 지도) | **(run66 새로) 정적으로 남은 것** (대기열 번호 없음 — 오케스트레이터가 붙임): ① `Flags.LoadNotificationsSent` (비트 3) 를 켜는 다른 줄이 있나 (ntdll 전체 `OR [reg+0x68],0x8` 꼴 검색 — 있으면 "syscall 5번" 받침이 약해짐) ② shim 엔진 올리는 쪽 `LdrpInitializeProcess +0x19ef LdrpInitShimEngine` → `LdrpLoadShimEngine` (`+0x148` `g_ShimsEnabled = 1`) → `LdrpGetShimEngineInterface` 의 조건 (test.exe 안 탐은 사진으로만 앎) ③ `SbUpdateSwitchContextBasedOnDll` 안 — 사진 `SwitchBackContext` (짐 지도 7.2 `P1a~P1b`, 같은 다섯 모듈) 를 이 함수가 쓰는지 |
+| 2.5 (짐 지도) | **(run66 새로) 결과서와 같음·보탠 것**: ① (오케스트레이터 질문) `LdrpSendPostSnapNotifications +0xa8 TEST RSI,RSI` · `+0xab JNZ` (→ `+0x113`) 는 `LdrpCheckModule` 을 **안 건너뜀** — RSI = 푼 `g_pfnSE_DllLoaded` (`g_ShimsEnabled` 일 때만, 아니면 0), 목적지 두 갈래 모두 `+0xad` 로 돌아옴 (`+0x11a JNZ` · `+0x12b JMP`). 결과서 "조건 하나" 가 맞음 ② `LdrpDynamicShimModule +0x7b` 가 정상 길에서도 상태 DWORD 를 같은 값으로 다시 씀 ③ `g_ShimsEnabled` 셋째 쓰기 `LdrpInitializeProcess +0x1ceb` = 0 (조건 `g_ShimsEnabled != 0`) ④ `AhcEnabled` 의 `EDI` = 1 출처 `AhcInitialize +0x152` ⑤ `DriverEntry +0xda` `MajorFunction[14]` ⑥ 사진 대조 (결과서는 사진을 안 봄) |
 
 ### 4.1 추측·정적으로 둔 호출 관계 (그림의 `?`, `(정적)` 상자)
 
@@ -4696,6 +4791,9 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 그림 2 로더 끝 → 진입점 | `LdrInitializeThunk` → `NtContinue` → `RtlUserThreadStart` | PELdr 기록. `LdrInitializeThunk +0x18` → `NtContinue(맡긴 문맥, TRUE)` 는 run16 `[정적]` (`(2) ?` → `(2) +0x18`). ~~`NtContinue` ==> `RtlUserThreadStart` 는 맡긴 문맥 `Rip` 값만 `[정적]`, 넘어가는 건 `[추측]`~~ → run29 `[정적]`: 굵은 화살표 하나를 `SYSCALL 0x43` ==> 커널 `(2) 로더 끝 NtContinue` 상자 ==> `IRETQ` 두 갈래로 바꿈 (아래 줄). 실행은 미관찰. → (run44 `[관찰]`) `NtContinue` 입구 콜스택 = `LdrInitializeThunk+0x18`, `rcx` = ① 의 맡긴 문맥 (값도 같음) → `q1` 실선. 커널 안·`RtlUserThreadStart` 도착은 미관찰 | (일부 해결 run44: ① 입구 `rcx`, 맡긴 문맥 `Rip`·`Rcx`, `NtContinue` 의 `k`) 남은 것: `dq @rsp L2`, `+0x13` 에서 `@rbx` = 입구 `@rcx` 인지 (값으론 같은 주소), `RtlUserThreadStart` 입구 `@rcx` (= 진입점) (Q29). 원래: `ntdll!LdrInitializeThunk` 입구 `r rcx rdx rsp`, `dq @rsp L2`, `dt ntdll!_CONTEXT @rcx Rip Rcx`. `+0x13` 에서 `@rbx` = 입구 `@rcx` 인지. `NtContinue`에서 `k`, `RtlUserThreadStart` 입구 `@rcx` (= 진입점) (Q29) |
 | 그림 2 로더 끝 → 진입점 | `RtlUserThreadStart` → `BaseThreadInitThunk` → `mainCRTStartup` | Worker 스레드 종료 콜스택에서만 봄. run25 `[정적]`: `BaseThreadInitThunk` (`0x2cd70`, forwarder 아님) 는 첫 인자 0 이면 `+0x12` 간접 호출 `RDX(R8)` → `+0x19` `RtlExitUserThread` (ret `+0x20` = 관찰 프레임 자리). run29 `[정적]`: `RtlUserThreadStart +0x27` (ret `+0x2c` = 관찰 프레임 자리) 이 칸 `Kernel32ThreadInitThunkFunction` 을 `(0, 진입점, PEB)` 로 CFG 간접 호출. 대상이 칸 값이라 두 화살표 모두 `?` 그대로. run30 `[정적]`: 넘기는 진입점 값 = `test!mainCRTStartup` (PDB 이름, run5 `[관찰]` 시작 주소와 같음). 그래도 간접 호출이라 `?` 그대로 | `mainCRTStartup`(`test+0x1d40`)에서 `k` (예상 `BaseThreadInitThunk+0x17` → `RtlUserThreadStart+0x2c`. ~~`[추측]`: 스텁이 프레임을 안 남긴다면~~ → run29 `[정적]` 두 CFG 중개 모두 `JMP` 뿐이라 프레임 없음). `ntdll+0xacae7` 에서 `ln @rax` (Q30, Q48) |
 | 그림 2 로더 끝 → 진입점 | 진입점 경계 상자 (`mainCRTStartup`, 여기부터 CRT) → (1) `?` `LoadLibraryExW` ×3, → (2) `?` `main` | run7 `[관찰]`: test.exe 안 `…67723` 에서 `LoadLibraryExW` ×3, 그다음 `main`. run30 `[정적]`: `…67723` = `try_get_function_slow +0x73` (CRT 안이라 그림엔 이름을 안 넣고 화살표는 `?`). `mainCRTStartup +0xd` 꼬리 `JMP`. `__scrt_common_main_seh` 에서 `try_get_function_slow` 까지 길 셋 (A `+0x19` → … `__acrt_tls2_supported +0x37`, B `+0x19` → … `__acrt_LCMapStringEx +0x4f`, C `+0x61` → … `__acrt_AreFileApisANSI +0x32`, 2.10). `main` 은 `+0x10a` (ret `+0x10f`). **그림은 2026-10-23 결정(진입점 = 경계, CRT 한 상자)으로 CRT 함수를 빼고 진입점 경계 상자 → (1) `?` `LoadLibraryExW` ×3, (2) `?` `main` 만 둠** (사이에 CRT 함수가 끼어서 `?`) | `test+0x5771d` 에서 `du @rcx` 이름, `LdrpLoadDll` 결과 (Q31). 진입점 `test+0x1d40` 도착 (Q30). CRT 안 프레임은 참고로만 |
+| 그림 2 (1) kernel32 준비 | `LdrpPrepareModuleForExecution` → (1) `LdrpNotifyLoadOfGraph` [KERNEL32 추정] → (1) 재귀 [KERNELBASE 추정] / (2) `LdrpSendPostSnapNotifications` [KERNEL32 추정] → `LdrpCheckModule` → `CompatCachepLookupCdb` → `NtApphelpCacheControl` (스텁) ==> 커널; `Prepare` → (2) `LdrpDynamicShimModule` (모두 `(정적)` 상자, run66) | 코드의 call 자리·조건 (run66 `[정적]`): `Prepare +0x7b`·`+0x8d`, `Notify +0x66` (의존 `State 6`)·`+0x25` (`+0x19 State = 7` 뒤), `SendPost +0xbb` (`g_pShimmedModuleList == 0`), `CheckModule +0x25`, `Compat +0xb9`. 재귀 ↔ 모듈 대응 (kernel32 노드가 kernelbase 노드에 기댐) 은 `[추측]`. 사진 (run44 P1b) 의 `LoadNotificationsSent` 다섯 모듈 · `g_pShimmedModuleList` 0 은 이 길과 맞음 | `ntdll!LdrpNotifyLoadOfGraph+0x19` 에서 노드 첫 모듈 이름 + `k` (위 프레임 `LdrpPrepareModuleForExecution+0x7b` 또는 `LdrpNotifyLoadOfGraph+0x66`), `ntdll!CompatCachepLookupCdb` 입구 히트 수·`du @rcx` |
+| 그림 2 (1)~(2) 사이 | `LdrpPrepareModuleForExecution` [test.exe] → (2) `LdrpNotifyLoadOfGraph` [test.exe 추정] (`(정적)` 상자, run66) | `Prepare +0x7b` (`+0x12f` 그래프 정리 뒤 `+0x50` 으로 합류 → `+0x76`). 안쪽 사슬은 kernel32 준비 상자와 같은 코드라 그림엔 노드 하나만 (글 2.5 끝 절). exe 노드가 그때 `State 5`·`6` 인지, dll2 → dll1 → exe 순서는 `[추측]`. 사진: exe·dll1·dll2 노드 P1b `State 7` `[관찰]` | 위와 같은 멈춤점에서 exe 길 히트 3번인지 (위 프레임 `LdrpPrepareModuleForExecution+0x7b` ← `LdrpInitializeProcess+0x1af2`) |
+| 그림 2 커널 (3) apphelp | `nt!IofCallDriver` → `?` `ahcache!AhcDriverDispatchDeviceControl` (run66) | run66 `[정적]`: `NtApphelpCacheControl +0xf2/+0xf7 IofCallDriver(g_AhcDeviceObject, IRP)`, 드라이버 객체 `MajorFunction[14]` (`+0xe0`) = 이 함수 (`DriverEntry +0xda`). `IofCallDriver` 안 간접 호출은 안 봄 → `?` | `bp ahcache!AhcDriverDispatchDeviceControl` (test.exe 조건) 에서 `k` — 위 프레임 `nt!IofCallDriver+…` ← `nt!NtApphelpCacheControl+0xf7` |
 
 (해결됨) dll1 ↔ dll2 import 관계 → `sample/dll1.c`로 확인: dll1이 dll2를 import
 
@@ -4766,6 +4864,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run63 | (정적, 03_sprint 스물한째 바퀴 — Q120a PE_emulator 요청 11 의 1 ~ 6, 짐 지도 바퀴) ntdll 항목 마무리 안의 CFG·ScpCfg 함수 표: `LdrpProcessMappedModule +0x19e` (ret `+0x1a3`) `RtlpInsertOrRemoveScpCfgFunctionTable` 의 `NtQueryVirtualMemory` 클래스 `0xe` = 커널 `MiQueryImageExtensionInformation` — 출력 `0x18`B (`+0x0` 종류 · `+0x4` 예약 · `+0x8` 확장 RVA · `+0x10` 크기), ntdll 에 줄 값 `0x267000`·`0x1000` (정적). 크기 0 또는 확장 쪽 `+0x14` 0 이면 `0x117` (비트 21 안 켬), 아니면 `RtlAddGrowableFunctionTable` → `NtSetInformationProcess(0x35)`. **진짜 VM 은 확장 있음 갈래** — ntdll 노드 `Flags 0x20a2c4` 비트 21 `[관찰]` run44 → F7 거의 닫힘. `Flags 0x8000` `ProtectDelayLoad` = `LdrpCfgProcessLoadConfig +0xc5`, `0x2000` = `LdrpProcessMappedModule +0x154`. `LdrpCfgProcessLoadConfig` 의 `NtProtectVirtualMemory` 셋은 ntdll 에서 안 탐. `LdrEnsureMrdataHeapExists` 는 늘 불리고 CFG 꺼짐이면 바로 0 (run60 `[추측]` 확정), 항목 `0x88`B 는 프로세스 힙. `RtlInitializeHistoryTable` (`+0x1277`) 가 `RtlpUnwindHistoryTable` 을 채움 (칸 0 빠른 길, syscall 은 `.mrdata` 열고 닫기 둘). 노드 경로 syscall 6번. 그림 2 `(정적)` 상자 셋 |
 | run64 | (정적, 03_sprint 스물두째 바퀴 — Q120c PE_emulator 요청 11 의 8번, 짐 지도 바퀴, **정정 바퀴**) ApiSet 섹션의 부팅 위상: **run57 "위상 0" 은 틀렸고 위상 1** — `MiInitSystem +0x77 JNZ` 는 ECX ≠ 0 이면 `+0x428` 로, `+0x428 CMP ECX,EBX` (= 1) · `+0x42a JNZ +0x64a` 가 안 뛰는 `+0x430 ~ +0x649` 안에 `+0x638 MiInitializeApiSets`. 사슬 `Phase1Initialization +0x1e` → `Phase1InitializationDiscard +0xc65 MmInitSystem(1)` (`+0xa8f MOV EBX,1`) → `MmInitSystem +0xf0 MiInitSystem(1)` (ret `+0xf5`) → `+0x638`. `MmInitSystem` 을 부르는 곳 넷 (위상 −1·0·1·2), `MiInitSystem` 을 부르는 곳 둘 (`+0xf0` 위상 1 · `+0x144` 위상 0·2). 전역 세 칸 = `MiState` (`0xe2cb80`) `+0x1c0 Sections` `_MI_SECTION_STATE` 의 `ApiSetSection`·`ApiSetSchema`·`ApiSetSchemaSize` (PDB 타입), 덤으로 run63 ScpCfg 전역 셋 `ImageViewExtensionOffsets`·`TotalImageViewReservationSize`·`ScpCfgPages`. `RtlNlsInitState` 는 위상 0 이라 짐 지도 `ⒷA` 를 위상별로 나눔. 순서 (`Ⓑ1`·`ⒷN` 앞) 는 그대로. 그림은 안 바뀜 |
 | run65 | (정적, 03_sprint 스물셋째 바퀴 — Q120b PE_emulator 요청 11 의 7번, 짐 지도 바퀴) `LdrpInitializeProcess` 줄기 위 초기화 본문: `\KnownDlls` 스텁 셋 번호 `0x58`·`0x138`·`0x16b`·인자 (출력 칸 `LdrpKnownDllDirectoryHandle`·`LdrpKnownDllPath` 처음 `0x30`B), `LdrpInitializePolicy` (test.exe 는 두 전역 0 만, 정책 전역 `LdrpPolicyBits` 파일 값 `0x16`), `LdrpIncludeAlternateForwarders`·`LdrpCheckAppDirType` 안 불림 (`LdrpIllegalCWDDevices` = 장치 특성 마스크), `RtlpInitCurrentDir` → `RtlpCreateNewDirectoryReference` (`NtOpenFile`·`NtQueryVolumeInformationFile`, 레코드 `0x238`B, `RtlpCurDirRef`·매개변수 칸 셋 — 사진 `Length 0x84`·`Handle 0x58` 과 맞음), **`+0x1563` 문자열 해제는 빈 현재 디렉터리 갈래만 (PE_emulator 와 진짜 VM 갈림길)**, 클래스 `0xfa` = `ExpQuerySystemInformation +0xa3d`·`+0xf4f ~ +0xf60` (`KeProcessorFeaturesBuffer` 16B, 정적 0), 클래스 `0x70` = `PspSchedulerSharedDataRegionCreate` (run44 2쪽 매핑 섹션 출처), TEB `+0x1850` = `LdrpAcquireSchedulerSharedDataSlot +0x92`, TLS `N = 1`·`LdrpTlsBitmap` 9비트·`RtlSetBits(0,1)`·`RtlClearBits(1,8)`·TLS 힙 = 프로세스 힙, `LdrpValidateEntrySection`·`LdrpIsImageAddress`·`RtlRbInsertNodeEx`·`LdrpFindKnownDll`·`LdrpLoadKnownDll`·공용 부품 넷 본문. syscall 8번. 그림 2 상자 둘 (`p3`·`p4c`) 글만 |
+| run66 | (정적, 03_sprint 스물넷째 바퀴 — Q125 PE_emulator 요청 13 의 8번, 짐 지도 바퀴) 모듈을 올린 뒤 알림 길의 apphelp 캐시 묻기: `LdrpPrepareModuleForExecution +0x7b LdrpNotifyLoadOfGraph` (의존 `State 6` 재귀 `+0x66`, `+0x19 State = 7`) → `+0x25 LdrpSendPostSnapNotifications` (노드 인자, 락 안, 모듈마다 — `LdrpCheckModule` 조건 = 들어갈 때 `g_pShimmedModuleList == 0` 하나, RSI 갈래는 shim 콜아웃만 끼움) → `+0xbb LdrpCheckModule` → `+0x25 CompatCachepLookupCdb` (**버퍼 0x188·출력 DWORD 를 먼저 0 으로**, 파일 이름만, 반환 0/1) → `+0xb9 NtApphelpCacheControl(6, 버퍼)` syscall `0x4c` 인자 2 → 커널 `\Device\ahcache` IOCTL `0x22001B` (입력 길이 `0x188` 고정) → **ahcache.sys 처음 analyze**: `AhcDispatch` (`AhcEnabled`) → `AhcApiLookupCdb` (AVL 표, 못 찾으면 출력 0 + `STATUS_SUCCESS`), 클래스 0 ~ 11 핸들러 표·상태값 표. 비트 `0x10` 이면 `g_pShimmedModuleList` → `+0x8d LdrpDynamicShimModule` shim 길. 사진 대조 (P1b `LoadNotificationsSent` 다섯 모듈·ntdll 0, `g_pShimmedModuleList`·`NtGlobalFlag` 0). 그림 2 ntdll 상자 8 (kernel32 준비 7 · exe 1) + 커널 `(3) apphelp` 상자 노드 둘 + ahcache 상자 노드 셋 |
 | `sample/` 소스 | 의존 관계, 모듈별 TLS 콜백, `/MT` 빌드 |
 
 - run3 ~ run5는 타깃에서 빌드한 test.exe, run6 ~ run8은 디버거 VM에서 빌드해 옮긴 test.exe (같은 소스).
@@ -4839,3 +4938,4 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run63 | `_workspace/sast/58_cfg-func-table` | 없음 | 정적만 (대기열 **Q120a**, PE_emulator 요청 11 의 질문 1 ~ 6 — 7번 묶음은 Q120b, 짐 지도 바퀴). 다시 analyze 안 함, ntdll 대상 10개 + 길 따라 11개, ntoskrnl 대상 3개 + 값의 출처 12개 모두 depth 0, 새 `_refs` (ntoskrnl) 4개. 값 대조는 run44 P1a 덤프 읽기 로그 일곱 줄. 결과서 **분석성공**. 동적 1 ~ 6 → **Q104 VM 단계** (3 은 F7 = Q79 출처). 정정 둘 (run60 `[추측]` 확정·해석 바로잡음, run51 F7). 결과서 숫자 하나 고쳐 읽음 (`+0x15e` → call `+0x160`) |
 | run64 | `_workspace/sast/60_apiset-phase` | 없음 | 정적만 (대기열 **Q120c**, PE_emulator 요청 11 의 8번 — 사용자 결정 2026-11-05 Q120b·Q120c 둘 다, 짐 지도 바퀴, 정정 바퀴). **Ghidra 실행 0번** (같은 때 sast/59 Q120b 가 ntoskrnl 프로젝트를 쓸 수 있어서) — 이미 있는 ntoskrnl `.asm` 13개·`_calls.tsv`·`_refs` 넷 (`MiInitSystem`·`MmInitSystem`·`MiInitializeApiSets`·`0xe2d818`) + PDB 타입 (`pdb_struct.py`) + 공개 심볼 (`llvm-pdbutil dump -publics`) + PE 구역표. 점프 목적지는 결과서가 스크립트로 전부 다시 셈. 결과서 **분석성공**. 동적 필수 아님 (4장 선택 한 줄) |
 | run65 | `_workspace/sast/59_ldr-init-bodies` | 없음 | 정적만 (대기열 **Q120b**, PE_emulator 요청 11 의 7번 — 요청서 머리 "예정 run64" 는 Q120c 가 먼저 끝나 run65 로, 짐 지도 바퀴). 다시 analyze 안 함, ntdll 대상 24개 + 길 따라 8개 · ntoskrnl 4개 depth 0, 이미 있는 `.asm` 16개 읽기만, 새 `_refs` ntdll 9 · ntoskrnl 3. 값 대조는 run44 P1a 덤프 읽기 로그와 짐 지도 7.3 사진 분류. 결과서 **분석성공**. 동적 4건 (1 = 클래스 `0xfa` 진짜 값이 가장 중요) → **Q104 VM 단계**. 정정 없음 |
+| run66 | `_workspace/sast/61_apphelp-cache` | 없음 | 정적만 (대기열 **Q125**, PE_emulator 요청 13 의 8번 — 사용자 결정 2026-11-05 맨 앞, Q104 VM 단계 앞, 짐 지도 바퀴). ntdll·ntoskrnl 다시 analyze 안 함, **ahcache.sys 새로 analyze** (PDB `D54D2D17…1`, `_index.tsv` 669줄 — 커널이 IOCTL 로 넘겨서 범위를 넓힘). ntdll 대상 셋 depth 1 (→ 18개) + 스텁, ntoskrnl depth 0, ahcache depth 1 (→ 20개) + depth 0 여섯, 새 `_refs` ntdll 6 · ahcache 2. 값 대조는 run44 덤프 읽기 로그 셋 (flow-writer). 결과서 **분석성공**. 동적 5건 → **Q104 VM 단계** (나머지 2건은 사진으로 답함). 정정 없음 |
