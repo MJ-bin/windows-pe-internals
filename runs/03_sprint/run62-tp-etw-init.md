@@ -1,5 +1,7 @@
 # 2026-11-03 run62 — 스레드 풀·ETW 등록 구간 (Q118, PE_emulator 요청 10): `LdrpInitializeProcess +0xb83 ~ +0xc2d` 의 syscall 은 **30번** (정적). 기본 스레드 풀은 `+0xbe2 LdrpEnableUMGLTracingStateSync` 가 **처음 만든다** (풀 만들기 12 + 첫 개체 1). ETW "Once" (`NtTraceControl(0x1b)` 등 4번) 는 **`+0xbee` TraceLogging 첫 등록 한 번뿐** — run51 의 `+0xc06`·`+0xc23` 아래가 아니다 (정정). 앞 `+0xaad` 의 첫 기능 상태 검사가 `RtlpFcProcessManager` 를 채우고 설정 구역 syscall `1 + 2k` 를 부른다
 
+> 정정 (run69, sast/64): 아래 "결과서와 다르게" 의 `[공백]` — `TpAllocPoolInternal +0x316` 의 `[RSP+0xb8]` 출처 (test.exe 가 `+0x443/+0x448` 클래스 `0xd` 갈래를 타나, 타면 구간 31) — 는 **닫혔다: 기본 풀 길은 안 탄다.** `[RSP+0xb8]` = 둘째 인자 `& 1` (`+0x2f AND EDX,R12D` · `+0x32`) 이고, 기본 풀은 `TppPoolpReferenceGlobalPool +0xbb XOR EDX,EDX` 로 0 을 넘긴다. 이 갈래는 로더 풀 (`LdrpEnableParallelLoading +0x38 MOV EDX,1`) 만 탄다. 그래서 `+0xb83 ~ +0xc2d` syscall 은 **30 그대로**. D9 의 `ntdll+0xe5e43` 덧붙임은 필요 없다. 자세히는 `runs/03_sprint/run69-loader-pool.md`.
+
 ## PE_emulator 쪽에서 쓸 것
 
 **결론 셋.**
