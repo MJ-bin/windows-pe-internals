@@ -4,10 +4,10 @@
 
 - 타깃: Windows 11 24H2, **26100.9457**
   - ntkrnlmp.pdb: `C29EBFB06B78B3C020DCA66D99713F9E1` (run9 ~ run13, run15, run16, run29, run31, run32, run33, run34, run41, run42, run43, run45, run47, run48, run49, run50, run51, run52, run53, run54, run55, run56, run57, run59, run60, run63, run64, run65, run66, run67, run68, run69 — run69 는 `NtSetInformationWorkerFactory` 하나만 읽음, run70 — 부팅 때 CPU 기능 사슬 (`entry`·`KiInitializeBootStructures`·`KiSetProcessorSignature`·`RtlDetectProcessorFeatures`·`KiPublishProcessorFeatures`·`KiInitializeNxSupportDiscard`·`KiInitializeKernel`·`InitBootProcessor`·`KiSetFeatureBits`) 와 `MmCreatePeb +0x4cc`)
-  - kernelbase.pdb: `72CCE506944DE0267C172AD64287F9BD1` (run14, run25, run34, run51, run67, run68)
-  - kernel32.pdb: `AE9E9D8F7AC1467A645320FDC23235D01` (run25, run34, run67, run68)
+  - kernelbase.pdb: `72CCE506944DE0267C172AD64287F9BD1` (run14, run25, run34, run51, run67, run68, run71)
+  - kernel32.pdb: `AE9E9D8F7AC1467A645320FDC23235D01` (run25, run34, run67, run68, run71)
   - ntdll.pdb: `C3093720177DA6851519DCFFE8DF53FE1` (run17, run18, run19, run20, run21, run22, run23, run24, run26, run27, run28, run29, run34, run35, run36, run38, run39, run41, run43, run45, run46, run51, run54, run56, run57, run58, run59, run60, run61, run62, run63, run65, run66, run67, run68, run69, run70)
-  - basesrv.pdb: `4B0951C4FAD4CCBDDFDAA284D1ED2C2E1`, csrsrv.pdb: `32C5AA2B9D0AF671C35069A02C5A0C041` (run34 — csrss 프로세스 안에서 도는 DLL, 처음 analyze. run51 csrsrv `CsrSetExceptionPort` 한 함수 더, run68 basesrv `BaseClientConnectRoutine` 한 함수 더)
+  - basesrv.pdb: `4B0951C4FAD4CCBDDFDAA284D1ED2C2E1`, csrsrv.pdb: `32C5AA2B9D0AF671C35069A02C5A0C041` (run34 — csrss 프로세스 안에서 도는 DLL, 처음 analyze. run51 csrsrv `CsrSetExceptionPort` 한 함수 더, run68 basesrv `BaseClientConnectRoutine` 한 함수 더, run71 basesrv `ServerDllInitialization` 등 12개·csrsrv `CsrSrvCreateSharedSection`·`CsrServerDllInitialization`·`CsrApiHandleConnectionRequest` — 공유 섹션 블록을 만드는 쪽)
   - ahcache.pdb: `D54D2D17350903291E74D1E13B85E1831` (run66 — `System32\drivers\ahcache.sys`, 커널 드라이버. `NtApphelpCacheControl` 이 IOCTL 을 던지는 곳이라 처음 analyze)
   - cmd.pdb: `6E820A0DD74C2CA6E23F25DEBA1651261` (run34 — 부모 cmd.exe. Ghidra 로 안 걸고 `objdump` 줄에 이름만 붙임, 참고용)
   - test.pdb: `C66E7084C5CA4874B1677F6F1C36A0511` (run30. MS 것이 아니라 sample 빌드의 로컬 pdb, 사용자가 VM 에서 돌린 `sample/bin/` 파일)
@@ -41,6 +41,7 @@
   - (run68) 정적 바퀴. kernelbase·kernel32 시작 함수 안 나머지의 갈래 값 대조에 run44 덤프 읽기 로그 (`ms/logs/04_baggage-read_P1a.txt` — PEB CSR 칸 1763·1829줄 0, `SessionId` 1798줄, `CSDVersion` 1804줄, `UseCaseMapping` 1817줄, `NumberOfProcessors` 1769줄, 매개변수 `ConsoleHandle`·`ConsoleFlags` 2513 · 2514줄, KUSD `SuiteMask` 2922줄 · `SharedDataFlags` 2938줄. `_P1b.txt` 2461 · 2463 · 2502 · 2527줄, `_P2.txt` 2473 · 2508 · 2514 · 2539줄) 를 다시 읽었다 (결과서 + flow-writer). **kernelbase·kernel32 `.data` 는 여전히 사진에 없다.** 새 동적 실행은 없다.
   - (run69) 정적 바퀴. 로더 전용 스레드 풀·힙 GC 타이머 값 대조에 run44 덤프 읽기 로그의 ntdll `.data` 줄 (`ms/logs/04_baggage-read_P1a.txt` — `TppPoolpList` 3564 ~ 3565줄, GC 타이머 `0x1ce270` 4001 ~ 4002줄, `TppPoolpListLock` 5026줄, `TppPoolpGlobalPool` 5027줄, `LdrpThreadPool` 5078줄, `LdrpDetourExist` 5083줄, `LdrpMapAndSnapWork` 5086줄. `_P1b.txt` 4682 ~ 4683 · 5119 ~ 5120 · 6144 · 6196 · 6201 · 6204줄, `_P2.txt` 4694 ~ 4695 · 5131 ~ 5132 · 6156 · 6208 · 6213 · 6216줄) 를 다시 읽었다 (flow-writer). 풀 개체 자체 (힙 안) 는 사진에 없다. 새 동적 실행은 없다.
   - (run70) 정적 바퀴. CPU 기능 짐 값 대조에 run44 덤프 읽기 로그를 다시 읽었다 (flow-writer): KUSD `ProcessorFeatures` 64칸·`+0x3d8` 은 커널 별칭 줄 (`ms/logs/04_baggage-read_supp_<K1 ~ P2>.txt` 326 ~ 330 · 348줄, 8장 같음) 과 유저 주소 줄 (`_P1a.txt:3034 ~ 3038`, `_P1b.txt:4152 ~ 4156`, `_P2.txt:4164 ~ 4168 · 4186`), ntdll `.data` SymCrypt·`x86_cpu_enable_*` 줄 (`_P1a.txt` 3829 · 5016 · 5021 · 5305줄, `_P1b.txt` 4947 · 6134 · 6139 · 6423줄, `_P2.txt` 4959 · 6146 · 6151 · 6435줄), PEB `+0x318` 8장 (`_K1.txt:1634` ~ `_P2.txt:2519`). 커널 전역 `KeFeatureBits`·`KeFeatureBits2` 는 사진에 없다. 새 동적 실행은 없다.
+  - (run71) 정적 바퀴. 이름 있는 객체 짐의 값 대조에 run44 덤프 읽기 로그의 **핸들 목록·폴더 목록** (`ms/logs/04_baggage-read_P1a.txt` 핸들 `0x4 ~ 0x70` — 폴더 없음, `_P1b.txt` 1481 ~ 1491줄 근처 — `0x7c` Mutant `SM0:7632:304:WilStaging_02` · `0x80` Directory `BaseNamedObjects` (접근 `0xf`) · `0x84`·`0x88` Semaphore, `_P2.txt` 2147 ~ 2151줄 — `0xbc` Mutant `DBWinMutex` (`0x120001`), P2 토큰 구획 `TS Session ID 0x1`) 과 run68 이 옮긴 PEB CSR 칸 값을 다시 읽었다 (flow-writer). kernelbase `.data`·공유 뷰 안 블록은 사진에 없다. 새 동적 실행은 없다.
   - run44 의 `[관찰]` 은 "그 순간 메모리에 그 값이 있었다" 이다. 호출을 콜스택으로 본 것은 지점 8곳의 `k` 뿐이다 (run44 "지점별 라이브 관찰").
 - 정적 근거: `runs/02_sprint/` run9 ~ run42 (Ghidra 디컴파일·디스어셈블, pdb GUID 위와 같음. run9 ~ run13·run15·run16·run31 ~ run33 ntoskrnl, run14 KernelBase, run17 ~ run24·run26 ~ run28 ntdll, run25 kernel32·KernelBase, run29 ntoskrnl·ntdll, run30 test.exe, run34 kernel32·KernelBase·ntdll·ntoskrnl·basesrv·csrsrv (+ cmd.exe 참고), run35·run36 ntdll, run37 kernel32·KernelBase·apisetschema **PE 표만** (Ghidra 안 씀), run38·run39 ntdll, run40 dll1·dll2 (sample 빌드), run41 ntdll·ntoskrnl, run42 ntoskrnl. run16 은 ntdll 기존 export `LdrInitializeThunk.asm` 도 씀) · `runs/03_sprint/` run43 (ntoskrnl·ntdll PDB 타입 레코드·공개 이름 + ntoskrnl `MmCreateTeb` 첫 export — 짐 지도 체크리스트) · run45 (ntdll depth 0 14개 읽기만 + 일 목록 86개·callee 637줄 분류·PDB 타입 정의 확인 — sast/39) · run46 (ntdll 프로세스 힙 구간 depth 1 함수 약 44개 읽기만 + PDB `_HEAP`·`_PEB` 등 칸 — sast/40, 짐 지도 Q78a) · run47 (ntoskrnl 섹션 사슬·exe 열기 depth 0 35개 새로 + sast/26 13개 읽기만, PDB 칸은 `pdb_struct.py` — sast/41, 짐 지도 Q78b) · run48 (ntoskrnl 부팅 준비 갈래 `PsLocateSystemDlls` 등 depth 0 약 23개 새로 + 3개 읽기만, 새 지도 뿌리 `PsLocateSystemDlls`, 표 처음 값은 PE 바이트 — sast/42, Q93. **흐름도 범위 앞 (부팅)**) · run49 (ntoskrnl 프로세스 객체 앞부분 depth 0 35개 새로 + 8개 읽기만, PDB 칸은 `pdb_struct.py`, 일부는 `objdump` 로만 — sast/43, 짐 지도 Q78c1) · run50 (ntoskrnl 프로세스 객체를 만들 때 depth 0 27개 새로 + 12개 읽기만, 끝까지 0 칸은 커널 전체 `objdump` 훑기 (오프셋 숫자 일치 — 오탐 가능), 칸은 sast/38 `struct__EPROCESS.tsv` — sast/44, 짐 지도 Q78c2a) · run51 (ntoskrnl 프로세스 객체 뒤 구간 depth 0 21개 새로 + 14개 읽기만, 부르는 쪽 찾기로 ntdll 4·kernelbase 1·csrsrv 1, 드라이버 (`mssecflt.sys`·`bam.sys`)·win32k 는 `objdump` + 공개 PDB 이름만 — sast/45, 짐 지도 Q78c2b) · run52 (ntoskrnl 스레드 객체 앞부분을 만들 때 depth 0 9개 새로 + 8개 읽기만, 끝까지 0 칸은 커널 전체 `objdump` 훑기 (오프셋 숫자 일치 — 오탐 가능, `LEA` 뒤 쓰기는 못 잡음), 칸은 `pdb_struct.py` + sast/38 `struct__KTHREAD.tsv` — sast/46, 짐 지도 Q78d1) · run53 (ntoskrnl 스레드 객체 나머지·트랩 프레임을 만들 때 depth 0 10개 새로 + 나머지 읽기만, 끝까지 0 칸은 커널 전체 `objdump` 훑기 (먼 조각 포함, 오프셋 숫자 일치 — 오탐 가능, `LEA` 뒤 쓰기는 못 잡음) — sast/47, 짐 지도 Q78d2) · run54 (ntoskrnl·ntdll TEB 를 채울 때 depth 0 25개 새로 (커널 9 · ntdll 16) + 나머지 읽기만, 끝까지 0 칸은 ntdll·커널·KERNELBASE·KERNEL32 전체 TEB 오프셋 `objdump` 훑기 (`gs:[0x30]`·`KTHREAD.Teb` 레지스터 추적 — 오탐·누락 가능), 칸은 `pdb_struct.py` (`_TEB`·`_TEB32`) — sast/48, 짐 지도 Q78d3) · run55 (ntoskrnl `RtlGetExtendedContextLength2` depth 0 1개 새로 + `RtlGetExtendedContextLength3`·`PspInitializeThunkContext`·`RtlpValidateContextFlags2` 읽기만 — sast/49, Q103 PE_emulator 요청 1) · run56 (ntoskrnl 시스템 콜 입구·칸 풀기·출구 depth 0 10개 + `_refs` 7개, ntdll 스텁 바이트 스캔, `KiSystemCall64` 는 Ghidra 함수가 아니라 `objdump` 로만, 번호표는 PE 파일 `KiServiceTable`·`KiArgumentTable` 을 임시 스크립트로 — sast/51, Q106 PE_emulator 요청 3) · run57 (NLS·ApiSet 길 — ntoskrnl depth 1 뿌리 셋 (26개) · ntdll depth 1 뿌리 둘 (7개) + depth 0 17개 (요청 5 · 결과서가 넓힌 12, ntoskrnl 에 ntdll 과 같은 이름의 커널 사본 넷 포함) + `_refs` 13개, 문자열·`apisetschema.dll` 머리는 `pefile` — sast/52, Q108 PE_emulator 요청 4-A. 부팅 쪽 (`MiInitializeApiSets`·`ExInitializeNls`) 은 **흐름도 범위 앞**) · run59 (초기화 남은 일 — ntdll depth 1 뿌리 다섯 (14개) + `LdrpGenSecurityCookie`, ntoskrnl depth 1 뿌리 다섯 (18개) + depth 0 여섯 + `_refs`, `PEB+0x7b8` 읽는 함수는 `objdump` 검색, import 스텁·`.data` 처음 값·test.exe 자원은 PE 바이트 — sast/54, Q109 나머지 PE_emulator 요청 4-B~E. 부팅 쪽 `ExInitializeLeapSecondData` 는 **흐름도 범위 앞**) · run61 (RandomEx 난수 벡터 첫 켜기 — ntdll depth 0 7개 새로 (`RtlpInitRandomExVector`·`RtlRunOnceComplete`·`RtlpRunOnceWaitForInit`·`RtlHeapTrkInitialize` + IFEO 길 셋) + 8개 읽기만, `_refs` 7개, 앞쪽 닿는 길은 지도 `_map/LdrInitializeThunk_edges.tsv` — sast/56, Q116 PE_emulator 요청 9) · run62 (스레드 풀·ETW 등록·기능 상태 — ntdll depth 0 대상 13개 + 줄기를 끝까지 가려고 보탠 약 50개 (`Tp*`·`Tpp*`·`Etwp*`·`wil_details_*`·`RtlpFc*`) + depth 1 넷, `_refs` 약 40개, GUID·TraceLogging 메타데이터는 ntdll 파일 바이트 — sast/57, Q118 PE_emulator 요청 10) · run63 (CFG·ScpCfg 함수 표 — ntdll 대상 10개 + 길 따라 11개, ntoskrnl 대상 3개 (`NtQueryVirtualMemory`·`MmQueryVirtualMemory`·`MiQueryImageExtensionInformation`) + 값의 출처를 따라 12개 (`MiGetImageExtensionBaseAddress`·`MiMapViewOfImageSection`·`PsInitializeScpCfgPages` 등) 모두 depth 0, 새 `_refs` (ntoskrnl) 4개, ntdll 구역·내보내기·로드 구성 값은 PE 바이트 — sast/58, Q120a PE_emulator 요청 11 의 1 ~ 6) · run64 (ApiSet 부팅 위상 정정 — Ghidra 안 씀, 이미 있는 ntoskrnl `.asm` 13개·`_calls.tsv`·`_refs` 넷 + PDB 타입 `_MI_SYSTEM_INFORMATION`·`_MI_SECTION_STATE`·공개 심볼 `MiState` — sast/60, Q120c PE_emulator 요청 11 의 8번) · run65 (`LdrpInitializeProcess` 줄기 위 초기화 본문 — ntdll 대상 24개 + 길 따라 8개 depth 0 새로 + 16개 읽기만, ntoskrnl `NtQuerySystemInformation`·`ExpQuerySystemInformation` (클래스 `0xfa` 갈래만)·`KiSetFeatureBits`·`PspSchedulerSharedDataRegionCreate` depth 0, 새 `_refs` ntdll 9 · ntoskrnl 3, 마스크 표 바이트·test.exe TLS 디렉터리·`TimeDateStamp` 는 PE 파일 — sast/59, Q120b PE_emulator 요청 11 의 7번)
   - PE 헤더·import·export 표는 `pefile` 로 읽었다 (run25). KERNELBASE·kernel32·ntdll 의 TLS 디렉터리도 PE 파일에서 읽었다 (run28). Ghidra 는 PE 진입점 함수를 PDB 이름 대신 `entry` 로 잡는다 (run25). 글에선 PDB 이름을 쓴다.
@@ -473,7 +474,7 @@ flowchart LR
     class cb1,cb2,cb3,cb4 unkg
 ```
 
-### 그림 2 — test.exe 메인 스레드 (run4 ~ run8, run13, run14 메모, run15, run16, run17, run18, run19, run20, run21, run22, run23, run24, run25, run26, run27, run28, run29, run30, run33, run35, run36, run38, run39, run40, run44, run46, run56, run61, run62, run63, run65, run66, run67, run68, run69)
+### 그림 2 — test.exe 메인 스레드 (run4 ~ run8, run13, run14 메모, run15, run16, run17, run18, run19, run20, run21, run22, run23, run24, run25, run26, run27, run28, run29, run30, run33, run35, run36, run38, run39, run40, run44, run46, run56, run61, run62, run63, run65, run66, run67, run68, run69, run71)
 
 ```mermaid
 flowchart LR
@@ -739,6 +740,12 @@ flowchart LR
                 q1["ntdll!NtContinue<br/>(관찰 run44: 콜스택 LdrInitializeThunk+0x18, rcx = 맡긴 문맥.<br/>정적: 맡긴 문맥, TRUE. +0x3 EAX = 0x43.<br/>성공하면 +0x14 로 안 돌아옴)"]
                 r1["ntdll!RtlUserThreadStart<br/>(정적: rcx = 진입점, rdx = PEB.<br/>칸 Kernel32ThreadInitThunkFunction 을 (0, rcx, rdx) 로<br/>CFG 간접 호출, 안 돌아오는 설계.<br/>칸 0 이면 진입점 직접 → RtlExitUserThread.<br/>__except → NtTerminateProcess)"]:::ntg
             end
+            subgraph PH5["이름 있는 객체 — OutputDebugStringA 아래 ntdll 스텁 (정적 run71. 첫 호출은 (2) 안 dll2 TLS, 소스)"]
+                direction LR
+                od1["ntdll!NtOpenDirectoryObject<br/>(정적 run71: 접근 0xf, 이름 = 공유 섹션 블록 +0x20<br/>\Sessions\1\BaseNamedObjects. 이 프로세스 폴더 핸들 0x80 은<br/>P1a ~ P1b 에 이미 생김 — 관찰 run44, 연 곳은 공백)"]:::ntg
+                od2["ntdll!NtCreateMutant<br/>(정적 run71: 0x2120001, Root = 폴더, DBWinMutex.<br/>이미 있으면 0x40000000. 핸들 0xbc 는 P1b ~ P2 — 관찰 run44)"]:::ntg
+                od3["ntdll!DbgPrint<br/>(정적 run71: DBWIN 듣는 쪽이 없을 때 %s 로.<br/>kernelbase 중개 0x180126d60 거침)"]:::ntg
+            end
         end
 
         subgraph T2KB["KERNELBASE"]
@@ -747,11 +754,18 @@ flowchart LR
             bm1["KERNELBASE!KernelBaseBaseDllInitialize<br/>(정적 run67: 모든 이유. +0x2d _DllMainCRTStartupForGS2 뒤<br/>+0x44 에서 꼬리 JMP)"]:::k32g
             bm2["KERNELBASE!_KernelBaseBaseDllInitialize<br/>(정적: 이유 1 갈래 대표만 그림. run67: 사이 +0x1d6 RtlCreateTagHeap<br/>→ KernelBaseGlobalData+0 = 0. run68: 안 그린 것 — +0x241 NtQuerySystemInformation 0 → SysInfo,<br/>+0x4b2 예외 필터, +0x508 락, +0x165 ETW 등록 (콘솔 뒤), +0x189 DisableRegCaching… (본문 안 탐))"]:::k32g
             bm3["KERNELBASE!KernelBaseDllInitializeMemoryManager<br/>(정적 run67: BaseHeap ← PEB.ProcessHeap (PEB+0x30) 그대로, 새 힙 없음.<br/>SystemRangeStart 가 0 이면 NtQuerySystemInformation 0x32 — 커널 상수.<br/>RtlInitializeHandleTable 0xffff, 0x10 → BaseHeapHandleTable.<br/>KernelBaseGlobalData +0x40 · +0x48 · +0x50 에 사본)"]:::k32g
-            bn1["KERNELBASE!BaseNlsDllInitialize<br/>(정적 run68: gpServerNlsUserInfo ← BaseStaticServerData+0x178 →<br/>NlsProcessInitialize. NtGetNlsSectionPtr 0xe · 0xb, NtInitializeNlsFiles —<br/>run57 과 같은 섹션을 자기 뷰로 또. MakeLocHashNode 0x7f 아래는 공백)"]:::k32g
+            bn1["KERNELBASE!BaseNlsDllInitialize<br/>(정적 run68: gpServerNlsUserInfo ← 주소 BaseStaticServerData+0x178<br/>(LEA, 안 읽음 — run71 정정) →<br/>NlsProcessInitialize. NtGetNlsSectionPtr 0xe · 0xb, NtInitializeNlsFiles —<br/>run57 과 같은 섹션을 자기 뷰로 또. MakeLocHashNode 0x7f 아래는 공백)"]:::k32g
             bc1["KERNELBASE!ConsoleInitialize<br/>(정적 run68: 콘솔 앱 · ConsoleHandle 4 → 부모 콘솔에 붙기.<br/>ConsoleCreateConnectionObject → NtCreateFile 핸들4 기준 \Connect →<br/>ConsoleCommitState: ConsoleHandle ← 새 핸들 (run51). syscall 3)"]:::k32g
             m4["KERNELBASE!LoadLibraryExW ×3<br/>(dll2 CRT 가 부름 — run7 7번 …f5fb<br/>= dll2 try_get_function_slow +0x73, 정적 run40)"]:::k32
             m5["KERNELBASE!LoadLibraryExW ×3<br/>(dll1 CRT 가 부름 — run7 9번 …f60b<br/>= dll1 try_get_function_slow +0x73, 정적 run40)"]:::k32
             m2["KERNELBASE!LoadLibraryExW ×3<br/>(test.exe CRT 가 부름 — run7 13번)"]:::k32
+            subgraph KBOD["이름 있는 객체 폴더 — OutputDebugStringA 길 (정적 run71)"]
+                direction LR
+                ka1["KERNELBASE!OutputDebugStringA<br/>(정적 run71: +0x7c RaiseException 0x40010006 →<br/>__except 몸통 (objdump) → 뮤텍스 → 기다림 → DBWIN_BUFFER 열기 →<br/>못 열면 DbgPrint. W 판도 이리로)"]:::k32g
+                ka2["KERNELBASE!CreateDBWinMutex<br/>(정적 run71: 전역 0x3ad968 · 깃발 0x3ad960 둘 다 0 일 때 — 처음 한 번.<br/>SID 4 · DACL · SACL → 폴더 아래 DBWinMutex)"]:::k32g
+                ka3["KERNELBASE!BaseGetNamedObjectDirectory<br/>(정적 run71: 캐시 BaseNamedObjectDirectory 0x3af0e0 가 있으면 +0x22 에서 끝.<br/>없으면 NtOpenProcessToken → 아래 → CMPXCHG 캐시 → NtClose)"]:::k32g
+                ka4["KERNELBASE!BasepGetNamedObjectDirectoryForToken<br/>(정적 run71: EDX 0 이라 세션 0·N 둘 다 +0x2b0 BaseStaticServerData →<br/>+0x2b7 블록 +0x20 폴더 이름, Buffer 를 블록지역 − [블록+0x9e8] 로 옮김.<br/>토큰 질문 0xc · 0x1d · 0x2a · 0x2c)"]:::k32g
+            end
         end
         subgraph T2K32["KERNEL32"]
             direction LR
@@ -763,7 +777,7 @@ flowchart LR
         end
         subgraph T2D2["dll2"]
             direction LR
-            f0["dll2!Dll2Tls<br/>(소스상 TLS 콜백, 실행 미관찰)"]:::dll2g
+            f0["dll2!Dll2Tls<br/>(소스상 TLS 콜백, 실행 미관찰.<br/>소스: Log → OutputDebugStringA — 이 프로세스 첫 호출 (run71))"]:::dll2g
             f1["dll2 진입점 = PE AddressOfEntryPoint<br/>(rva 0x1d50, dll2!_DllMainCRTStartup)<br/>— 여기부터 컴파일러 CRT (OS 아님, 정적 run40).<br/>이름은 run8 rcx 로 봄, 들어가는 건 미관찰.<br/>쿠키 뒤 꼬리 JMP 라 k 엔 안 남음. CRT 준비 뒤<br/>dllmain_dispatch +0x96 자리에서 DllMain, lpReserved 그대로.<br/>CRT 안쪽은 2.8 참고 (지도 범위 밖)"]:::dll2g
             f2["dll2!DllMain (이유 1)"]:::dll2
         end
@@ -777,7 +791,7 @@ flowchart LR
             direction LR
             e1["test!ExeTls (이유 1)"]:::exe
             m1["exe 진입점 = PE AddressOfEntryPoint<br/>(rva 0x1d40, test!mainCRTStartup)<br/>— 여기부터 컴파일러 CRT (OS 아님, 정적 run30).<br/>커널은 헤더 값을 Rcx 로 넘길 뿐. 받은 PEB 는 안 씀.<br/>main 전에 LoadLibraryExW ×3 을 부름 (관찰 run7,<br/>부른 자리 test+0x57723 = CRT 안, 정적 run30).<br/>CRT 안쪽은 2.10 참고 (지도 범위 밖)"]:::exeg
-            m3["test!main"]:::exe
+            m3["test!main<br/>(정적 run71: +0x12 → Log +0x1e0 → IAT OutputDebugStringA.<br/>Log 는 sample 코드라 안 그림. PE_emulator 가 은퇴 뒤 멈춘 자리)"]:::exe
         end
         subgraph T2CB["모듈 모름 — 간접 호출 (대상은 실행 때)"]
             direction LR
@@ -1054,6 +1068,16 @@ flowchart LR
     m1 -->|"(1) ?"| m2
     m2 -.-> m1
     m1 -->|"(2) ?"| m3
+
+    %% 진입점 뒤·dll2 TLS 가 kernelbase 를 다시 부름 — 이름 있는 객체 폴더 (정적 run71)
+    f0 -->|"?"| ka1
+    m3 -->|"?"| ka1
+    ka1 -->|"(1) +0xc2"| ka2
+    ka1 -->|"(2) +0x279"| od3
+    ka2 -->|"(1) +0x371"| ka3
+    ka2 -->|"(2) +0x3cf"| od2
+    ka3 -->|+0xb0| ka4
+    ka4 -->|+0x386| od1
 
     class b1,b2 kern
 ```
@@ -3067,7 +3091,7 @@ _LdrpInitialize (LdrpInitializeProcess 뒤)
 - `[정적]` PEB `+0x318` 을 쓰는 줄은 둘 — 커널 `MmCreatePeb +0x4cc` (← `MmRegistryState+0x28`, 레지스트리 `MinimumStackCommitInBytes`, 2.1 `MmCreatePeb`) · ntdll `LdrpInitializeExecutionOptions +0x413` (IFEO 값이 클 때만, `LdrpInitializeProcess +0x531/+0x536` 안). test.exe 는 매개변수 `Flags` 비트 14 `0x4000` (IFEO 키 없음) 이 켜져 있어 (사진 값 `0x4001` `[관찰]` `04_baggage-read_K1.txt:2337`) IFEO 줄에 안 닿는다.
 - `[관찰]` run44 사진 (flow-writer 가 다시 읽음): `g_SymCryptCpuFeaturesNotPresent` P1a·P1b `0xffffffff` → **P2 `0xffffc020`** (표 20줄 모두 "있음"), `g_SymCryptCpuid1` P2 EAX `0x00a60f12` (가문 `0x19` — AMD 계열 `[추측]`)·ECX `0xfef83203`, `g_SymCryptFlags` P2 1, `PresentCheck` P2 `0x3fdf`, `x86_cpu_enable_*` P2 1·`0x200`·1, PEB `+0x318` 8장 0. 정적 규칙과 어긋나는 값 없음.
 
-### 2.5 `ntdll` → `KERNELBASE` / `KERNEL32` 준비 (run7, run8, run19, run20, run21, run22, run23, run24, run25, run26, run28, run37, run38, run57, run65, run66, run67, run68)
+### 2.5 `ntdll` → `KERNELBASE` / `KERNEL32` 준비 (run7, run8, run19, run20, run21, run22, run23, run24, run25, run26, run28, run37, run38, run57, run65, run66, run67, run68, run71)
 
 먼저 두 단어를 나눈다. 이 구간에서 **관찰한 건 전부 "켜기"** 다.
 
@@ -3373,7 +3397,7 @@ KERNELBASE!_KernelBaseBaseDllInitialize (0x4e6c0)      이유 1 갈래 (run67 �
  │      +0x32b BaseStaticServerData = [PEB+0x98]+8 − PEB+0x380 + PEB+0x88 · +0x342 BaseRCNumber · KernelBaseGlobalData +0x4 · +0x8 ~ +0x27
  ├─ (3) +0x4b2  ntdll!RtlSetUnhandledExceptionFilter(kernelbase!UnhandledExceptionFilter) → +0x9 RtlpUnhandledExceptionFilter ← Encode
  │      +0x4c0  RtlEncodePointer(0) → +0x4ce BasepCurrentTopLevelFilter
- ├─ (4) +0x4e6  BaseNlsDllInitialize → +0x10 gpServerNlsUserInfo ← BSSD+0x178 → +0x1c NlsProcessInitialize
+ ├─ (4) +0x4e6  BaseNlsDllInitialize → +0x10 gpServerNlsUserInfo ← 주소 BSSD+0x178 (LEA, 안 읽음 — run71 정정) → +0x1c NlsProcessInitialize
  │                (NtGetNlsSectionPtr 0xe ×1 · NtInitializeNlsFiles ×1 (ntdll RtlGetLocaleFileMappingAddress) · NtGetNlsSectionPtr 0xb ×1~2,
  │                 +0x64 MakeLocHashNode(0x7f) 아래는 [공백])
  ├─ (5) +0x508  ntdll!RtlInitializeCriticalSection(&KernelBaseGlobalData+0xb0)   DebugInfo = -1, 스핀 0x20007d0
@@ -3397,12 +3421,47 @@ KERNEL32!_BaseDllInitialize (0x2c610)      attach 갈래:
   - kernelbase 는 응답으로 `BaseStaticServerData` (`0x3aedb8`) · `BaseRCNumber` · `KernelBaseGlobalData +0x4`·`+0x8 ~ +0x27` (Windows·시스템 디렉터리 글 머리 — 뜻은 `[추측]`) 를 채운다. kernel32 도 같은 식으로 자기 `BaseStaticServerData` 를 두 번 (`_BaseDllInitialize +0x189`, `_Kernel32LegacyLib… +0x28 ~ +0x5c`).
 - `[정적]` **`SysInfo` 두 벌** = 클래스 0 (`SystemBasicInformation`) `0x40`B. kernelbase 것 (`0x3aee60`) 은 `+0x241`, kernel32 것 (`0xc2260`) 은 `_Kernel32LegacyLib… +0xa3` — 각각 이 한 줄만 채운다 (`_refs`). 커널 `ExpGetSystemBasicInformation` 의 칸 11개 중 **상수 5** (`+0x0` 0 · `+0x8` `0x1000` · `+0x18` `0x10000` · `+0x20` `0x10000` · `+0x28` `0x7ffffffeffff`) · 부팅 때 정해지는 6. kernelbase 는 `+0x8`·`+0x18`·`+0x20`·`+0x28` 을, kernel32 는 `+0x8` 만 읽는다. 길이가 `0x40` 이 아니면 `0xC0000004`.
 - `[정적]` **예외 필터**: `RtlSetUnhandledExceptionFilter` (21B) = `RtlEncodePointer(인자)` 를 `RtlpUnhandledExceptionFilter` (ntdll `0x1d28e8`) 에 (`+0x9`). 이 칸의 첫 쓰기는 2.4 `LdrpInitializeProcess +0x134` (인코딩된 0), 여기가 둘째. 이어 kernelbase `BasepCurrentTopLevelFilter` ← 인코딩된 0. 쿠키 `CookieValue` 는 이미 있어 syscall 없음 (run59).
-- `[정적]` **NLS** (`BaseNlsDllInitialize`): run57 (ntdll `LdrpInitializeNlsInfo`) 과 **같은 섹션을 kernelbase 가 자기 뷰로 또** 연다 — `SetupMainNlsFiles +0x4f/+0x56 NtGetNlsSectionPtr(0xe)` (`UseCaseMapping 0x6a5` `[관찰]`), `SetupAnsiOemCodeHashNodes` → `GetCPHashNode +0x2d3/+0x2da NtGetNlsSectionPtr(0xb, 949)`. 로케일 파일은 ntdll `RtlGetLocaleFileMappingAddress` 가 처음 한 번 `NtInitializeNlsFiles` (`+0x29/+0x2e`) 로 붙이고 ntdll 캐시 `gSystemLocale` (`+0x34`) · `gBaseAddress` (`+0x3f CMPXCHG`) 에 둔다 — ntdll 초기화 줄기엔 이 호출이 없어 **여기가 처음** `[정적, 지도 기준]`. `NlsProcessInitialize +0x5f/+0x64 MakeLocHashNode(0x7f)` 아래 (레지스트리·csrss 후보) 는 `[공백]`.
+- `[정적]` **NLS** (`BaseNlsDllInitialize`): (run71 정정) 첫 줄 `gpServerNlsUserInfo ← BSSD + 0x178` 은 **주소만** 만든다 (`+0x9 LEA` · `+0x10 MOV`) — 이 함수와 `NlsProcessInitialize` 는 그 영역을 안 읽고, csrss 도 초기화 때 그 영역을 안 채운다 (0). run57 (ntdll `LdrpInitializeNlsInfo`) 과 **같은 섹션을 kernelbase 가 자기 뷰로 또** 연다 — `SetupMainNlsFiles +0x4f/+0x56 NtGetNlsSectionPtr(0xe)` (`UseCaseMapping 0x6a5` `[관찰]`), `SetupAnsiOemCodeHashNodes` → `GetCPHashNode +0x2d3/+0x2da NtGetNlsSectionPtr(0xb, 949)`. 로케일 파일은 ntdll `RtlGetLocaleFileMappingAddress` 가 처음 한 번 `NtInitializeNlsFiles` (`+0x29/+0x2e`) 로 붙이고 ntdll 캐시 `gSystemLocale` (`+0x34`) · `gBaseAddress` (`+0x3f CMPXCHG`) 에 둔다 — ntdll 초기화 줄기엔 이 호출이 없어 **여기가 처음** `[정적, 지도 기준]`. `NlsProcessInitialize +0x5f/+0x64 MakeLocHashNode(0x7f)` 아래 (레지스트리·csrss 후보) 는 `[공백]`.
 - `[정적]` **`+0x508` 의 락** = `KernelBaseGlobalData+0xb0` (rva `0x3aef70`, `0x28`B) — 잡는 곳 `GetComputerNameExW`, 지우는 곳 `BasepUnInitComputerNameCache` → 컴퓨터 이름 캐시 락. `RtlInitializeCriticalSection` (rva `0xd65c0`) 은 `LockCount −1`·`SpinCount 0x20007d0` (CPU 2개 `[관찰]`)·**`DebugInfo −1`** (`+0x51`). 디버그 정보는 `RtlpForceCSDebugInfoCreation ≠ 0` 일 때만 만든다 (`+0x58`·`+0x5f JZ`) — 그 바이트는 `LdrpInitializeProcess +0x999`·`+0x9b5`·`+0x1a10` 만 1 로 쓰고 (`NtGlobalFlag & 0x1000` 등), test.exe 는 0 이라 `RtlCriticalSectionList` 에 안 끼운다. syscall 없음.
 - `[정적]` **콘솔** (`ConsoleInitialize`, rva `0xbeb60`): 콘솔 앱 (`ConsoleIsConsoleApplication ← 1`) · 매니페스트 없음 → `ConsoleShouldAllocateConsole` TRUE → `ConsoleHandle = 4` (실제 핸들) 라 **새 콘솔을 만들지 않고 부모 콘솔에 붙는다**: `ConsoleCreateConnectionObject` 가 연결 데이터 `0x53c`B 를 EA 로 싸서 `NtCreateFile(기준 = 핸들 4, "\Connect")` → `ConsoleCommitState` (run51: `ConsoleHandle ← 새 핸들`, `NtDeviceIoControlFile(0x500023)`, `NtSetInformationProcess(0x31)`). syscall 3번. `[관찰]` run44 `ConsoleHandle 4 → 0x60` 과 맞는 갈래.
 - `[정적]` **ETW**: 공급자 `Microsoft.Windows.Kernel.Base` (GUID `{3c74afb9-8d82-44e3-b52c-365dbf48382a}`, kernelbase `0x3a9020`) — run62 TraceLogging 꼴 그대로. 이 프로세스 5번째 등록이라 첫 등록만의 Once 넷은 없고 `NtTraceControl` 2번.
 - `[정적]` **test.exe 에서 안 타는 셋**: `DisableRegCachingForConstrainedImpersonation` 본문 (멀티세션 SKU — KUSD `SharedDataFlags 0x10e` 비트 8 `[관찰]`; 본문은 레지스트리가 아니라 **토큰**을 봄) · `RtlSetProtectedPolicy` (`MajorSubsystemVersion` 6) · `GetRegistryExtensionFlags` (TS 인식 exe).
 - `[정적]` **kernel32 `LdrDisableThreadCalloutsForDll`** (81B): kernel32 항목 `TlsIndex (+0x6e) == 0` 이라 `+0x3b OR byte [항목+0x6a],4` — `Flags` 비트 18 `DontCallForThreads`. 그 뒤 새 스레드 attach/detach 때 kernel32 시작 함수를 안 부른다 `[추측: 비트 이름]` (3장 `test!Worker` 스레드 때 볼 것).
+
+#### csrss 공유 섹션 블록 `BaseStaticServerData` 와 이름 있는 객체 폴더 — csrss 쪽 `CsrSrvCreateSharedSection` · `ServerDllInitialization` · `CsrApiHandleConnectionRequest`, 이 프로세스 쪽 폴더 핸들 (run71 `[정적]` + run44 사진 `[관찰]`, sast/66, Q136 — PE_emulator 요청 22)
+
+run68 이 "kernelbase 가 `BaseStaticServerData` 를 셈한다" 까지 봤다. 이번엔 그 포인터가 가리키는 **블록**을 누가 언제 짓고, 이 프로세스가 그 블록의 무엇을 읽는지를 봤다. 블록을 짓는 쪽은 **csrss 프로세스** (세션 시작 때, test.exe 보다 훨씬 앞) 라 그림 2 에는 안 넣었다.
+
+- 비유: 동네 주민센터 (csrss) 가 세션을 열 때 **게시판 (공유 섹션)** 을 하나 세우고 거기에 "이 동네 주소록·시간대·폴더 이름" 을 붙여 둔다. 새로 이사 온 집 (test.exe) 은 게시판을 **읽기만** 한다. 게시판 글 속 "몇 번 칸" 은 주민센터 기준 번호라서, 집에서 읽을 땐 자기 기준 번호로 바꿔 읽는다 (옮김).
+
+```
+(csrss — 세션 시작 때, 다른 프로세스)                                     [정적] run71
+csrsrv!CsrSrvCreateSharedSection
+ ├─ +0x1bf  NtCreateSection (\Sessions\N\Windows\SharedSection)
+ ├─ +0x233  NtMapViewOfSection          csrss 쪽 뷰 = C
+ ├─ +0x26e  RtlCreateHeap(0x7008)       공유 섹션 안 힙
+ └─ +0x2bb  RtlAllocateHeap(0x30)       표 CsrSrvSharedStaticServerData (6칸)
+csrsrv!CsrLoadServerDll                 basesrv = 서버 번호 1
+ ├─ +0x380  (CFG 간접) basesrv!ServerDllInitialization
+ │           +0x379 RtlAllocateHeap(BaseSrvSharedHeap, 0xa00) → 블록 S
+ │           +0x39c [S+0x9e8] ← S · +0x3a3 [S+0x9c8] ← 0xffffffff · +0x4fb [S+0x20] 폴더 이름
+ │           +0xa56 NtCreateDirectoryObject (4곳 중 하나)
+ └─ +0x3da ~ +0x3ee  표[1] ← S
+csrsrv!CsrApiHandleConnectionRequest    test.exe 의 NtConnectPort 때 (run68 CsrpConnectToServer +0x2e4 의 맞은편)
+    +0x9c ~ +0xd0  응답 +0x28 = C · +0x30 = 표 주소 · +0x38 = csrss PID
+
+(test.exe 첫 스레드 — ② 초기화)
+ntdll!CsrpConnectToServer  +0x36d PEB+0x380 ← C · +0x379 PEB+0x88 ← R · +0x38d PEB+0x98 ← 표 − C + R      (run68)
+KERNELBASE!_KernelBaseBaseDllInitialize  +0x32b BaseStaticServerData ← [[PEB+0x98]+8] − C + R = 블록 지역 주소
+KERNELBASE!entry  +0xb3 pfnAdjustObjectAttributesForPrivateNamespace ← BasepAdjustObjectAttributesForPrivateNamespace
+```
+
+- `[정적]` **블록 = `0xa00`B**, PDB 에 타입이 없다 (kernelbase·kernel32·basesrv·csrsrv 공개 PDB 구조체 0개). 칸 23개 표는 run71 문서 "확인된 것" (쓰는 줄 basesrv · 읽는 줄 kernelbase·kernel32). 이 프로세스 초기화 (②) 가 읽는 칸은 `+0x0`·`+0x10`·`+0x38`·`+0x3a`·`+0x170`·`+0x7f8`·`+0x9e8` 뿐이고, **`+0x20` (폴더 이름) 은 이름 있는 객체 폴더를 처음 열 때** 읽는다.
+- `[정적]` **옮김**: 블록 안 포인터 (`Buffer` 들·`+0x170`) 는 csrss 주소다. 읽는 쪽이 `+ 블록지역주소 − [블록+0x9e8]` 을 더한다 — `+0x9e8` = 서버가 써 둔 블록의 csrss 쪽 자기 주소 (`+0x39c`).
+- `[관찰]` run44 (run68 이 옮긴 값) PEB `+0x88` R = `0x7ff4ecf70000` · `+0x98` = `0x7ff4ecf70750` · `+0x380` C = `0x7ff5575f0000` → **표는 공유 뷰 시작 + `0x750`**. 블록 안 값은 사진에 없다.
+- `[정적]` **폴더 핸들 캐시** `BaseNamedObjectDirectory` (kernelbase rva `0x3af0e0`): 0 이면 `BaseGetNamedObjectDirectory` 가 토큰 질문 넷 + `NtOpenDirectoryObject(0xf, 이름 = 블록 +0x20)` 로 연 핸들을 `CMPXCHG` 로 넣는다 (`+0xbd`). 같은 캐시를 `BaseFormatObjectAttributes +0x13d` · `OpenMutexW +0x17c` · `OpenEventW +0x17c` 도 쓴다 (`_refs`). 이 사슬은 2.10 끝 "진입점 뒤 kernelbase 를 다시 부르는 길".
+- `[관찰]` **이 프로세스에서 폴더가 열린 때 = P1a ~ P1b** (run44 핸들 목록): P1a 에 없던 `0x80` Directory `BaseNamedObjects` (접근 `0xf`) 가 P1b 에 있고, 같은 구간에 그 폴더 안 `0x7c` Mutant `SM0:7632:304:WilStaging_02` · `0x84`·`0x88` Semaphore (`…_p0`·`…_p0h`) 가 생겼다 (`7632` = test.exe PID `0x1dd0`). 곧 kernel32 준비 구간 (`LdrpInitializeProcess +0x199d ~ +0x1bb6`) 안 어딘가가 이름 있는 객체를 처음 만들며 폴더를 열었다. **누가 열었나는 `[공백]`** — 이름 (`Wil…`) 으로 보아 kernelbase 안 WIL 기능 단계 코드 `[추측]` → 4장.
+- `[정적]` 공유 섹션 짐 (블록·표·폴더 객체) 은 짐 지도 7.6.11.
 
 #### 올린 뒤 알림과 apphelp 캐시 묻기 — `LdrpNotifyLoadOfGraph` → `LdrpSendPostSnapNotifications` → `LdrpCheckModule` → `CompatCachepLookupCdb` → `NtApphelpCacheControl` (run66 `[정적]`, sast/61, Q125 — PE_emulator 요청 13 의 8번)
 
@@ -4308,7 +4367,7 @@ LdrpInitializeNode +0x16b  (exe 는 LdrpInitializeProcess +0x1c99)
 
 ---
 
-### 2.8 `dll2` → `dll1` (run8, run7 정정 반영, run27, run28, run40)
+### 2.8 `dll2` → `dll1` (run8, run7 정정 반영, run27, run28, run40, run71)
 
 ```
 dll2:  TLS(… → Internal → ImageTlsCallbackCaller → Dll2Tls?) → (… → Internal →) dll2!_DllMainCRTStartup ═JMP▶ [CRT] → dll2!DllMain(1)
@@ -4340,6 +4399,14 @@ dll1:  TLS(… → Internal → ImageTlsCallbackCaller → Dll1Tls?) → (… �
 - `[추측]` `ImageTlsCallbackCaller`가 이 `Dll2Tls` / `Dll1Tls`를 부른다. `Dll2Tls`·`Dll1Tls`에 직접 멈춤점을 걸어보지는 않았다.
   - `[정적]` (run28) 코드 길은 이렇다: `LdrpCallTlsInitializers` 가 그 DLL 의 TLS 디렉터리 사본(`LdrpTlsList` 항목)에서 콜백 배열을 꺼내 칸마다 `LdrpCallInitRoutine(ImageTlsCallbackCaller, DllBase, 1, 콜백)` → `Internal` 이 한 칸 밀어 `ImageTlsCallbackCaller(DllBase, 1, 콜백)` → `ImageTlsCallbackCaller +0x16` 이 **콜백을 `(DllBase, 1, 0)` 으로** 부른다. 배열에 든 게 `Dll2Tls`·`Dll1Tls` 라는 건 `[소스]` (`.CRT$XLB`). 실제로 들어가는 건 여전히 미관찰 (Q26).
   - `[정적]` (run28) sample 은 모듈마다 콜백이 하나라 `LdrpCallInitRoutine` 도 모듈마다 한 번일 것 `[소스]` + `[정적]`. 콜백이 예외를 던지면 그 모듈의 남은 콜백만 건너뛰고 DllMain 은 그대로 불린다. 콜백 반환값은 버려진다 (늘 TRUE 로 바뀜).
+
+#### TLS 콜백·`DllMain` 이 kernelbase 를 다시 부르는 것 — `Log` → `OutputDebugStringA` (run71)
+
+- `[소스]` sample 의 TLS 콜백·`DllMain` 은 모두 `Log` 를 부르고 (`dll2.c:7` · `:18`, `dll1.c:10` · `:21`), `Log` 는 `OutputDebugStringA` 와 `WriteFile` 을 부른다 (`log.h:37` · `:38`).
+  - `[정적]` `dll2!DllMain +0x25 / +0x2a → Log` (dll2 `_calls.tsv`), `test!Log +0x1e0 / +0x1e6 → [IAT] OutputDebugStringA` (test `_calls.tsv`). dll2 쪽 `Log` 본문은 안 뽑았다 (같은 `log.h`).
+- 그래서 이 프로세스의 **첫 `OutputDebugStringA` 는 dll2 TLS 콜백 (`Dll2Tls`) 안**이다 `[소스]` (TLS 콜백에 들어가는 건 미관찰 — Q26. `DllMain` 은 run6·run7 `[관찰]`). 첫 호출만 `CreateDBWinMutex` 로 `DBWinMutex` 를 연다 (2.10 끝).
+  - `[관찰]` run44: `0xbc` Mutant `DBWinMutex` 핸들이 **P1b ~ P2** (이 그래프 켜기 구간) 에 생겼다 (`ms/logs/04_baggage-read_P2.txt` 2147 ~ 2151줄, P1b 목록엔 없음). 위 `[소스]` 와 맞다.
+  - 그림 2 엔 `Dll2Tls` → `?` `KERNELBASE!OutputDebugStringA` 한 줄만 그렸다 (`Log` 는 sample 코드라 안 그림). 같은 길이 `dll2!DllMain`·`Dll1Tls`·`dll1!DllMain`·`ExeTls`·`main` 에서도 되풀이되지만, 둘째부터는 짐을 새로 안 놓아 화살표를 생략했다 (`main` 은 PE_emulator 가 멈춘 자리라 그렸다).
 
 #### `dllN!_DllMainCRTStartup` → `dllN!DllMain`
 
@@ -4423,7 +4490,7 @@ LdrpInitializeProcess+0x1c99
 
 ---
 
-### 2.10 로더 끝 → `test.exe` 진입점 → `main` (run5, run7, run16, run19, run20, run25, run29, run30, run41, run42, run56)
+### 2.10 로더 끝 → `test.exe` 진입점 → `main` (run5, run7, run16, run19, run20, run25, run29, run30, run41, run42, run56, run71)
 
 코드로 본 사슬 (run29·run30 `[정적]`. 실행은 아직 못 봄 — Q29·Q30·Q31):
 
@@ -4646,6 +4713,46 @@ __scrt_common_main_seh
 - `[정적]` **CFG 함수 표는 없다.** `DllCharacteristics = 0x8160` (`GUARD_CF` 비트 없음), `GuardCFFunctionTable = 0`·`Count = 0`, `GuardFlags = 0x100`. `[소스]` `build.bat` 에 `/guard:cf` 가 없다.
 - `[정적]` 그래도 `__guard_dispatch_icall_fptr` (rva `0x6e2f8`) 는 있다. 값 = `_guard_dispatch_icall_nop` (`jmp rax`). test.exe 안 간접 호출(CRT 표 항목 등)은 **검사 없이 그냥 점프**하고 프레임도 안 남긴다.
 - `[추측]` kernel32 `BaseThreadInitThunk +0x12` 의 CFG 검사가 함수 표 없는 exe 진입점을 통과시키는 방법은 "함수 표가 없는 이미지는 전부 유효로 처리" 로 알려져 있으나 이 빌드에선 확인 안 함 → Q30.
+
+#### 진입점 뒤 kernelbase 를 다시 부르는 길 — `main` 첫 `Log` → `OutputDebugStringA` → `CreateDBWinMutex` → `BaseGetNamedObjectDirectory` → `BasepGetNamedObjectDirectoryForToken` (run71 `[정적]`, sast/66, Q136 — PE_emulator 요청 22)
+
+PE_emulator 는 은퇴 뒤 `main` 첫 `Log` 에서 이 길로 들어가 `BaseStaticServerData = 0` 에 멈췄다. `main`·`Log` 는 sample 코드라 지도 밖이고, 그 안에서 **kernelbase 를 다시 부르는 화살표**만 그림 2 에 남겼다 (`main` → `?` → `OutputDebugStringA`). 같은 kernelbase 길을 dll2 TLS 콜백이 **먼저** 탄다 (2.8 끝) — 그림 2 엔 그 화살표도 있다.
+
+- 비유: 게시판 (공유 섹션) 의 "우리 동네 공용 보관함 위치" 를 읽어 보관함 문을 열고 (폴더), 거기 "방송실 열쇠 (`DBWinMutex`)" 를 받아 둔다. 방송을 듣는 사람 (DebugView 등) 이 없으면 그냥 혼잣말 (`DbgPrint`) 로 끝낸다.
+
+```
+test!main +0x12/+0x17 → test!Log +0x1e0/+0x1e6 → [IAT] OutputDebugStringA     [정적] test .asm (sample 코드, 지도 밖)
+KERNELBASE!OutputDebugStringA (0xc3df0)
+ ├─ (1) +0x7c   RaiseException(0x40010006 DBG_PRINTEXCEPTION_C)      __try — 디버거가 받으면 아래 안 탐
+ │      ── __except 착지 몸통 +0x81 ~ +0x312 (objdump) ──
+ ├─ (2) +0xc2   CreateDBWinMutex (0x79260)                           뮤텍스 전역 0x3ad968 · 실패 깃발 0x3ad960 둘 다 0 일 때
+ │      ├─ (1) +0x371  BaseGetNamedObjectDirectory (0x7a790)          캐시 0x3af0e0 ≠ 0 이면 +0x22 에서 바로 돌려줌 (syscall 0)
+ │      │      ├─ (1) +0x87  NtOpenProcessToken(-1, 8)
+ │      │      ├─ (2) +0xb0  BasepGetNamedObjectDirectoryForToken(h, EDX 0, R8D 1, R9D 0xf)   (+0x9c XOR EDX,EDX)
+ │      │      │      ├─ +0xf6 · +0x124 · +0x153  NtQueryInformationToken 0xc · 0x1d · 0x2a
+ │      │      │      ├─ +0x187  RtlGetCurrentServiceSessionId    같으면 지역 L"\BaseNamedObjects", 다르면 +0x414 RtlStringCchPrintfW
+ │      │      │      │      +0x2a8 TEST EDI,EDI · +0x2aa JNZ (안 탐, EDX 0) → +0x2b0 BaseStaticServerData · +0x2b7 [블록+0x20]
+ │      │      │      │      +0x2d3 ~ +0x343  Buffer += 블록지역 − [블록+0x9e8]
+ │      │      │      ├─ +0x386  NtOpenDirectoryObject(0xf, 이름 = 블록+0x20)   실패면 +0x431 접근 2 로 한 번 더 → Restricted
+ │      │      │      └─ +0x3bf  NtQueryInformationToken 0x2c (BNO 격리, R8D ≠ 0)
+ │      │      │   +0xbd CMPXCHG 캐시 ← 폴더 핸들
+ │      │      └─ (3) +0xfb  NtClose(토큰)
+ │      ├─ (2) +0x3b8  (CFG 간접) BasepAdjustObjectAttributesForPrivateNamespace   BaseUsePrivateNamespaces 0 → +0x10 바로 돌아옴
+ │      └─ (3) +0x3cf  NtCreateMutant(0x2120001, Root = 폴더, "DBWinMutex", SD)   → +0x3e9 RtlSetLastWin32Error(0xb7 / 0)
+ │   +0xd5 CMPXCHG 0x3ad968 ← 뮤텍스 (0 이면 +0xc8 0x3ad960 ← 1)
+ ├─ (3) +0x102  WaitForSingleObjectEx(뮤텍스, 10000)
+ ├─ (4) +0x11e  OpenFileMappingW("DBWIN_BUFFER")                     듣는 쪽 없으면 0 → ReleaseMutex
+ └─ (5) +0x279  DbgPrint("%s")  (kernelbase 중개 0x180126d60)         DBWIN 길이 아니면
+     +0x306 RtlSetLastWin32Error(저장값)
+```
+
+- `[정적]` **세션 0 갈래도 세션 N 갈래도 `+0x2b0` 을 탄다.** 둘의 차이는 지역 버퍼 이름뿐이고, 그 이름은 `EDX ≠ 0` 일 때만 쓴다 (`+0x2aa JNZ` → `+0x675`). `BaseGetNamedObjectDirectory` 는 `EDX = 0` 으로 부른다. 다른 갈래 — AppContainer (`+0x448 ~`, 블록 `+0x9d8`), 개인 이름공간 (조각 `+0x1275e8`, 블록 `+0x9f0`) — 는 test.exe 가 안 탄다 `[추측: 보통 사용자 토큰]`.
+- `[정적]` **syscall** (캐시가 비었을 때): 토큰 열기 1 · 토큰 질문 4 · 폴더 열기 1 · 토큰 닫기 1 = 7, 그 뒤 `NtCreateMutant` 1. 캐시가 차 있으면 `NtCreateMutant` 하나만.
+- `[정적]` **PE_emulator 쪽 한 줄**: 블록 (`0xa00`B, `+0x20` 폴더 이름 · `+0x9e8` 자기 주소 · `+0x9c8 = 0xffffffff`) 을 지어 넣으면 지나가고, 그 뒤 syscall 이 실패로 답해도 `DbgPrint` 길로 끝난다. 최소 칸 목록은 run71 문서 맨 앞.
+- `[관찰]` **진짜 프로세스는 이 길의 짐을 은퇴 전에 이미 놓는다** (run44 핸들 목록): 폴더 핸들 `0x80` 은 P1a ~ P1b (2.5 끝), `DBWinMutex` 핸들 `0xbc` 는 P1b ~ P2 (2.8 끝). 그래서 `main` 첫 `Log` 때는 뮤텍스 전역이 이미 차 있어 `CreateDBWinMutex` 를 다시 안 부른다 `[정적 추론]` — 기다림 → `DBWIN_BUFFER` 실패 → `DbgPrint` 만.
+- `[관찰 간접]` run44 는 커널 디버거가 붙은 실행인데 `DBWinMutex` 핸들이 생겼다 → 커널 디버거는 `0x40010006` 을 삼키지 않았다. 유저 디버거가 붙으면 다를 수 있다 `[추측]`.
+- `[정적]` `OutputDebugStringW` 는 ANSI 로 바꾼 뒤 `RaiseException(0x4001000a)`, 착지에서 `OutputDebugStringA` 를 부른다 (`+0xc7 / +0xcc`) — 같은 길.
+- `[확인 필요]` `test!Log` 의 IAT 칸이 kernel32 의 `OutputDebugStringA` 를 거치는지 (forwarder 인가) 는 안 봤다 — run30 Q60 (`LoadLibraryExW`) 과 같은 꼴. PE_emulator 사슬은 `Log` 바로 위가 `KERNELBASE!OutputDebugStringA` 였다 (그쪽 측정).
 
 ---
 
@@ -4974,6 +5081,11 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 2.3 · 2.4 (짐 지도) | **(run70 새로) CPU 기능 실행 확인** (sast/65 결과서 "동적으로 확인할 것" 1 ~ 4 — KUSD 64칸·`+0x3d8`·SymCrypt 전역 넷·PEB `+0x318` 은 run44 사진으로 이미 맞춤, run70 "사진과 맞춰 본 것") — 동적 **Q104 VM 단계**: **1** `dq nt!KeFeatureBits L1` (`nt+0xfc6b70`) · `dq nt!KeFeatureBits2 L1` (`nt+0xfc6ba0`) · `dd nt+0xfc5218 L1` (`MmRegistryState+0x28`, 기대 0) — 부팅 뒤 아무 때나, `KeFeatureBits` 비트 `0x37`·`0x38` (짐 지도 7.15 ~ 7.19 D1) 과 한 번에 · **2** `ntdll+0x8c123` (`_LdrpInitialize +0x197`) `r rcx` = 0, `ntdll+0x8bdc4` (`LdrpTouchThreadStack` 입구) 안 섬 · **3** (선택) `ntdll+0x8e231` (`LdrpInitializeProcess +0x1e2d`) 에서 SymCrypt 전역 넷 (사진 P2 와 같아야) · **4** (선택) `!cpuinfo` — 가문 `0x19` 제조사 |
 | 2.3 · 2.4 (짐 지도) | **(run70 새로) 정적으로 남은 것** (대기열 번호 없음 — 오케스트레이터가 붙임): ① 콜백 `RtlHandleSSSE3Override`·`RtlHandleBMI2Override` 본문 (FB1 비트를 지우는 조건 — KUSD 36·60) ② `KiInitializeXSaveConfiguration` (`entry +0x1e8`) 이 KUSD `+0x3d8` XState 를 쓰는 줄·값 (AVX 셋의 둘째 조건) ③ `InitBootProcessor +0x16b` `R15D` = 1 이 `+0x406` 까지 그대로인지 ④ `KiInitializeKernel +0x42c ~ +0x54a` AP 비교가 빠지는 도착 줄 ⑤ `RtlDetectProcessorFeatures +0x541` 간접 호출 (`@0x9158`, MSR 표 쪽 `[추측]`) ⑥ `KiRestoreFeatureBits` (절전 복귀 `[추측]`) 가 KUSD 를 다시 쓰나 ⑦ KUSD `+0x274` 36칸을 다른 모양 (레지스터에 오래 든 포인터·문자열 명령) 으로 한 번 더 훑기 ⑧ `MmRegistryState` 다른 18칸 (레지스트리 표 `0xc80d40`) |
 | 2.3 · 2.4 | **(run70 새로) 결과서와 다르게 적은 곳 · 보탠 것**: ① 결과서 "한눈에" 의 `KiInitializeKernel` 몸통 `+0x58a ~ +0x77a` → 쓰기 줄 기준 **`+0x5a3 ~ +0x798`** (61번 `+0x798` 까지) ② 결과서 "AMD 일 때만 0·1" → 리프 0 (`+0x9d`) 은 AES-NI 가 있을 때 (제조사 무관), 리프 1 (`+0xbe`) 만 AMD ③ 결과서 동적 1 (VM 값) 의 KUSD·SymCrypt 몫은 run44 사진에 이미 있음 — 남는 건 `KeFeatureBits`·`KeFeatureBits2` 값과 콜백 효과 ④ 짐 지도 3.8 `g_SymCryptFlags` "비트 1" (run59 · sast/54) → **비트 0 (값 1)** 정정 (run70 "정정") |
+| 2.5 · 2.10 (짐 지도) | (해결됨, 정적 → run71: Q136 — PE_emulator 요청 22. **`BasepGetNamedObjectDirectoryForToken +0x2b0` → `+0x2b7` 은 csrss 공유 섹션 블록 `BaseStaticServerData` (`0xa00`B) 의 `+0x20` 폴더 이름** (`UNICODE_STRING`, `Buffer` 는 csrss 주소 → `블록지역 − [블록+0x9e8]` 로 옮김) — 세션 0·세션 N 갈래 **둘 다** (`BaseGetNamedObjectDirectory +0x9c` `EDX = 0` 이라 `+0x2aa JNZ` 안 탐). 블록은 csrss `CsrLoadServerDll +0x37b → basesrv!ServerDllInitialization +0x372 RtlAllocateHeap(0xa00)` 이 세션 시작 때, 칸 23 (PDB 타입 없음). `+0x9e8` = 자기 주소 (`+0x39c`), `+0x9c8` = `0xffffffff` (`+0x3a3`). syscall 7 + `NtCreateMutant` 1. 블록을 지은 뒤엔 syscall 이 실패해도 `DbgPrint` 길. `OutputDebugStringA` `__except` 몸통은 objdump 로 (`+0xbd/+0xc2 CreateDBWinMutex`)) |
+| 2.5 · 2.8 · 2.10 (짐 지도) | **(run71 새로) 사진으로 본 것** (run44 핸들 목록, 새 실행 없음): 이름 있는 객체 폴더 핸들 `0x80` (`BaseNamedObjects`, 접근 `0xf`) 은 **P1a ~ P1b**, `DBWinMutex` 핸들 `0xbc` (`0x120001`, 이미 있던 객체) 는 **P1b ~ P2** — 둘 다 **은퇴 전**. P1a ~ P1b 에 test.exe 이름 (`SM0:7632:304:WilStaging_02`) 의 Mutant `0x7c` · Semaphore `0x84`·`0x88` 도 생김. 그래서 PE_emulator 가 은퇴 뒤 `main` 에서 처음 닿은 건 진짜와 다른 순서 (PE_emulator 쪽 확인 거리) |
+| 2.5 · 2.10 (짐 지도) | **(run71 새로) 이름 있는 객체 실행 확인** (sast/66 결과서 "동적" 1 ~ 4 + flow-writer) — 동적 **Q104 VM 단계** (kernelbase 멈춤점은 test.exe 조건): **1** `KERNELBASE!_KernelBaseBaseDllInitialize+0x332` (rva `0x4e9f2`) `r r10` · `db r10 L0xa00` · PEB `+0x88`·`+0x98`·`+0x380` · 표 `dq poi(@$peb+0x98) L6` **2** P1a ~ P1b 의 첫 `ntdll!NtOpenDirectoryObject` + `k` (누가 폴더를 여나 — `BaseGetNamedObjectDirectory` / `BaseFormatObjectAttributes` / WIL), 이름 `du poi(poi(@r8+0x10)+8)`, 뒤 `dq kernelbase+0x3af0e0 L1` (= `0x80` ?) **3** `BasepGetNamedObjectDirectoryForToken+0x2b0` (rva `0x7ac00`) 세션·개인 이름공간·AppContainer 칸, `+0x386` (`0x7acd6`) 상태·핸들, `+0x3bf` (`0x7ad0f`) BNO 격리 **4** `OutputDebugStringA+0xc2` (`0xc3eb2`) `r rax` + `k` (dll2 TLS 인가), `CreateDBWinMutex+0x3cf` `r eax` (`0x40000000` 기대), `+0x11e` (`OpenFileMappingW` 0 기대) **5** `TEB+0x179c` = 0 |
+| 2.5 · 2.10 | **(run71 새로) 정적으로 남은 것** (대기열 번호 없음 — 오케스트레이터가 붙임): ① **P1a ~ P1b 에 폴더를 연 길** — WIL 이름 객체 (`SM0:<PID>:304:WilStaging_02` 뮤텍스 · `_p0`·`_p0h` 세마포어) 를 만드는 kernelbase 함수와 그 안의 캐시 쓰기 (`BaseFormatObjectAttributes +0x13d` 후보, kernelbase `entry +0xba WilInitialize` 근처 `[추측: 이름]`) ② `BaseFormatObjectAttributes`·`OpenMutexW`·`OpenEventW` 가 캐시가 비었을 때 폴더를 어떻게 여나 (블록 `+0x20` 을 읽나) ③ csrss `ServerDllInitialization` 의 `NtCreateDirectoryObject` 4곳이 각각 어느 폴더 ④ `BaseUsePrivateNamespaces` (rva `0x3a9f30`) 를 쓰는 줄 ⑤ kernel32 `OutputDebugStringA` export 가 forwarder 인가 (Q60 꼴) ⑥ run68 공백 ① `MakeLocHashNode(0x7f)` 아래가 `GetCurrentNlsCache` 로 `gpServerNlsUserInfo` 를 읽나 |
+| 2.5 · 2.10 | **(run71 새로) 정정 · 결과서와 다르게 적은 곳**: ① **run68 정정** — `gpServerNlsUserInfo ← BSSD + 0x178` 은 주소만 (`BaseNlsDllInitialize +0x9 LEA`), 초기화 길은 그 영역을 안 읽음 (run68 맨 위 한 줄, 2.5 트리·그림 2 `bn1` 고침). 요청서 sast/66 "이미 아는 것" 의 "읽음" 도 같은 것 ② 결과서는 `main` 기준만 적음 — 진짜는 은퇴 전 (위 사진 줄) ③ 결과서 동적 2 의 세션 번호는 run44 토큰 구획 `TS Session ID 0x1` 로 이미 있음 ④ 도구: `ExportFunctions` 가 `__except` 착지 몸통을 못 읽음 (`.pdata` UNWIND_INFO `JumpTarget`) — 하네스 제안은 오케스트레이터 몫 (run71 "도구 메모") |
 
 ### 4.1 추측·정적으로 둔 호출 관계 (그림의 `?`, `(정적)` 상자)
 
@@ -5081,6 +5193,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | 그림 2 (1) kernel32 준비 · KERNELBASE | `KERNELBASE!KernelBaseDllInitialize` → `KernelBaseBaseDllInitialize` ⇒ `_KernelBaseBaseDllInitialize` → (1) `KernelBaseDllInitializeMemoryManager` / (2) `ntdll!CsrClientConnectToServer` → `ntdll!CsrpConnectToServer` / (3) `ntdll!RtlUnicodeStringToAnsiString` / (4) `BaseNlsDllInitialize` / (5) `ConsoleInitialize` (`(정적)` 상자 4개 run67 + 4개 run68) | 코드의 call 자리 (run67 `[정적]`): 진입점 `+0x8` (ret `+0xd`), `+0x44` 꼬리 `JMP`, `_KernelBaseBaseDllInitialize +0x1ad/+0x1b2` · `+0x490/+0x497` (이유 1 갈래). (run68 `[정적]`) `+0x2d2/+0x2d9` · `CsrClientConnectToServer +0x113/+0x118` · `+0x4e1/+0x4e6` · `+0x521/+0x526`. 진입점 상자 자신이 아직 `?` (run8 "근처") | `bp KERNELBASE!KernelBaseDllInitializeMemoryManager` (test.exe 조건) 에서 `k` — `_KernelBaseBaseDllInitialize+0x1b2` ← `KernelBaseDllInitialize+0xd` ← `ntdll!LdrpCallInitRoutineInternal+0x22` 기대 (Q21 과 같이) |
 | 그림 2 (1) kernel32 준비 · KERNEL32 | `KERNEL32!BaseDllInitialize` → `_BaseDllInitialize` → (1) `ntdll!LdrSetDllManifestProber` / (2) `ntdll!LdrDisableThreadCalloutsForDll` / (3) `_Kernel32LegacyLib_BaseDllInitialize` (`(정적)` 상자 2개 run67 + 2개 run68) | 코드의 call 자리 (run67 `[정적]`): 진입점 `+0x1d/+0x22`, `+0xb3/+0xba`. (run68 `[정적]`) `+0x210/+0x217` · `+0x21f/+0x224`. 사진 `[관찰]` run44: kernel32 항목 `DontCallForThreads` 는 짐 지도 7.2 에서 `P1a~P1b`. 칸 값은 `[관찰]` run44 사진 P1a 0 → P1b `kernel32+0x23f90` (누가 썼는지는 사진으로 못 봄) | `bp ntdll!LdrSetDllManifestProber` 에서 `k` — `KERNEL32!_BaseDllInitialize+0xba` ← `KERNEL32!BaseDllInitialize+0x22` 기대 (4장 run67 동적 1) |
 | 그림 2 (1)~(2) 사이 | `LdrpMapAndSnapDependency` [test.exe] → (1) `LdrpFindDllActivationContext` [test.exe] (`(정적)`) → `?` `KERNEL32!BasepProbeForDllManifest` [test.exe] (run67) | 코드 (run67 `[정적]`): `+0x5e/+0x63`, 그 안 `+0x7e/+0x83` CFG 간접 호출 — 대상 = 칸 `LdrpManifestProberRoutine` 값. 칸 값 `kernel32+0x23f90` 은 `[관찰]` run44 사진 P1b, kernel32 DllMain 이 exe import 보다 앞이라는 건 코드 길 `[정적]`. 간접 호출이라 `?` | `bp ntdll!LdrpFindDllActivationContext+0x7e` 에서 `dq ntdll+0x1d23c0 L1`, 또는 `bp KERNEL32!BasepProbeForDllManifest` 에서 `k` (`ntdll!LdrpFindDllActivationContext+0x83` ← `LdrpMapAndSnapDependency+0x63` 기대) · `du @rdx` (exe·dll1·dll2 경로) |
+| 그림 2 진입점 뒤 · dll2 TLS | `dll2!Dll2Tls` → `?` `KERNELBASE!OutputDebugStringA` · `test!main` → `?` 같은 노드 → (1) `CreateDBWinMutex` → (1) `BaseGetNamedObjectDirectory` → `BasepGetNamedObjectDirectoryForToken` → `ntdll!NtOpenDirectoryObject`, `CreateDBWinMutex` → (2) `ntdll!NtCreateMutant`, `OutputDebugStringA` → (2) `ntdll!DbgPrint` (`(정적)` 상자 4 + ntdll 스텁 3, run71) | 코드: `Dll2Tls` → `Log` 는 `[소스]` (`dll2.c:7`), `dll2!DllMain +0x25/+0x2a → Log`·`test!main +0x12/+0x17 → Log`·`Log +0x1e0/+0x1e6 → [IAT] OutputDebugStringA` 는 `[정적]` (sample `.asm`) — `Log` 는 sample 코드라 안 그려서 화살표가 `?`. kernelbase 안 call/ret 은 `[정적]` (착지 몸통은 objdump). 사진: `DBWinMutex` 핸들 `0xbc` 가 P1b ~ P2 `[관찰]` run44 | `KERNELBASE!OutputDebugStringA` 입구 `k` (첫째 = `Dll2Tls` ?, 나중 = `main`), `CreateDBWinMutex` 입구가 한 번만 서는지, `ntdll!NtOpenDirectoryObject` 입구 `k` (P1a ~ P1b 에 이미 다른 caller 가 있을 것 — 2.5 끝) |
 
 (해결됨) dll1 ↔ dll2 import 관계 → `sample/dll1.c`로 확인: dll1이 dll2를 import
 
@@ -5156,6 +5269,7 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run68 | (정적, 03_sprint 스물여섯째 바퀴 — Q129 PE_emulator 요청 16 의 나머지, 짐 지도 바퀴) kernelbase·kernel32 시작 함수 안 나머지: kernelbase `+0x241 NtQuerySystemInformation(0, &SysInfo, 0x40)` (`SysInfo` 채우는 유일한 줄) · **`+0x2d9 CsrClientConnectToServer` → `+0x118 CsrpConnectToServer`** (클라이언트 길, syscall 6 — `NtOpenSection`·`NtCreateSection`·**`NtConnectPort`**·`NtClose`·`NtMapViewOfSection`·`NtClose`, ntdll `Csr*` 전역 9 · PEB `+0x88`·`+0x98`·`+0x380`, 포트 뷰 안 개인 힙, `CsrpClientConnectToServer` 정상 안 탐) → `BaseStaticServerData` · `+0x4b2 RtlSetUnhandledExceptionFilter` · `+0x4e6 BaseNlsDllInitialize` (run57 과 같은 섹션 자기 뷰로, ntdll `RtlGetLocaleFileMappingAddress` 가 `NtInitializeNlsFiles` 처음, `MakeLocHashNode(0x7f)` 아래 공백) · `+0x508` 락 `KernelBaseGlobalData+0xb0` (`DebugInfo −1`, `RtlpForceCSDebugInfoCreation` 0) · `+0x526 ConsoleInitialize` (부모 콘솔에 붙기, `NtCreateFile(<4>\Connect)`) · `+0x165` ETW `Microsoft.Windows.Kernel.Base` · `+0x189 DisableRegCaching…` (멀티세션 SKU 라 본문 안 탐) · GS2 쿠키 (모듈 자기 `/GS`, run59 와 별개). kernel32 `+0x99` 빈 함수 (`0x10bc80`, 이름 22개) · `RtlSetProtectedPolicy` 안 탐 · `+0x27c` PEB `CSDVersion` · `GetRegistryExtensionFlags` 안 탐 (TS 인식 exe) · `+0x217` **`DontCallForThreads`** · `+0x224` kernel32 `SysInfo`. 커널 `ExpGetSystemBasicInformation` 칸 11 (상수 5 · 부팅 6) — **PE_emulator 는 `+0x8`·`+0x20` 도 채워야**. 사진 대조 (PEB CSR 칸 P1a 0 → P1b, `SessionId`·`SharedDataFlags`·`SuiteMask`·`UseCaseMapping`·`ConsoleHandle`). 그림 2 ntdll 상자 3 (kernel32 준비) · KERNELBASE 상자 2 · KERNEL32 상자 1 |
 | run69 | (정적, 03_sprint 스물일곱째 바퀴 — Q132 PE_emulator 요청 12, 짐 지도 바퀴) 로더 전용 스레드 풀과 은퇴 앞 힙 GC 타이머: `LdrpInitializeProcess +0x1a47 LdrpEnableParallelLoading` 덫 안 syscall **14** — `+0x21 LdrpDetectDetour` (`NtQueryInformationThread(0x2a)`) · **`+0x49 TpAllocPoolInternal(&LdrpThreadPool, 1)`** (11: 공통 10 + **`+0x448` 클래스 `0xd` — 둘째 인자 1 인 로더 풀만**, `PoolFlags` = 1, `TppPoolpList` 꼬리) · `+0x66 TpSetPoolWorkerThreadIdleTimeout` (클래스 2, −300000000, **13번째**) · `+0x7f TpSetPoolMaxThreads` (클래스 5, 3) · `+0xe2 TpAllocWork` (일감 `0xf0`B → `LdrpMapAndSnapWork`, syscall 없음). **풀 핸들 (`+0x38`) 0 은 진짜 길에선 불가** — PE_emulator 는 `NtCreateWorkerFactory` 핸들 칸을 채우고 클래스 `0xd` 에 0 이상을 줄 것. `_LdrpInitialize +0x282 RtlpHpGCTimerEnable` (`_TP_TIMER` `0x168`B → `.data` `0x1ce270`, 클래스 3 한 번, 켜기는 `RtlpHpGCTimerSchedule → TpSetTimerEx`). run62 `+0x443` `[공백]` 닫힘 (기본 풀은 안 탐, 30 그대로). 사진 대조 (`LdrpThreadPool`·`LdrpMapAndSnapWork` P1b, `TppPoolpList` Blink = 로더 풀 + `0x180`, `0x1ce270` P1b 0 → P2). 그림 2 `_LdrpInitialize` 아래 상자 1 (`RtlpHpGCTimerEnable`), `LdrpEnableParallelLoading` 상자 글 |
 | run70 | (정적, 03_sprint 스물여덟째 바퀴 — Q133 PE_emulator 요청 21, 짐 지도 바퀴) CPU 기능 감지 셋: **ntdll `SymCryptDetectCpuFeaturesByCpuid`** (295B) = CPUID 만 4 ~ 6번 (명령 자리 `+0x3b`·`+0x5a` (두 번)·`+0x9d`·`+0xbe`·`+0xec`), XGETBV·syscall·KUSD 없음, 표 `cpuidBitInfo` 20줄 → `g_SymCryptCpuFeaturesNotPresent` (`+0xe3` 한 번, 시작 `0xffffc020`) · `g_SymCryptCpuid1` 16B (`+0xee ~ +0x100`), 부르는 조건 `LdrpInitializeProcess +0x1de6`·`+0x1ded` (`g_SymCryptFlags` 비트 0) · **KUSD `ProcessorFeatures`** 쓰는 함수 넷 (`KiInitializeKernel +0x5a3 ~ +0x798` 24칸 · `KiPublishProcessorFeatures +0x19`·`+0x48` · `KiInitializeNxSupportDiscard +0x170` · `InitBootProcessor +0x406`) = 28칸, 36칸 쓰는 줄 없음, `KiSetFeatureBits` 는 안 씀, 규칙 CPUID → `KeFeatureBits` (`KiInitializeKernel +0x382`) / `KeFeatureBits2` (`KiSetProcessorSignature +0x58`) → 번호, 사슬 `entry +0x1b5 → KiInitializeBootStructures +0x27e → KiSetProcessorSignature +0x2e/+0x5f` · `entry +0x27e → KiInitializeKernel` · **ntdll `LdrpTouchThreadStack`** (180B) = `NtQueryVirtualMemory` (클래스 0) 1 + 쪽마다 4바이트 읽기, 예외면 `0xC0000017`, test.exe 안 탐. PEB `+0x318` 쓰는 줄 둘 (`MmCreatePeb +0x4cc` ← `MmRegistryState+0x28`, `LdrpInitializeExecutionOptions +0x413`). `[관찰]` run44 사진 대조 (KUSD 64칸·`+0x3d8`·SymCrypt 전역·PEB `+0x318`) 어긋남 없음. 정정: 짐 지도 `g_SymCryptFlags` 비트 1 → 비트 0 |
+| run71 | (정적, 03_sprint 스물아홉째 바퀴 — Q136 PE_emulator 요청 22, 짐 지도 바퀴) 이름 있는 객체 폴더: kernelbase **`OutputDebugStringA`** (`+0x7c RaiseException(0x40010006)` → `__except` 몸통 objdump `+0xbd/+0xc2 CreateDBWinMutex` → `+0x102 WaitForSingleObjectEx` → `+0x11e OpenFileMappingW("DBWIN_BUFFER")` → `+0x279 DbgPrint`) · **`CreateDBWinMutex`** (SID 4·DACL·SACL → `+0x371 BaseGetNamedObjectDirectory` → `+0x3cf NtCreateMutant(0x2120001, "DBWinMutex")`) · **`BaseGetNamedObjectDirectory`** (캐시 `BaseNamedObjectDirectory` `0x3af0e0`, 비었으면 `+0x87 NtOpenProcessToken` → `+0xb0 BasepGetNamedObjectDirectoryForToken(h, 0, 1, 0xf)` → `+0xbd CMPXCHG` → `+0xfb NtClose`) · **`BasepGetNamedObjectDirectoryForToken`** (토큰 질문 `0xc`·`0x1d`·`0x2a`, 세션 0·N 둘 다 **`+0x2b0` → `+0x2b7` 블록 `+0x20`** → `+0x386 NtOpenDirectoryObject(0xf)` → `+0x3bf` 클래스 `0x2c`). **블록 `BaseStaticServerData` `0xa00`B** 칸 23 (PDB 타입 없음) — csrss `CsrSrvCreateSharedSection` (섹션·힙·6칸 표) → `CsrLoadServerDll +0x37b` → `basesrv!ServerDllInitialization` (`+0x372` 할당 · `+0x39c` `+0x9e8` 자기 주소 · `+0x3a3` `+0x9c8 = 0xffffffff` · `+0x4fb` `+0x20`), 연결 응답 `CsrApiHandleConnectionRequest +0x9c ~ +0xd0`. 사진 (run44 핸들 목록): 폴더 `0x80` P1a ~ P1b · `DBWinMutex` `0xbc` P1b ~ P2 — **은퇴 전** `[관찰]`. 정정: run68 `+0x178` 은 주소만 |
 | `sample/` 소스 | 의존 관계, 모듈별 TLS 콜백, `/MT` 빌드 |
 
 - run3 ~ run5는 타깃에서 빌드한 test.exe, run6 ~ run8은 디버거 VM에서 빌드해 옮긴 test.exe (같은 소스).
@@ -5234,3 +5348,4 @@ test.exe에서는 스레드가 **4개** 출발한다 (run4, run5).
 | run68 | `_workspace/sast/63_dll-init-rest` | 없음 | 정적만 (대기열 **Q129**, PE_emulator 요청 16 의 나머지 (원문 2·3·6 정적·8·9) — 사용자 결정 2026-11-06 Q129 → Q104 VM 단계, 짐 지도 바퀴). 다시 analyze 안 함. 대상 kernelbase 7 · ntdll 8 · kernel32 1 · ntoskrnl 1 (depth 1) + 결과서가 넓힌 NLS 줄기·콘솔·갈래 판정·basesrv `BaseClientConnectRoutine`·`__security_init_cookie_ex` — 새로 뽑은 수 kernelbase 68 · ntdll 38 · kernel32 5 · ntoskrnl 1 · basesrv 1, 새 `_refs` kernelbase 4 · kernel32 1 · ntdll 2. ETW 메타데이터는 kernelbase `.rdata` 바이트 (임시 스크립트). 값 대조는 run44 덤프 읽기 로그 셋 (결과서 + flow-writer). 결과서 **분석성공**. 동적 → **Q84** (csrss 연결 결과) · **Q104 VM 단계** (`SysInfo` 두 벌·`BasepInitializationStage`·KUSD `0x7ffe02f0`·NLS syscall 수·콘솔 새 핸들). 정정 없음 (요청서 짐작 셋 틀림, 결과서 오프셋 하나 고쳐 읽음 — `CSDVersion` call `+0x275`/ret `+0x27c`) |
 | run69 | `_workspace/sast/64_loader-pool` | 없음 | 정적만 (대기열 **Q132**, PE_emulator 요청 12 — 오케스트레이터 기본값 Q104 VM 단계 앞, 짐 지도 바퀴). 다시 analyze 안 함. ntdll 대상 `TpSetPoolWorkerThreadIdleTimeout`·`TpAllocWork`·`RtlpHpGCTimerEnable` (depth 1) · `TppWorkInitialize`·`TppInitializeTimer`·`TpSetPoolMaxThreads` 새로, `LdrpEnableParallelLoading`·`TpAllocPoolInternal`·`_LdrpInitialize` 등은 있던 `.asm`. 결과서가 넓힌 것: 커널 `NtSetInformationWorkerFactory` (클래스별 버퍼 길이만), ntdll `RtlpHpGCTimerSchedule`·`RtlpHpGCTimerCallback`, `_refs` (`LdrpThreadPool`·`LdrpMapAndSnapWork`·`0x1ce270`·`0x1ce278`·`0x1ce280`·`TpAllocPoolInternal`). 값 대조는 run44 덤프 읽기 로그 셋의 ntdll `.data` 줄 (flow-writer). 결과서 **분석성공**. 동적 → **Q104 VM 단계** (풀 칸 사진·`NtSetInformationWorkerFactory` 차례·입력 값·GC 타이머 켜기·커널 일꾼 공장). 정정: run62 `+0x443` `[공백]` 닫힘 (run62 문서 맨 위 한 줄) |
 | run70 | `_workspace/sast/65_cpu-features` | 없음 | 정적만 (대기열 **Q133**, PE_emulator 요청 21 — 사용자 결정 2026-11-07 Q132 다음 · Q104 VM 단계 앞, 짐 지도 바퀴). 다시 analyze 안 함. ntdll `SymCryptDetectCpuFeaturesByCpuid`·`LdrpTouchThreadStack` (+ `$filt$0`·`LdrpGenericExceptionFilter`) depth 1 (12개), ntoskrnl `KiPublishProcessorFeatures`·`KiSetProcessorSignature`·`KiGetProcessorSignature`·`KiRestoreFeatureBits`·`RtlDetectProcessorFeatures`·`entry`·`KiInitializeNxSupportDiscard` depth 0, 나머지는 있던 `.asm`. 새 `_refs` ntdll 5 · ntoskrnl 3, 새 표 `_tables/cpuidBitInfo.tsv` (20줄)·`_tables/KiCpuFeatureTable.tsv` (59줄) — 바이너리 바이트. 값 대조는 run44 덤프 읽기 로그 (KUSD 커널 별칭 줄·ntdll `.data`·PEB, flow-writer). 결과서 **분석성공**. 동적 → **Q104 VM 단계** (`KeFeatureBits`·`KeFeatureBits2`·`MmRegistryState+0x28` 값, `LdrpTouchThreadStack` 안 섬). 정정: 짐 지도 3.8 `g_SymCryptFlags` 비트 번호 |
+| run71 | `_workspace/sast/66_named-obj-dir` | 없음 | 정적만 (대기열 **Q136**, PE_emulator 요청 22 — 원문 급함 높음, 사용자 결정 2026-11-07 맨 앞 · Q104 VM 단계 앞, 짐 지도 바퀴). 다시 analyze 안 함. kernelbase `CreateDBWinMutex`·`BaseGetNamedObjectDirectory`·`BasepGetNamedObjectDirectoryForToken` depth 1 (11개) + `OutputDebugStringA`·`OutputDebugStringW`·`BasepAdjustObjectAttributesForPrivateNamespace`·NLS 넷·시간대·DOS 장치 18개, kernel32 14개, basesrv 12개, csrsrv 3개 (depth 0). 새 `_refs` kernelbase 4 · kernel32 1 · basesrv 1 · csrsrv 2. `__except` 착지 몸통은 objdump 보조 파일 (`OutputDebugStringA.handler.objdump.txt`). 값 대조는 run44 덤프 읽기 로그의 핸들·폴더 목록 (flow-writer). 결과서 **분석성공**. 동적 → **Q104 VM 단계** (블록 실제 값, P1a ~ P1b 에 폴더를 연 곳, 탄 갈래). 정정: run68 `gpServerNlsUserInfo` (주소만). 도구: `ExportFunctions` 착지 몸통 (제안만) |

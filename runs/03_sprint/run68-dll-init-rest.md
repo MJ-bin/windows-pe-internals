@@ -1,5 +1,7 @@
 # 2026-11-06 run68 — kernelbase·kernel32 시작 함수 안 나머지 (Q129, PE_emulator 요청 16 의 나머지): **csrss 연결은 syscall 6번으로 ntdll `Csr*` 전역 9개와 PEB 세 칸을 채우고**, `SysInfo` 는 클래스 0 한 번 — **PE_emulator 의 `+0x18`·`+0x28`·`+0x38` 로는 모자라 `+0x8 = 0x1000`·`+0x20 = 0x10000` 도 필요**, 콘솔은 "부모 콘솔에 붙기" 갈래
 
+> **정정 (run71, sast/66)**: 아래 "`gpServerNlsUserInfo ← BaseStaticServerData + 0x178`" 은 그 칸을 **읽은 값이 아니라 주소**다 (`BaseNlsDllInitialize +0x9 LEA RAX,[R8+0x178]` → `+0x10 MOV [gpServerNlsUserInfo],RAX`). `BaseNlsDllInitialize`·`NlsProcessInitialize` 는 그 영역 안을 읽지 않고, csrss 도 초기화 때 그 영역을 안 채운다 (0). `MakeLocHashNode(0x7f)` 아래 (이 문서 `[공백]`) 가 `GetCurrentNlsCache` 까지 가면 그때 읽는다 — 그 길은 그대로 공백. 자세한 것은 `runs/03_sprint/run71-named-obj-dir.md` "정정".
+
 ## PE_emulator 쪽에서 쓸 것
 
 ### 한 줄 결론
