@@ -1,5 +1,7 @@
 # 2026-11-07 run72 — 로더 일꾼 풀을 켰을 때의 일감 길 (Q137, PE_emulator 요청 23): `TppWorkPost` 는 **넣기만 하고 돌아온다** (기다림 없음). 첫 넣기만 syscall 1 (`NtReleaseWorkerFactoryWorker`), 둘째부터 0. 재시도 길은 dll1·dll2 맵 결과가 `0x40000003`/`0x40000036` 일 때만 열린다 — 그 값은 정적으로 안 닫힘 (Q104)
 
+> **정정 (run73, sast/68)**: 아래 "`MiCreateNewSection` 줄은 안 읽음 `[공백]`" (한 줄 결론 2 · "dll1·dll2 맵 결과" 절 · 정적 후보 첫 줄) 은 **닫혔다**: `MiCreateNewSection +0x361 MOV ESI,[RBX]` · `+0x38b SHR ESI,0x1b` · `+0x391 AND ESI,2` → `+0x3cc`/`+0x68c` 여섯째 인자라 **비트 0 은 늘 0**. 그래서 dll1·dll2 는 파일마다 다른 비트맵 칸을 받고, "헤더 그대로면 둘째 DLL 은 반드시 `0x40000003`" 갈래는 이 두 DLL 에 해당 없다 (비트 0 을 켜는 곳은 `MmLoadSystemImageEx → MiGetSystemAddressForImage` 뿐). 동적 1 의 기대 `0` 은 `[정적]` 근거가 생겼다 (실제 값은 여전히 Q104). → `run73-image-base-select.md`
+
 ## PE_emulator 쪽에서 쓸 것
 
 ### 한 줄 결론 (셋)
@@ -14,6 +16,7 @@
 2. **재시도 길은 dll1·dll2 맵 결과가 `0x40000003` 또는 `0x40000036` 일 때만** 열린다 `[정적]`. 나머지 문 조건은 test.exe 에서 이미 참으로 정해져 있다 (아래 조건 표).
    - **dll1·dll2 헤더 `ImageBase` 는 둘 다 `0x180000000`** 이다 `[정적+샘플]`.
    - 그런데 커널이 DLL 마다 **다른 기준 주소**를 주는지가 안 닫혔다. 그걸 가르는 게 `MiSelectImageBase` 넷째 인자 비트 0 (= `MiRelocateImage` 여섯째 인자 `& 1`, 이걸 주는 `MiCreateNewSection` 줄은 안 읽음) `[공백]`.
+     - (run73 정정) **닫힘**: `MiCreateNewSection +0x391 AND ESI,2` 라 비트 0 은 늘 0 → 아래 "0 이면" 쪽. "1 이면" 갈래는 dll1·dll2 에 해당 없음 (그 갈래는 `MmLoadSystemImageEx` 길뿐) `[정적]`.
      - 0 이면 DLL 마다 비트맵에서 따로 받음 → 보통 `0`.
      - 1 이면 둘 다 `0x180000000` → **둘째로 붙는 DLL 은 반드시 충돌 → `0x40000003` → 재시도 길.**
    - → 동적 Q104 (아래 "아직 확인 필요" 1). PE_emulator 가 dll1·dll2 에 `0` 을 주면 이 길은 안 탄다.
@@ -231,10 +234,11 @@ LdrpDrainWorkQueue(1)
   - `0x40000003` 이 되려면 할당에 `0x800000` 이 있어야 한다 (`+0xc12 TEST BL,2`). `LdrpMinimalMapModule` 기본 길이 `0x800000` 을 준다 (run38).
   - `0x40000036` 은 `+0xc1b TEST BL,8` · `+0xc1e JNZ` → `+0xc82` (이름만, Q126 (6)).
 - 섹션 기준 주소는 섹션을 만들 때 정해진다 (`MiCreateNewSection → MiRelocateImage +0x2e6 / +0x2eb → MiSelectImageBase`, 결과서) `[정적]`:
-  - `MiSelectImageBase +0xd6 TEST DL,R10B` · `+0xd9 JNZ` → `+0x2b6`: 넷째 인자 비트 0 이 켜지면 **헤더 `ImageBase` 그대로**. 그 비트는 `MiRelocateImage` 여섯째 인자 `& 1` 에서 온다. 이걸 주는 `MiCreateNewSection` 줄은 안 읽었다 `[공백]`.
+  - `MiSelectImageBase +0xd6 TEST DL,R10B` · `+0xd9 JNZ` → `+0x2b6`: 넷째 인자 비트 0 이 켜지면 **헤더 `ImageBase` 그대로**. 그 비트는 `MiRelocateImage` 여섯째 인자 `& 1` 에서 온다. ~~이걸 주는 `MiCreateNewSection` 줄은 안 읽었다 `[공백]`.~~ → (run73 정정) `MiCreateNewSection +0x361` · `+0x38b SHR ESI,0x1b` · `+0x391 AND ESI,2` → 비트 0 은 늘 0 `[정적]`.
   - 꺼져 있고 DLL 이면 (`+0xfc ~ +0x104`) 전역 비트맵 (`0x7fffffff0000` 에서 아래로 64KB 칸) 에서 **이미지 파일마다 다른 칸**. EXE 는 `ExGenRandom` 쪽.
   - `EPROCESS.Flags3` 비트 13 (`AllImagesAtBasePristineBase`, PDB 이름) 이 `+0xba` 에서 흐름을 바꾼다. 뜻은 안 읽음 `[공백]`.
 - 결론: **정적으로 안 닫힘.** 비트맵 갈래라면 헤더 값이 같다는 건 상관없고 자리가 비어 있으면 `0` (기대 `[추측]`). 헤더 그대로 갈래라면 둘째 DLL 은 반드시 `0x40000003`.
+  - (run73 정정) 비트맵 갈래로 정해졌다 `[정적]`. 기대 `0` 의 근거가 `[정적]`, 실제 범위 점유는 동적 (Q104). 헤더 그대로 갈래는 이 두 DLL 에 해당 없음.
 
 ### `LdrpWorkCallback` (rva `0xe9ef0`, 218B) — sast/19 와 같음
 
@@ -278,7 +282,7 @@ LdrpDrainWorkQueue(1)
 
 정적 — 다음 바퀴 후보 (대기열 번호는 오케스트레이터가):
 
-- 커널 `MiCreateNewSection` 이 `MiRelocateImage` 여섯째 인자 (`& 1`) 에 주는 값 — 닫으면 위 동적 1 의 기대값이 정적으로 정해진다.
+- ~~커널 `MiCreateNewSection` 이 `MiRelocateImage` 여섯째 인자 (`& 1`) 에 주는 값 — 닫으면 위 동적 1 의 기대값이 정적으로 정해진다.~~ → (해결됨) run73: 늘 0 (`+0x391 AND ESI,2`), 동적 1 기대 `0` 의 근거가 `[정적]` 으로.
 - `EPROCESS.Flags3` 비트 13 `AllImagesAtBasePristineBase` 의 뜻, `_SEGMENT.BasedAddress` 를 채우는 줄.
 - `TpWaitForWork` 본문 (`LdrpDetectDetour +0xc4` 갈래).
 - 커널 `NtReleaseWorkerFactoryWorker` 본문 — 첫 넣기가 일꾼을 새로 만드는 계기인지 `[추측]` (Q134 (b) 와 같이).
