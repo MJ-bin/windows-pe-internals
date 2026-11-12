@@ -344,12 +344,12 @@ nt!PspInitializeThunkContext  +0x2fc EBX < 0 → +0x37b 레코드 (주소 PsNtdl
 
 동적 — **Q104 VM 단계** 에 붙인다 (결과서 "동적분석으로 확인해야 할 것" 번호 그대로, 오케스트레이터. 이번 묶음은 VM 안 함). 커널 멈춤점은 모든 프로세스에 걸리니 test.exe 일 때만.
 
-- **먼저 알아 둘 것**: 아래 멈춤점은 **예외가 실제로 나야** 선다. test.exe 정상 길엔 CPU 예외가 없다 `[추측]` (`sample/*.c` 에 그런 글자 없음 `[소스]`). 후보는 셋 — (가) `OutputDebugStringA` 의 `RaiseException(0x40010006)` 이 커널을 거친다면 그것 (Q148b 가 정하면 1·2·5 를 test.exe 로), (나) 조건 없이 다른 프로세스의 예외, (다) 아래 4 의 새 샘플.
+- **먼저 알아 둘 것**: 아래 멈춤점은 **예외가 실제로 나야** 선다. test.exe 정상 길엔 CPU 예외가 없다 `[추측]` (`sample/*.c` 에 그런 글자 없음 `[소스]`). 후보는 셋 — (가) `OutputDebugStringA` 의 `RaiseException(0x40010006)` 이 커널을 거친다면 그것 (Q148b 가 정하면 1·2·5 를 test.exe 로) → **(해결됨 → run82)** 디버거가 없으면 커널을 안 거친다 (`RtlRaiseException +0x17e` `BeingDebugged` → `+0x188 RtlDispatchException`) — test.exe 로는 유저 쪽만 보이니 1·2·5 는 (다) 로, (나) 조건 없이 다른 프로세스의 예외, (다) 아래 4 의 새 샘플.
 
 1. 실제 `ContextFlags` (`0x10001f` / `0x10005f`) 와 `XState.Length`·꼬리 크기 — `nt!KiDispatchException+0x142` 직후 `dd @rbp+4 L1`, 또는 `ntdll!KiUserExceptionDispatcher` 입구 `dd @rsp+0x30 L1`. 같이 `dq nt!KeFeatureBits L1` (`& 0x800000`) — 짐 지도 7.29 1 과 같은 읽기 (덧붙임 ① 닫힘).
 2. 새 `RSP` 가 `((A − 0x28) & ~0xF) − 0x590` 인지, `RSP+0x590`·`+0x5a8` 이 `Rip`·`S0` 인지 — `nt!KiDispatchException+0x5a3` (`dq @r12+0x168 L1` · `+0x180` · `dw @r12+0x170`), `ntdll!KiUserExceptionDispatcher` 입구 `dq @rsp+0x590 L1` · `dq @rsp+0x5a8 L1`.
 3. 표시 코드 `0x10000004` → `0xC0000005` 바뀌는 때 — `nt!KiDispatchException+0x163` 앞뒤 `dd poi(@r14) L1` (`r14` = 레코드, `+0x38`).
-4. **새 샘플 필요** — `#GP` 의 `[0] = 0`·`[1] = −1`, `#DE` 의 `0xC0000095` 갈래, `int3` 의 `CONTEXT.Rip` (= `int3` 자리) 는 **예외를 일부러 내는 작은 프로그램** 이 있어야 한다 (`sample/` 에 없음 `[소스]`). 잘못된 주소 읽기·쓰기·실행 (`[0]` 0/1/8) · `ud2` · 특권 명령 (`hlt`) · 0 나누기 · `INT_MIN / −1` · `int3` · `__fastfail` 를 `__try` 로 하나씩. 이 샘플이 있으면 1·2·3·5·6 도 같이 닫힌다. 만들지·언제 할지는 **사용자 결정** (run80 의 Q154 와 같은 꼴).
+4. **새 샘플 필요** (대기열 **Q156**) — `#GP` 의 `[0] = 0`·`[1] = −1`, `#DE` 의 `0xC0000095` 갈래, `int3` 의 `CONTEXT.Rip` (= `int3` 자리) 는 **예외를 일부러 내는 작은 프로그램** 이 있어야 한다 (`sample/` 에 없음 `[소스]`). 잘못된 주소 읽기·쓰기·실행 (`[0]` 0/1/8) · `ud2` · 특권 명령 (`hlt`) · 0 나누기 · `INT_MIN / −1` · `int3` · `__fastfail` 를 `__try` 로 하나씩. 이 샘플이 있으면 1·2·3·5·6 도 같이 닫힌다. 만들지·언제 할지는 **사용자 결정** (run80 의 Q154 와 같은 꼴).
 5. 둘째 기회에서 `DbgkForwardException(…, 0, 1)` 이 참을 돌려주나 (WER 있는 VM) — `nt!KiDispatchException+0x7c8` 뒤 `al`. 거짓이면 `+0x7dc` 에서 종료 상태. 그리고 **KDNET 이 붙어 있어 `+0x2c3 KdTrap` 이 유저 예외를 먼저 가로채나** (`dd nt!KdIgnoreUmExceptions L1`) — 디버거 메모.
 6. 스택 넘침 되풀이 (`+0x652` 처리기 → `+0x419` 다시) 가 끝나나.
 7. 질문 6 의 syscall 처리기 본문 — 상태를 `RAX` 로 돌려주는 줄 (아래 정적 ③ 으로도 닫힘).
@@ -357,9 +357,9 @@ nt!PspInitializeThunkContext  +0x2fc EBX < 0 → +0x37b 레코드 (주소 PsNtdl
 
 - 추천 멈춤점 (결과서): `nt!KiExceptionDispatch+0x140` (`rcx` 레코드) · `nt!KiDispatchException+0x163` · `+0x4b0` · `+0x571` · `+0x5a3` · `+0x7c8` · `+0x7dc`, 유저 `ntdll!KiUserExceptionDispatcher`.
 
-정적 — 다음 바퀴 후보 (대기열 번호는 오케스트레이터가):
+정적 — 다음 바퀴 후보 (대기열 **Q155** = ② ~ ⑦, ① 은 Q148b 로):
 
-- ① **Q148b (run82, 이미 대기열)** 에 같이 볼 것: `KiUserExceptionDispatcher` 이하 · `CONTEXT_EX` 0x20 을 읽는 쪽 (`RtlpGetExtendedContext…` — 이름표 비트 `0x40` 만 보고 건너뛰나) · `0x10001f` 로 쌓고 KUSD `XState` 는 진짜 값 (`0xe7`) 일 때 ntdll 이 괜찮나 · `P1Home ~ P6Home`·`VectorRegister` (쓰레기) 를 읽나 · `RtlRaiseException` 이 커널을 거치나 (위 동적 (가)) · 짐 지도 3.8 `RtlpContinuationContextMachineFrameEntries` (= `KiUserExceptionDispatcher` 의 `UnwindData`) 가 머신 프레임 (`+0x590`) 과 어떻게 이어지나.
+- ① **(해결됨 → run82)** (sast/79 조정자 덧붙임 1 · 2 · 3 — `CONTEXT_EX` 는 이름표에 `0x100040` 이 다 있을 때만 읽음, 머신 프레임은 `Rip` · `Rsp` 둘만, `Entries` 는 CET 그림자 스택용, `RtlRaiseException` 은 커널 안 거침) **Q148b (run82, 이미 대기열)** 에 같이 볼 것: `KiUserExceptionDispatcher` 이하 · `CONTEXT_EX` 0x20 을 읽는 쪽 (`RtlpGetExtendedContext…` — 이름표 비트 `0x40` 만 보고 건너뛰나) · `0x10001f` 로 쌓고 KUSD `XState` 는 진짜 값 (`0xe7`) 일 때 ntdll 이 괜찮나 · `P1Home ~ P6Home`·`VectorRegister` (쓰레기) 를 읽나 · `RtlRaiseException` 이 커널을 거치나 (위 동적 (가)) · 짐 지도 3.8 `RtlpContinuationContextMachineFrameEntries` (= `KiUserExceptionDispatcher` 의 `UnwindData`) 가 머신 프레임 (`+0x590`) 과 어떻게 이어지나.
 - ② `PspInitializeThunkContext +0x2ab ~ +0x2b9` 처리기 15바이트 — `EBX` 에 무엇을 넣나 (= 프로세스 끝 코드). objdump 한 번.
 - ③ `NtAllocateVirtualMemory` 등 메모리 syscall `__except` 본문 — 상태를 어떻게 돌려주나 (`0xC0000005` 그대로? 동적 7 의 정적 몫).
 - ④ **IDT 표** — CPU 벡터 번호 ↔ 입구 함수 (이번엔 이름으로 짝지음 `[추측: 이름]`). **Q144 ①** (IDT 표 — 시계 벡터) 과 같은 표라 묶을 만함.
