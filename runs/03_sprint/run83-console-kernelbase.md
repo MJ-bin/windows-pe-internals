@@ -91,7 +91,7 @@
 - 합: 실패 없는 옛 길 = **syscall 11** (b1 ~ b8 의 8 + commit 3).
 - `params.WindowFlags & 0x100` (`+0x393` · `+0x39d JNZ`) 면 b6 ~ b8 대신 `+0x3c1/+0x3c6 ConsoleSanitizeStandardIoObjects` (이미 가진 표준 핸들 검사 · 대체 — 안은 안 읽음). 실패면 `+0x3ad/+0x3b2 ConsoleCleanupConnectionState` (`NtClose` 5개까지).
 - 중개 길 (비트 6 켜짐): `ConsoleAttachOrAllocate(NULL)` → `ConsoleCreateConnectionObject(root = NULL, EA 이름 "broker", 값 = 내 데스크톱 이름 `0x208`B)` 로 `\Device\ConDrv\Connect` 를 바로 → `\Reference` → b6 ~ b8. conhost 를 띄우는 IOCTL 이 없다. 이 VM 은 안 타서 더 안 읽음.
-- **지금 우리**: 이 길이 PE_emulator 의 지금 상태 (콘솔 앱 · `ConsoleHandle` 0) 가 타는 길이다. 가짜 콘솔을 세우려면 **핸들을 돌려주는 `NtCreateFile` 다섯 (b1 · b2 · b5 · b6 · b7) + `NtDuplicateObject` 하나 + IOCTL 세 종류 (`0x500037` · `0x500023` · `0x500016`/`0x01000008`) + `NtSetInformationProcess(0x31)`** 가 대답해야 한다. 하나라도 실패를 돌려주면 kernelbase 시작 함수가 FALSE 다 (위 "맨 먼저").
+- **지금 우리**: 이 길이 PE_emulator 의 지금 상태 (콘솔 앱 · `ConsoleHandle` 0) 가 타는 길이다. 가짜 콘솔을 세우려면 **핸들을 돌려주는 `NtCreateFile` 다섯 (b1 · b2 · b5 · b6 · b7) + `NtDuplicateObject` 하나 + IOCTL 세 종류 (`0x500037` · `0x500023` · `0x500016`/`0x01000008`) + `NtSetInformationProcess(0x31)`** 가 대답해야 한다. 실패의 결과는 자리마다 다르다 (run84 때 다듬음 — 처음엔 "하나라도 실패면 FALSE" 로 너무 넓게 적었다): **`ConsoleAllocate` 가 실패를 돌려주면 kernelbase 시작 함수 FALSE** (`ConsoleInitialize +0x14d JNS` 안 탐 → AL 0 → `_KernelBaseBaseDllInitialize +0x528 JZ`, 위 "맨 먼저") · commit 쪽 a4 (`GetConsoleLangId`) 실패는 오류 코드만 세우고 넘어감 · a2 · a3 실패는 FALSE 근거 없음 (run84 보탬 ③: `ConsoleCommitState +0x91` · `+0xf0` 뒤에 상태를 보는 줄이 없고, `ConsoleInitialize` 는 commit 뒤 `+0x1cf JMP → +0x126 MOV AL,SIL` 로 늘 AL 1).
 
 #### (c) 콘솔 없음
 
@@ -356,6 +356,7 @@ KERNELBASE!GetStdHandle (0xec300)          syscall 없음 — params +0x20 / +0x
 - ⑥ flow-writer 보탬: `ConsoleCommitState` 쓰는 줄 정확히 — `WindowFlags` 비트 9 `+0x14a` · 비트 10 `+0x159`, `StandardInput` `+0x11c` · `StandardOutput` `+0x12e` · `StandardError` `+0x140` (결과서는 범위 `+0x10e ~ +0x144` · `+0x146 ~ +0x15f`). run68 이 "정확한 줄이 없어" 짐 지도 3.2 에 못 옮긴 `WindowFlags` 줄이 이것이다 (짐 지도 7.6.8 메모 고침).
 - ⑦ flow-writer 보탬: 매니페스트 정책 비교는 `ConsoleShouldAllocateConsole +0x56 MOVZX` · `+0x60 SUB AX,0x44` · `+0x64 TEST CX(0xffdf),AX` — 첫 글자가 `'D'` · `'d'` 일 때만 detached, 다른 글자면 `+0x67 JNZ` → TRUE. 매니페스트가 없으면 `+0x54 JS` → `+0x92` TRUE (run68 "매니페스트 없음 → TRUE" 와 같음). detached 정책이어도 `ConsoleHandle` 이 0 · −2 가 아니면 TRUE (`+0x96 ~ +0x9b`).
 - ⑧ 결과서 "`ConsoleHandle = 0` 은 (b)" 와 원문 "콘솔 없음 (`DETACHED_PROCESS`)" 의 짝은 `[추측]` 이다 — 부모가 `DETACHED_PROCESS` 에 −1 을 쓰는지 0 을 쓰는지는 부모 쪽 코드 (`CreateProcessInternalW`) 를 안 읽어 모른다 (아래 정적 후보 ①).
+- ⑨ (run84 때 보탬, explainer 알림) `ConsoleFlags & 2` 갈래의 `ConsoleSanitizeStandardIoObjects` 는 **call `+0x233` / ret `+0x238`** 이다 (결과서 `+0x22f` 는 `+0x1c4 JNZ` 의 목적지 `LEA RCX,[RBP-0x40]`). 성공이면 `+0x23a JNS` → `+0x1c6` commit.
 
 ## 정정
 
@@ -391,7 +392,7 @@ KERNELBASE!GetStdHandle (0xec300)          syscall 없음 — params +0x20 / +0x
 - 6 `GetFileType` 이 표준 핸들에 주는 값: `kernelbase!GetFileType+0x79` 의 `eax` · `dd @rsp+0x50 L1` (`DeviceType 0x50`?).
 - 7 추천 멈춤점 (요약): `kernelbase!GetConsoleLangId+0xe8`, `kernelbase!ConsoleInitialize+0x19f` (run68 Q104 5 와 같은 자리), `kernelbase!ConsoleCommitState+0x91`, `kernelbase!ConsoleAllocate+0x150` (이 VM 은 안 탐 — 안 서는지 확인).
 
-정적 — 다음 바퀴 후보 (대기열 번호는 오케스트레이터가):
+정적 — 다음 바퀴 후보 (대기열 **Q158** — run84 때 붙임):
 
 - ① 부모 `KERNELBASE!CreateProcessInternalW` 가 `ConsoleHandle` 에 쓰는 값 — `DETACHED_PROCESS` · `CREATE_NEW_CONSOLE` · `CREATE_NO_WINDOW` 와 −1 · −2 · −3 의 짝 (결과서 동적 5 를 정적으로).
 - ② `ConsoleSanitizeStandardIoObjects` (rva `0xc015c`) — `ConsoleFlags & 2` · `WindowFlags & 0x100` (`STARTF_USESTDHANDLES` `[추측]`) 갈래, 상태 비트 칸을 켜는 곳.

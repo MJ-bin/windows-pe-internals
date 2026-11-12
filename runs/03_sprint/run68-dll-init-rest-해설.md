@@ -2,6 +2,8 @@
 
 > 이 글은 [run68 문서](run68-dll-init-rest.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서·짐 지도(`baggage.md`)를 따른다.
+>
+> **고쳐 읽기 (run83)**: "한 줄로 먼저" 표 "그 밖" 줄의 "(syscall 3)", 2.1 표 순서 12 의 syscall "3", 그 아래 합의 "콘솔 3" · "15 ~ 16번", 2.8 의 "syscall **3번**" 은 run83 에서 정정됐다 — 부모 콘솔에 붙기 갈래의 syscall 은 **4번** (넷째 = 콘솔 언어 ID 를 묻는 `NtDeviceIoControlFile`), kernelbase 시작 함수 syscall 합은 **16 ~ 17번** (+ NLS 모름) 이다. → [run68 문서](run68-dll-init-rest.md) 맨 위 "정정 (run83, sast/80)" · [run83 문서](run83-console-kernelbase.md) "정정" 절 · [run83 해설 2.6](run83-console-kernelbase-해설.md#26--run68-정정--넷째-syscall-어느-나라-말-써요).
 
 - 대기열: **Q129** — PE_emulator 요청 16 의 나머지 본문 (`_workspace/plan.md`, 이번에 **끝**)
   - 이것으로 **PE_emulator 요청 16 이 전부 끝났다** (급한 셋은 run67 = Q128).
