@@ -399,7 +399,7 @@ KiTimerExpirationDpc  +0xdf / +0xe5 PRCB+0x8310 / +0x8314 = 지금 손
 12. (사진에서 새로) **test.exe `main` 의 기다림은 마감 없음인가** — `WaitForSingleObject(t, INFINITE)` `[소스]` `sample/test.c:35` 가 `nt!KeWaitForSingleObject+0x837` 에서 `r14d == 0` 인지 (정적 ⑧ 로도 닫힘).
 - 추천 멈춤점 (결과서, 모두 `nt!` — 조건: test.exe 스레드): 마감 계산 `KeWaitForSingleObject+0x3d7` (`rdx`) · `+0x240` · `+0x841` (`r8d`·`r9`), 거는 쪽 `KiCommitThreadWait+0x23d` · `+0x194` (`rcx`) · `+0x1f2` (`r9d` 손) · `+0x1f7` (`al`) · `+0x39e` · `+0x4e3`, 표 넣기 `KiInsertTimerTable+0x2a8` (`r13`·`rax`), 알아채기 `KiCheckForTimerExpiration+0x3c8` · `+0x3e7` / `+0x4f1`, 처리 `KiRetireDpcList+0x411` · `+0xca4` · `KiTimerExpiration+0x20e` · `KiProcessExpiredTimerList+0xba` (`rdx`) · `+0xfc` · `KiTimerWaitTest+0x1d7` · `+0x325` (`r8`) · `KiTryUnwaitThread+0x168`, 치우기 `KiSwapThread+0x263` · `+0x372` · `+0x37f`, 데이터 `ba w8 @$thread+0xc8` (`WaitStatus`) · `ba w1 @$thread+0x74` (`MiscFlags`, 비트 9 `TimerActive`).
 
-정적 — 다음 바퀴 후보 (대기열 번호는 오케스트레이터가):
+정적 — 다음 바퀴 후보 (대기열 **Q146** — 오케스트레이터가 plan.md 에 붙인 번호, run79 에서 적음):
 
 - ① **`KiTimerExpirationDpc` 를 누가 큐에 넣나** — `PRCB+0x83f0` 을 `KeInsertQueueDpc` 등에 넘기는 줄 (뽑은 `.asm` 497개엔 없음). `KiTimerExpiration` 의 두 번째 caller 길.
 - ② **`KiCheckForTimerExpiration +0xd7 ~ +0xe3`** — 훑을지 정하는 비교 (`PRCB+0x8300` · `+0x8308` 대 `KiLastPseudoHrTimerExpiration` · `KiLastNonHrTimerExpiration`, `KiGlobalTimerResolutionRequests`) 의 뜻.

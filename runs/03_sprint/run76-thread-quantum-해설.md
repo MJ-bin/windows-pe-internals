@@ -2,6 +2,8 @@
 
 > 이 글은 [run76 문서](run76-thread-quantum.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **고쳐 읽기 (run78)**: 2.9 표의 "DPC 를 먼저 다 돌린다 (타이머 만료 DPC 포함 `[추측]`)" 와 4절 표의 "타이머 만료 …, 초인종 때 먼저 도는 DPC 안의 일" 줄 (3절 "큰 그림에서" 의 Q141c2 줄도 같은 이야기) 은 run78 에서 **반만 맞았다**. DPC 단계에서 처리하는 건 맞지만, 타이머 만료 DPC (`KiTimerExpirationDpc`) 가 도는 게 아니라 `KiRetireDpcList +0xca4` 가 `KiTimerExpiration` 을 직접 부른다. → [run78 해설](run78-thread-timer-해설.md) 2.10 · [run78 문서](run78-thread-timer.md).
 
 - 대기열: **Q141b2**: Q141b 의 둘째 조각 — 퀀텀 (PE_emulator 요청 25 ㄴ-2) (`_workspace/plan.md`, 이번에 **끝**)
   - 첫 조각 Q141b1 (넘기기) 은 run75 에서 끝났다.

@@ -2,6 +2,8 @@
 
 > 이 글은 [run77 문서](run77-thread-wake.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **고쳐 읽기 (run78)**: 2.9 끝 줄 ("여러 물건 기다림의 남은 표는 깨난 쪽이 나가면서 뗀다 `KiCommitThreadWait +0x2b2 ~ +0x32a`") 과 2.16 첫머리 ("`WaitRegister` 안쪽 비트와 번호표 안쪽은 로그에 없다") 는 run78 에서 정정됐다. → [run77 문서](run77-thread-wake.md) 맨 위 정정 안내 · [run78 문서](run78-thread-timer.md) "정정" 절 · [run78 해설 2.16](run78-thread-timer-해설.md#216-헷갈리기-쉬운-곳--run77-정정-둘) (ⓐ · ⓑ).
 
 - 대기열: **Q141c1**: Q141c 의 첫 조각 — 깨움과 syscall 출구 (PE_emulator 요청 25 ㄷ-1·ㄷ-3) (`_workspace/plan.md`, 이번에 **끝**)
   - Q141c 는 함수가 많아서 시작할 때 둘로 나눴다. 깨움·출구 (이번, Q141c1) · 타이머 (다음, **Q141c2**).

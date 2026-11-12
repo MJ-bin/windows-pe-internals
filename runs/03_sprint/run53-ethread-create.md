@@ -1,5 +1,7 @@
 # 2026-10-30 run53 — 스레드 객체 나머지와 트랩 프레임을 만들 때 (Q78d2): `_ETHREAD`·`_KTRAP_FRAME` 모르는 칸 169 → **여전히 모름 0**. `_ETHREAD` 칸은 거의 `PspAllocateThread` 한 함수, 트랩 프레임은 `KiInitializeContextThread` 한 함수가 만들고, 끝까지 0 139칸은 0 을 씀 7 · 조건부 안 탐 23 · 아무도 안 씀 34 · 범위 밖 길 75 `[추측]` 으로 갈림. **`ContextFlags` 를 줄여 넘겨서 FP·디버그 레지스터 칸은 이 길에서 늘 안 탄다** (정적)
 
+> **정정 (run79, sast/75)**: 아래 "범위 밖 길에서 씀" 표 `ReaperLink` 줄의 "reaper 줄에 매다는 쪽 (PspExitThread)" 은 틀렸다. 매다는 쪽은 **`KeTerminateThread`** 다 (`+0x1d3 LEA R8,[RBX+0x4e8]` → `+0x1e8` → `+0x1ee CMPXCHG.LOCK [PsReaperListHead]`) `[정적]`. `PspExitThread` 는 같은 칸을 `+0x225` 에서 읽기만 한다 (`TerminationPort` 목록). 자세한 줄은 `runs/03_sprint/run79-thread-exit.md` "정정".
+
 ## 요약 표 (모르는 칸 169 → ?)
 
 - 결과서 맨 앞 표 그대로. 분류 뜻은 run50·run52 와 같다.
