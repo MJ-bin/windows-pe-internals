@@ -348,9 +348,10 @@ KiQuantumEnd                (부르는 곳: KiDispatchInterrupt +0x1c3 · KiIdle
 3. **초기화 동안 퀀텀이 실제로 끝나나 · 누가 다시 채우나**: 사진은 "P1a ~ P1b 사이 한 번" 으로 읽힌다 `[추측: 계산]`. `ba w8 <메인 스레드>+0x20` (`QuantumTarget` 쓰기) 에서 `k` — `KiQuantumEnd+0x49b` 인가, `KiDeferredReadySingleThread+0x260` 인가. 그때 `rbx`/`r14` 가 메인 스레드인지.
 4. **시계 인터럽트가 지나는 입구**: 시계 벡터가 `KiInterruptDispatchNoLock` 계열인지 (`!idt`), `CycleTime` 갱신이 `KiStartInterruptCycleAccumulation → KiEndThreadCycleAccumulation +0x1bc` 로 되는지, `InterruptRequest` 가 `KiEndInterruptCycleAccumulation +0x25c` (`AL = 1`) → `KiDpcInterruptBypass` 를 타는지, 벡터 `0x2f` → `KiDpcInterrupt` 인지. WinDbg 가 조각 `FUN_1406b5753 +0x127` 을 `nt!KiDpcInterrupt+0x39a` 로 보여주는지도 `[추측]`.
 5. **`DecayBoost` 를 1 로 올린 곳** (P1a ~ P1b): `ba w1 <메인 스레드>+0x366` 에서 `k` (깨움 부스트면 Q141c 와 같이).
+   - (run77) 같은 구간 P1b 에 `AdjustIncrement 1` `[관찰]` (`_P1b.txt:821`) — 깨우는 쪽이 `Increment` 를 적는 `KiProcessThreadWaitList +0x9f` 와 맞아 "`Increment 1` 로 깨워짐" 으로 읽힌다 `[추측: 읽기]`. 깨움 부스트가 출처일 가능성이 커졌지만 계산 본체 (`KiDeferredReadySingleThread +0x6d` 갈래) 는 안 읽음 (`runs/03_sprint/run77-thread-wake.md`).
 - 추천 멈춤점 (결과서, 모두 `nt!` — 조건: test.exe 스레드): `KiUpdateRunTime+0x23c` (`rsi` = 지금 스레드, `[rsi+0x48]` · `[rsi+0x20]`) · `KiUpdateRunTime+0x16a` (여기까지 오면 퀀텀 끝) · `KiDispatchInterrupt+0x1c3` · `KiQuantumEnd` 입구 · `KiQuantumEnd+0x49b` (`rcx` = 새 `QuantumTarget`) · `+0x773` · `+0x30e` (안 바꿈) · `+0xbd6` (`rcx` 옛, `rdx` 새) · `KeStartThread+0x1dc` (`rax`) · 데이터 `ba w1 @$prcb+0x38b9`.
 
-정적 — 다음 바퀴 후보 (대기열 번호는 오케스트레이터가):
+정적 — 다음 바퀴 후보 — 대기열 **Q144** (오케스트레이터가 붙인 번호):
 
 - ① **IDT 표 읽기**: 시계 벡터 · 벡터 `0x2f` 가 어느 입구 (`KiInterruptDispatchNoLock` 계열 · `KiDpcInterrupt`) 로 가나 — 결과서가 의심한 표 `PTR_KiDivideErrorFaultShadow_141008280+0x280`. 동적 4 의 절반을 정적으로 닫을 수 있음.
 - ② **다시 채우는 다른 길**: `KiDeferredReadySingleThread +0x211 / +0x214` (`SIL` — 채울지 정하는 값) 과 `+0x23c JNZ +0x1108` 갈래, `KiQueueReadyThread +0x749` 앞 조건. P1a ~ P1b 의 `0x24` 채우기가 어느 길인지 정적으로 좁힘 (동적 3 으로도 닫힘).

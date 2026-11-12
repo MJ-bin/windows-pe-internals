@@ -364,6 +364,7 @@ KiInsertDeferredReadyList — 준비 줄 아님: 밀린 스레드 단일 목록 
 4. **훔치기 갈래**: CPU 는 2개 (run44 `[관찰]`). `nt!KiSearchForNewThread+0xdf` 가 test.exe 스레드에서 서는지, `PRCB+0x9418` · `+0x9420` 값.
 5. **test.exe 에서 `NtYieldExecution` 이 불리나**: `nt!KeYieldExecution` (WinDbg 는 PDB 이름. Ghidra 파일 이름만 `Ordinal_6`) `+0x69` · `+0x395` · `+0x224` 중 어디가 서나. 안 불리면 정적 읽기로 충분.
 6. (run44 사진에서 생긴 것) **P1 → P1a 의 넘김 5번이 어느 길인가** — `nt!KiSwapContext` 입구에서 `k` (test.exe 메인 스레드일 때, `rcx` = 그 스레드). `KiSwapThread` 가 아닌 caller 가 나오면 Q141b2·Q141c 와 같이 본다.
+   - (run77) 후보 하나 더: 깨운 쪽이 그 자리에서 넘어가는 `KiExitDispatcher +0x6c` → `+0x1ac KiSwapContext` (`WaitReason 0x20`) `[추측]` (sast/73). 단 P1a 사진 `WaitReason 0x1f` (`_P1a.txt:831`) 는 상수로 쓰는 줄이 `KiDispatchInterrupt +0x13e` (디스패치 인터럽트 선점) 하나뿐이라 **다섯 번 중 마지막 한 번은 그쪽** 으로 읽힌다 `[추측: 읽기]`. 앞 네 번은 그대로 모름 (`runs/03_sprint/run77-thread-wake.md` "사진과 맞춰 본 것").
 - 추천 멈춤점 (결과서): `nt!KiSwapThread` 입구 (`rcx` 지금 스레드, `rdx` PRCB) · `+0xe1` `rax` (고른 스레드) · `+0x248` `rax`, `nt!KiSearchForNewThread+0x2a` (`rbx` = `NextThread` 가 있었나), `nt!KiSwapContext` 입구 (`rcx`·`rdx`·`r8b`), `nt!SwapContext+0x3e0` (프로세스가 다를 때만 닿음).
 
 정적 — 다음 바퀴 후보 — 대기열 **Q143** (① ~ ⑤, 오케스트레이터가 붙인 번호):
@@ -373,7 +374,7 @@ KiInsertDeferredReadyList — 준비 줄 아님: 밀린 스레드 단일 목록 
 - ③ 다른 CPU 훔치기 본체 (`KiSearchForNewThreadsWithinL0SearchContext` · `…L1SearchContext` · `KiSearchForNewThreadsOnTarget` 7609B) — CPU 하나 에뮬레이터면 필요 없음.
 - ④ `KiSearchForNewThread +0xb4` · `+0x109` (`IdleState` 비트 0 + 고를 게 없음 → `INT 0x29`, `ECX = 0x21`) 의 뜻.
 - ⑤ 그룹 스케줄링 단계 ② (SCB 줄, `KiAdvanceReadyQueueEnumeratorToNextScb` 등) — 동적 3 이 0 이면 필요 없음.
-- 퀀텀 끝·선점 길 (`KiQuantumEnd`, `KiCheckForThreadDispatch +0x10e` · `KiHandleDeferredPreemption +0x297` 의 `KiSwapContext`) 은 이미 **Q141b2** — (해결됨 → run76: 퀀텀 끝은 `KiQuantumEnd +0xbd6` 직접, 두 함수는 선점 길), 기다림·깨움 (`KiCommitThreadWait +0x220`, `WaitStatus` 를 쓰는 쪽) 은 **Q141c**.
+- 퀀텀 끝·선점 길 (`KiQuantumEnd`, `KiCheckForThreadDispatch +0x10e` · `KiHandleDeferredPreemption +0x297` 의 `KiSwapContext`) 은 이미 **Q141b2** — (해결됨 → run76: 퀀텀 끝은 `KiQuantumEnd +0xbd6` 직접, 두 함수는 선점 길), 기다림·깨움 (`KiCommitThreadWait +0x220`, `WaitStatus` 를 쓰는 쪽) 은 **Q141c** — (해결됨, Q141c1 → run77: 깨우는 쪽이 `WaitStatus = 블록 WaitKey` 를 그 자리에서 씀, `KeSetEvent +0x484` 등. 타이머 만료는 Q141c2).
 
 ## 디버거 메모 / 도구 메모
 
