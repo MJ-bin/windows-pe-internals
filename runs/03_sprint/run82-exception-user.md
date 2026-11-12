@@ -98,7 +98,7 @@ syscall 번호 = ntdll `Nt…` 스텁의 `MOV EAX,…` (결과서가 `ntdll.dll`
 - 결과서: `_workspace/sast/79_exception-user_result.md` (**분석성공**. 여섯 질문 + 조정자 덧붙임 3건 모두 줄로 답함, 질문 6 표 · "요청 26 전체 최소 규칙" 포함. 스크립트 문제 없음 — 참고 4건)
 - 오케스트레이터가 `.asm` 으로 다시 본 줄: `KiUserExceptionDispatcher +0xb` · `+0x29` · `+0x37` · `+0x4e` · `+0x55`, `RtlDispatchException +0x200` · `+0x25c` · `+0x37a` · `+0x5f0` · `+0x64b`, `RtlRaiseException +0x188` · `+0x19b` · `+0x2a2`, `RtlRestoreContext` (`0x123e20`) `+0x174` · `+0x181`, `RtlCaptureContext2 +0xf3`, kernelbase `RaiseException +0x83`.
 - flow-writer 도 `.asm` 으로 다시 봤다: `KiUserExceptionDispatcher +0x0 ~ +0x5b` (전부), `RtlRestoreContext +0x150 ~ +0x18a` (전부) · `+0x300`, `RtlGuardRestoreContext` (`RtlRestoreContext__a59f0.asm`) `+0x178` · `+0x180` · `+0x1b6`, `RtlCaptureContext2 +0x3c` · `+0xc0` · `+0xf3`, `RtlpCaptureContext2 +0x6c`, `RtlDispatchException +0x200` · `+0x20c` · `+0x218` · `+0x25c` · `+0x32b` · `+0x336` · `+0x37a` · `+0x3e3` · `+0x5f0` · `+0x64b`, `RtlpCallVectoredHandlers +0x3b` · `+0x3e` · `+0x45` · `+0x262`, `RtlpAddVectoredHandler +0x1af`, `RtlpExecuteHandlerForException +0x0 ~ +0x14` (전부), `RtlRaiseException +0x64` · `+0x8d` · `+0xdc` · `+0xe6` · `+0x147` · `+0x17e` · `+0x182` · `+0x188` · `+0x19b` · `+0x1e2` · `+0x29f` · `+0x2a2`, `RtlRaiseStatus +0x4a`, `RtlRaiseNoncontinuableException +0x60` · `+0x6b`, `RtlUserThreadStart +0x4a ~ +0x55`, `RtlUserThreadStart$filt$0 +0x19` · `+0x20` · `+0x25` · `+0x3a` · `+0x3f` · `+0x4c` · `+0x51`, `__C_specific_handler +0x91` · `+0x93` · `+0xd1`, `RtlUnwindEx +0x5aa` · `+0x606` · `+0x743` · `+0x892`, kernelbase `RaiseException +0x83` · `+0x8a`, `UnhandledExceptionFilter +0xac` · `+0xb8` · `+0xd5` · `+0xe5` · `+0x110` · `+0x126` · `+0x13e ~ +0x157` · `+0x282` · `+0x29a` · `+0x29f` · `+0x2a1` · `+0x2a7` · `+0x2d1` · `+0x2f8` · `+0x315` · `+0x345` · `+0x39d` · `+0x3e0` · `+0x409` · `+0x4ec` · `+0x568` · `+0x578` · `+0x59d` · `+0x5a6`, `RaiseFailFastException +0xa1` · `+0xc0` · `+0xd9` · `+0x12e` · `+0x13e` · `+0x14c` · `+0x181`. 같은 주소 이름은 `pdb_aliases.py` (`--lookup KernelBase.dll 0x129be0`, `--where ntdll.dll RtlGuardRestoreContext`).
-- 값 대조 (flow-writer): run44 덤프 읽기 로그 — PEB `BeingDebugged` `ms/logs/04_baggage-read_P1a.txt:1723` · `_P1b.txt:2421` · `_P2.txt:2433` (모두 0), `CrossProcessFlags` 여덟 장 (`_K1.txt:1568` ~ `_P1.txt:1576` 0 · `_P1a.txt:1743` · `_P1b.txt:2441` **2** · `_P2.txt:2453` 0), KUSD `+0x2d4 KdDebuggerEnabled` `_supp_K1.txt:215` · `_P2.txt:4053` (**3**). `LdrSystemDllInitBlock +0xa8` · `+0xb8` 값은 sast/55 결과서 (run60) 가 옮긴 run44 K1 ~ P2 값. 새 동적 실행은 없다.
+- 값 대조 (flow-writer): run44 덤프 읽기 로그 — PEB `BeingDebugged` `ms/logs/04_baggage-read_P1a.txt:1723` · `_P1b.txt:2421` · `_P2.txt:2433` (모두 0), `CrossProcessFlags` 여덟 장 (`_K1.txt:1568` ~ `_P1.txt:1576` 0 · `_P1a.txt:1743` · `_P1b.txt:2441` **2** · `_P2.txt:2453` 0), KUSD `+0x2d4 KdDebuggerEnabled` `_supp_K1.txt:215` · `04_baggage-read_P2.txt:4053` (**3**). `LdrSystemDllInitBlock +0xa8` · `+0xb8` 값은 sast/55 결과서 (run60) 가 옮긴 run44 K1 ~ P2 값. 새 동적 실행은 없다.
 
 ## 결과
 
@@ -330,7 +330,7 @@ KERNELBASE!RaiseException (0xc4140)    +0x4a 주소 = 자기 주소 · 개수 mi
 
 [아무도 안 받음 — 스레드 맨 위]
 ntdll!RtlUserThreadStart (0xacac0)     __try [+0x7, +0x4a) · 핸들러 __C_specific_handler
- │  +0x2c (CFG 간접) BaseThreadInitThunk → … 예외 → 위 걷기가 이 프레임에서 필터를 부름
+ │  +0x27 · +0x3d (CFG 간접) BaseThreadInitThunk 또는 시작 주소 (ret +0x2c · +0x42) → … 예외 → 위 걷기가 이 프레임에서 필터를 부름
  │  RtlUserThreadStart$filt$0 (0x169b61)
  │   ├─ (1) +0x25  RtlDecodePointer([RtlpUnhandledExceptionFilter 0x1d28e8])     ← KERNELBASE +0x4ab 가 넣은 값 (run68)
  │   ├─ (2) +0x3f  (CFG 간접) KERNELBASE!UnhandledExceptionFilter (0x10ed90)       널이 아니면 → 기본 1
@@ -409,7 +409,7 @@ KERNELBASE!RaiseFailFastException (0x10a020)    코드 0xC0000602 · NONCONTINUA
   - 7 첫 UEF 호출에서 delay-load 가 호스트 `kernel32.dll` 로 풀리나 (`ntdll!LdrResolveDelayLoadedAPI` 로 들어가나, 새 DLL 을 올리나). 풀리는 이름 `kernel32!CheckForReadOnlyResourceFilter` · `kernel32!BasepReportFault` 는 `[정적: apisetschema.dll 표 + kernel32 _index.tsv]`.
 - 추천 멈춤점 (결과서): `ntdll!KiUserExceptionDispatcher` (입구 `RSP` · `RSP+0x4f0`), `ntdll!RtlDispatchException+0x205` · `+0x5f5`, `ntdll!__C_specific_handler+0x93`, `ntdll!RtlUnwindEx+0x606`, `ntdll!RtlRestoreContext+0x174` · `+0x185` · `+0x300`, `ntdll!RtlRaiseException+0x188` · `+0x2a2`, `kernelbase!RaiseException+0x83`, `kernelbase!UnhandledExceptionFilter+0x29f` · `+0x34c` · `+0x4f3`.
 
-정적 — 다음 바퀴 후보 (대기열 번호는 오케스트레이터가):
+정적 — 다음 바퀴 후보 (대기열 **Q157** — run83 때 붙임):
 
 - ① kernel32 쪽 WER 호스트 `kernel32!CheckForReadOnlyResourceFilter` (rva `0x5c2c0`, 78B) · `kernel32!BasepReportFault` (rva `0x622d0`, 42B) 첫 줄 — 무엇을 부르나 (이번엔 이름만). PE_emulator 가 "WER 없음" 을 흉내 낼 때 어떤 답을 주면 4 를 받는지.
 - ② `EPROCESS.DefaultHardErrorProcessing` (`+0x388`) 비트 `0x2` 가 부모 cmd → test.exe 로 어떻게 오나 (결과서 "부모 값 복사 / 부모 없으면 5") — 짐 지도 3.11 줄과 맞춰 볼 것. 이 비트가 UEF 의 WER 갈림 (11 번) 을 정한다.

@@ -2,6 +2,8 @@
 
 > **정정 (run71, sast/66)**: 아래 "`gpServerNlsUserInfo ← BaseStaticServerData + 0x178`" 은 그 칸을 **읽은 값이 아니라 주소**다 (`BaseNlsDllInitialize +0x9 LEA RAX,[R8+0x178]` → `+0x10 MOV [gpServerNlsUserInfo],RAX`). `BaseNlsDllInitialize`·`NlsProcessInitialize` 는 그 영역 안을 읽지 않고, csrss 도 초기화 때 그 영역을 안 채운다 (0). `MakeLocHashNode(0x7f)` 아래 (이 문서 `[공백]`) 가 `GetCurrentNlsCache` 까지 가면 그때 읽는다 — 그 길은 그대로 공백. 자세한 것은 `runs/03_sprint/run71-named-obj-dir.md` "정정".
 
+> **정정 (run83, sast/80)**: 아래 콘솔 "부모 콘솔에 붙기" 갈래의 **syscall 은 3번이 아니라 4번**이다. `ConsoleCommitState +0xfa/+0xff SetTEBLangID` → `+0x12/+0x17 GetConsoleLangId` → **`+0xe1/+0xe8 NtDeviceIoControlFile(params.ConsoleHandle = 새 핸들, 0x500016, API 0x01000008)`** (콘솔 언어 ID, 성공이면 `SetThreadLocale` 이 TEB `CurrentLocale` 을 씀) 가 하나 더 있다 — 이 문서는 `SetTEBLangID` 아래를 안 열었다. 그래서 kernelbase 시작 함수 syscall 합도 15 ~ 16 → **16 ~ 17번** (+ NLS 모름). 아래 syscall 표에 `14′` 줄을 붙였다. 자세한 것은 `runs/03_sprint/run83-console-kernelbase.md` "정정".
+
 ## PE_emulator 쪽에서 쓸 것
 
 ### 한 줄 결론
@@ -263,6 +265,7 @@ KERNEL32!BaseDllInitialize (entry, rva 0x2c5d0)
 | 11 | (`MakeLocHashNode(0x7f)` 아래 레지스트리·csrss 후보) | `NlsProcessInitialize +0x5f/+0x64` | **모름** | 0~? |
 | 12 | `NtCreateFile` `<ConsoleHandle>\Connect` | `ConsoleCreateConnectionObject +0x1c1/+0x1c8` | 실제 `ConsoleHandle` | 1 |
 | 13 · 14 | `NtDeviceIoControlFile(0x500023)` · `NtSetInformationProcess(0x31)` | `ConsoleCommitState +0x8a/+0x91` · `+0xe9/+0xf0` (run51) | | 1 · 1 |
+| 14′ | (run83 정정으로 더함) `NtDeviceIoControlFile(0x500016, API 0x01000008)` — 콘솔 언어 ID | `GetConsoleLangId +0xe1/+0xe8` ← `SetTEBLangID +0x12/+0x17` ← `ConsoleCommitState +0xfa/+0xff` | `params.ConsoleHandle > 0` (`GetConsoleLangId +0x5f` · `+0x62 JLE`) | 1 |
 | 15 · 16 | `NtTraceControl` `0xf` · `0x1e` | `EtwEventRegister` · `EtwEventSetInformation` ← `TraceLogging… +0x55/+0x5c` · `+0x7c/+0x83` | 늘 (첫 등록이 아니라 Once 4개 없음) | 1 · 1 |
 | 17 | `NtQuerySystemInformation` 클래스 0 (kernel32 `SysInfo`) | `_Kernel32LegacyLib_BaseDllInitialize +0x9c/+0xa3` | 늘 | 1 |
 
