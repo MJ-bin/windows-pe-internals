@@ -1,5 +1,7 @@
 # 2026-10-30 run54 — TEB 를 채울 때 (Q78d3): `_TEB` 모르는 칸 133 → **여전히 모름 0**. 커널이 틀을 만들고 (`MmCreateTeb` 64비트 갈래 13줄 · `PspAllocateThread +0x793` `SameTebFlags` 16비트 · 첫 스레드 시작 때 `KiUpdateTebSchedulingPropertiesCurrentThread` 두 줄), ntdll 이 채운다 (TLS 벡터·난수 씨앗·활성화 문맥 스택·`LoadOwner`·`LastStatusValue`·`FlsData`). 끝까지 0 112칸은 0 을 씀 12 · 조건부 안 탐 13 · 아무도 안 씀 28 · 범위 밖 길 59 `[추측]` (ntdll 19 · nt 1 · 다른 DLL 39) 으로 갈림. **TEB 의 0 은 `memset` 이 아니라 새로 커밋된 페이지** (정적)
 
+> **정정 (run74, sast/70)**: 아래 "`INITIAL_TEB` 는 `RtlCreateUserStack` 이 채운다 (… `RtlCreateUserStack (호출 +0x89) +0x128`)" 의 `+0x128` 은 **`AllocationBase` (+0x20) 한 칸**만 쓰는 줄이다. `StackBase` (+0x10) 는 `+0x130`, `StackLimit` (+0x18) 는 `+0x187` (첫 커밋 뒤). `DeallocationStack` 의 원본 `+0x128` 은 맞다. 자세히는 `runs/03_sprint/run74-thread-create.md`.
+
 ## 요약 표 (모르는 칸 133 → ?)
 
 - 결과서 맨 앞 표 그대로. 분류 뜻은 run50·run52·run53 과 같다.
