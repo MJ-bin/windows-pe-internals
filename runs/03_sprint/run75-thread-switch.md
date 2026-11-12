@@ -1,5 +1,7 @@
 # 2026-11-12 run75 — 스레드 넘기기 (Q141b1, PE_emulator 요청 25 ㄴ-1): `KiSwapThread +0xdc KiSearchForNewThread` 가 **`NextThread` → 우선순위 31→1 (같은 우선순위는 줄 맨 앞) → 0 → 다른 CPU 훔치기 → `IdleThread`** 순서로 고르고, `+0x243 KiSwapContext` → `+0x71 SwapContext` 가 바꾼다 (같은 프로세스면 CR3 그대로 `+0x365`). 준비 줄에는 **기본 맨 뒤, `Preempted` 면 맨 앞** (`KiDeferredReadySingleThread +0x1726`). `NtYieldExecution` = `KeYieldExecution(0)` — 준비 줄이 비면 `0x40000024`
 
+> **정정 (run76, sast/72)**: 아래 "퀀텀 끝·선점은 `KiSwapContext` 를 직접 부르는 길 (`KiCheckForThreadDispatch +0x10e` · `KiHandleDeferredPreemption +0x297`) 일 것 `[추측]`" (1(b) 줄 · 정적 호출 표 아래 줄) 은 **선점 쪽만 맞다.** 이 둘은 퀀텀 사슬 밖 선점 길이고 (`WaitReason` `0x20` / `0x26`), **퀀텀 끝은 `KiQuantumEnd +0xbd6` 이 `KiSwapContext` 를 직접** 부른다 (`KiDispatchInterrupt +0x1c3` → `KiQuantumEnd`). 그리고 `KeYieldExecution +0x1fc` 의 `WaitReason 0x21` 은 PDB 열거형으로 `WrYieldExecution` 확인 (`[추측]` → `[정적]`). 자세히는 `runs/03_sprint/run76-thread-quantum.md`
+
 ## PE_emulator 쪽에서 쓸 것
 
 - **한 줄**: 진짜 Windows 는 **우선순위로** 다음 스레드를 고른다. 지금 우리 nt 엔진의 "목록에서 다음 실행 가능한 것, 우선순위 없음" 은 **틀림** `[정적]`.
@@ -178,7 +180,7 @@
   4. `+0xbf` `ThreadLock` 스핀 · `+0xef` PRCB 락.
   5. `+0xf4 CMP [RSI+0x10],R13` — `NextThread == 0` 이면 `+0x2a0` 찾아보기: `+0x2c1 KiStartRescheduleContext` → `+0x2d8 KiFindRescheduleContextEntryForPrcb` → **`+0x2f0 OR CL,0x10` (`FullYield`)** · `+0x2f6 OR [RAX+0x22],2` (`DoNotSetPreemptionBit`) → `+0x30b KiSearchForNewThreadsForRescheduleContext` → `+0x31d KiCommitRescheduleContext`. 다시 `NextThread` 를 읽고 (`+0x150`), 여전히 0 이면 `+0x157 JZ +0x380` → `+0x395`.
   6. 찾았으면: 지금 스레드 새 퀀텀 — `+0x196 KiQueryQuantumReset` · `+0x19b IMUL EAX,[KiCyclesPerClockQuantum]` · **`+0x1b4 MOV [RDI+0x20],RCX`** (`QuantumTarget`), `+0x1be KiComputeNewPriority`, `+0x1e5` **`NextThread = 0`**, `+0x1f4 KiUpdatePriorityMatrixForRunningTransition` (`CurrentThread = 새`, 새 `State = 2`).
-  7. `+0x1fc` 지금 스레드 `WaitReason = 0x21` (`WrYieldExecution` 로 보임 `[추측]`) · `+0x207` `WaitIrql = 이전 IRQL`.
+  7. `+0x1fc` 지금 스레드 `WaitReason = 0x21` (`WrYieldExecution` — ~~`[추측]`~~ → run76 `[정적]`, PDB 열거형 sast/72) · `+0x207` `WaitIrql = 이전 IRQL`.
   8. **`+0x211 KiQueueReadyThread`** — 지금 스레드를 준비 줄에. 퀀텀을 방금 새로 받아 퀀텀 끝 갈래가 아니므로 `Preempted` 로 갈림 (0 이면 맨 뒤). 이 함수는 `Preempted` 를 따로 안 지운다 (`Ordinal_6.asm` 에 `+0x235` 쓰기 없음, 결과서).
   9. **`+0x21f KiSwapContext(지금, 새, 1)`** (`+0x216 MOV R8B,1`) → `+0x227 KiAbProcessPostContextSwitch` → **`+0x22c MOV EBX,R13D` (= 0)** → `+0x24c JMP +0x32` 반환.
 - **무엇을 받나 (4(b))**: `FullYield` 면 `KiStartReadyQueueEnumeratorForRescheduleContext +0xda TEST R11B,0x10` → `+0xde JNZ +0x251` → `+0x251 ~ +0x25e` (`NEG CL; SBB; DEC`) 로 마스크가 **우선순위 1~31 전부** (지금 우선순위가 0 이면 0~31). 그중 가장 높은 것의 맨 앞 (2(b)(c)). 그러니 실제로는 "자기와 같거나 낮은 것 중 가장 높은 것" 까지 받는다.
@@ -364,14 +366,14 @@ KiInsertDeferredReadyList — 준비 줄 아님: 밀린 스레드 단일 목록 
 6. (run44 사진에서 생긴 것) **P1 → P1a 의 넘김 5번이 어느 길인가** — `nt!KiSwapContext` 입구에서 `k` (test.exe 메인 스레드일 때, `rcx` = 그 스레드). `KiSwapThread` 가 아닌 caller 가 나오면 Q141b2·Q141c 와 같이 본다.
 - 추천 멈춤점 (결과서): `nt!KiSwapThread` 입구 (`rcx` 지금 스레드, `rdx` PRCB) · `+0xe1` `rax` (고른 스레드) · `+0x248` `rax`, `nt!KiSearchForNewThread+0x2a` (`rbx` = `NextThread` 가 있었나), `nt!KiSwapContext` 입구 (`rcx`·`rdx`·`r8b`), `nt!SwapContext+0x3e0` (프로세스가 다를 때만 닿음).
 
-정적 — 다음 바퀴 후보 (대기열 번호는 오케스트레이터가):
+정적 — 다음 바퀴 후보 — 대기열 **Q143** (① ~ ⑤, 오케스트레이터가 붙인 번호):
 
 - ① **새 스레드가 준비 줄에 들어가는 길**: run12 의 `PspInsertThread +0x5a1 KeReadyThread` → `+0x26 KiFastReadyThread` (본문 안 뽑음) 에서 `KiDeferredReadySingleThread` 까지 이어지는지. 첫 스레드가 처음 CPU 를 받는 길 (P0 `ContextSwitches 1`) 을 닫는다.
 - ② `KiDeferredReadySingleThread` 의 `[RSP+0x58]` 다른 갈래 (`+0x437` · `+0x46e` · `+0x13f7`) 가 `+0x170c` 로 이어지나 — 위 동적 1 로도 닫힘.
 - ③ 다른 CPU 훔치기 본체 (`KiSearchForNewThreadsWithinL0SearchContext` · `…L1SearchContext` · `KiSearchForNewThreadsOnTarget` 7609B) — CPU 하나 에뮬레이터면 필요 없음.
 - ④ `KiSearchForNewThread +0xb4` · `+0x109` (`IdleState` 비트 0 + 고를 게 없음 → `INT 0x29`, `ECX = 0x21`) 의 뜻.
 - ⑤ 그룹 스케줄링 단계 ② (SCB 줄, `KiAdvanceReadyQueueEnumeratorToNextScb` 등) — 동적 3 이 0 이면 필요 없음.
-- 퀀텀 끝·선점 길 (`KiQuantumEnd`, `KiCheckForThreadDispatch +0x10e` · `KiHandleDeferredPreemption +0x297` 의 `KiSwapContext`) 은 이미 **Q141b2**, 기다림·깨움 (`KiCommitThreadWait +0x220`, `WaitStatus` 를 쓰는 쪽) 은 **Q141c**.
+- 퀀텀 끝·선점 길 (`KiQuantumEnd`, `KiCheckForThreadDispatch +0x10e` · `KiHandleDeferredPreemption +0x297` 의 `KiSwapContext`) 은 이미 **Q141b2** — (해결됨 → run76: 퀀텀 끝은 `KiQuantumEnd +0xbd6` 직접, 두 함수는 선점 길), 기다림·깨움 (`KiCommitThreadWait +0x220`, `WaitStatus` 를 쓰는 쪽) 은 **Q141c**.
 
 ## 디버거 메모 / 도구 메모
 
