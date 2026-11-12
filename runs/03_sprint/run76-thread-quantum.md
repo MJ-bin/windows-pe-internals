@@ -358,7 +358,7 @@ KiQuantumEnd                (부르는 곳: KiDispatchInterrupt +0x1c3 · KiIdle
 - ③ **우선순위 계산 본체**: `KiComputeNewPriorityNonStacking` · `KiComputeThreadPriorityNonStacking` · `KiUpdateThreadPriority` — PE_emulator 가 우선순위를 넣을 때만.
 - ④ **프로세스 `QuantumReset = 2` 의 뿌리**: `PspComputeQuantum` · `PspForegroundQuantum` 표 · `PsPrioritySeparation` (`.asm` 없음, 짐 지도 3.12) — 에뮬레이터가 "프로세스마다 다른 첫 퀀텀" 을 흉내 낼 때만.
 - ⑤ `KiQuantumEnd` 의 `R15B` 다른 갈래 (`+0x3a0` · `+0x8b3` · `+0x97e` · `+0xc72`) 와 `KiIdleLoop +0xaf` 에서 올 때의 길 — 작음.
-- 기다림·깨움 (`KiCommitThreadWait`, `WaitStatus`) 과 타이머 만료 (`KiCheckForTimerExpiration` · `KiTimerExpiration`) 는 이미 **Q141c1 · Q141c2**.
+- 기다림·깨움 (`KiCommitThreadWait`, `WaitStatus`) 과 타이머 만료 (`KiCheckForTimerExpiration` · `KiTimerExpiration`) 는 이미 **Q141c1 · Q141c2** (→ run77 · run78).
 
 ## 디버거 메모 / 도구 메모
 

@@ -1,5 +1,7 @@
 # 2026-11-12 run77 — 기다림·깨움과 syscall 출구 (Q141c1, PE_emulator 요청 25 ㄷ-1·ㄷ-3): **깨우는 쪽이 그 자리에서 기다림을 채운다.** `KeSetEvent` 는 신호 (1) 를 먼저 적고 블록마다 깨난 스레드의 `WaitStatus` 를 **블록 `WaitKey`** 로 쓰며 (`+0x484` 등), 자동 재설정이면 깨움에 성공한 첫 하나 뒤 **그 자리에서 0** (`+0xd1`). 뮤턴트는 놓는 쪽 `KeReleaseMutantEx +0x330 KiWaitSatisfyMutant` 가 **주인을 넘긴다** (`+0x40`). 깨난 쪽 `KeWaitForSingleObject` (Ghidra `KeWaitForMutexObject`) 는 `KiCommitThreadWait +0x220 KiSwapThread` 에서 받은 `WaitStatus` 를 **그대로** 돌려주고, `0x100` 일 때만 `+0x891` 로 처음부터 다시. 유저 `RAX` 는 출구 `KiSystemServiceStart +0x25d` 가 트랩 프레임 `Rax` 에 적었다가 `+0x540` 에서 다시 읽어 `+0x5bb SYSRET`
 
+> **정정 (run78, sast/74)**: 아래 "깨우는 쪽" `KiTryUnwaitThread` 끝 줄의 "여러 객체 기다림의 남은 블록은 깨난 쪽이 나가면서 뗀다 (`KiCommitThreadWait +0x2b2 ~ +0x32a`)" 는 **커밋 전에 끝난 길** (`+0xa3 JNZ +0x251`) 만이다. 잠들었다 깬 기다림의 진 쪽 블록은 **깨운 쪽** 이 부르는 `KiProcessThreadWaitList +0x74 ~ +0x7a` → `+0x141 ~ +0x269` (`BlockState == 4` 만) 가 떼고, 한 객체 기다림도 마감이 있으면 블록이 둘 (`WaitBlock[0]` + 타이머 `WaitBlock[3]`) 이다. 그리고 "사진과 맞춰 본 것" 의 "`WaitRegister` 안쪽 비트·블록 안 칸은 로그에 없다" 는 `02b KTHREAD` 얘기이고, 같은 로그의 날 바이트 구획 `02c ETHREAD_RAW` 에 있다 (값은 `runs/03_sprint/run78-thread-timer.md` "정정").
+
 ## PE_emulator 쪽에서 쓸 것
 
 - **한 줄**: 지금 우리 nt 엔진의 "깨움 = 실행 가능 표시만, 깨난 스레드가 자기 syscall 을 **다시 물어** 결과를 받음" 은 **틀림** `[정적]`.
@@ -400,14 +402,14 @@ KeReleaseMutant
 8. (사진에서 새로) **P1b `AdjustIncrement 1` 을 넘긴 쪽**: `nt!KiProcessThreadWaitList+0x9f` 에서 `r8b` 와 `k` (누가 `Increment 1` 로 깨웠나 — `NtSetEvent` 쪽인가) — run76 동적 5 (`DecayBoost` 를 1 로 올린 곳) 와 같은 순간일 것 `[추측]`.
 - 추천 멈춤점 (결과서, 모두 `nt!` — 조건: test.exe 스레드. WinDbg 이름은 `nt!KeWaitForSingleObject`): `KeWaitForSingleObject+0x1a6` (`rdi` = 지금 스레드) · `+0x7b7` · `+0x841` · `+0x846` (`rax`) · `+0x860` (`r14d`), `KiCommitThreadWait+0xbf` · `+0x251` · `+0x220`, `KeSetEvent+0x484` / `+0x2ec` / `+0x4d6` / `+0x171` (`r13` = `WaitKey`) · `+0xd1` · `+0x10c`, `KiTryUnwaitThread` 입구 (`r8`) · `+0x168`, `KeReleaseMutantEx+0x330` (`rdx`) · `KiWaitSatisfyMutant+0x40`, `KiProcessThreadWaitList+0x101` · `KiExitDispatcher+0x1ac`, `KiSystemServiceStart+0x193` / `+0x195` · `+0x25d` · `+0x391` · `+0x540` · `+0x5bb`.
 
-정적 — 다음 바퀴 후보 (대기열 번호는 오케스트레이터가):
+정적 — 다음 바퀴 후보 — 대기열 **Q145** (오케스트레이터가 붙인 번호):
 
 - ① **`NtSetEvent` 가 `KeSetEvent` 에 무엇을 넘기나** — `Increment` (사진 P1b `AdjustIncrement 1` 과 맞나) 와 `Wait` (참이면 `KiExitDispatcher +0x10a KiDirectSwitchThread` 갈래). `NtReleaseMutant`·`NtPulseEvent` 도 같은 질문. PE_emulator 팀원 syscall 몸과 바로 닿는 곳.
-- ② **`KeWaitForMultipleObjects`** — `WaitKey` 번호 (`STATUS_WAIT_0 + n`), `WaitAll` (`WaitType 0`) 블록 채우기, 블록 수 > 3 일 때 블록 배열. `test.exe` 엔 안 나오지만 ntdll·kernelbase 가 부를 수 있음.
+- ② **`KeWaitForMultipleObjects`** — `WaitKey` 번호 (`STATUS_WAIT_0 + n`), `WaitAll` (`WaitType 0`) 블록 채우기, 블록 수 > 3 일 때 블록 배열 (스레드 블록 4개 중 `WaitBlock[3]` 은 타이머 몫 — `KeInitThread +0x197 / +0x19e`, run78). `test.exe` 엔 안 나오지만 ntdll·kernelbase 가 부를 수 있음.
 - ③ **깨움 부스트 계산** — `KiDeferredReadySingleThread +0x6d` 갈래 (`AdjustReason 1` · `AdjustIncrement`) 가 `DecayBoost`·`Priority` 를 어떻게 바꾸나 (run76 의 P1b `DecayBoost 1` 출처, run75·run76 의 앞/뒤 한계와 같은 함수). Q144 ③ (우선순위 계산 본체) 와 묶을 수 있다.
 - ④ `KiTryUnwaitThread` 의 `R9 ≠ 0` 갈래 (`+0x237 ~ +0x2e0`, 뮤턴트 넘기기까지) 를 부르는 곳 — caller 32곳 중 이번에 안 본 쪽.
 - ⑤ `KiInitiateUserApc` · `KiRestoreSetContextState` · `KeContextToKframes` 안에서 트랩 `Rax` 를 채우는 줄 — 이미 **Q141e** 몫 (결과서).
-- 타이머 만료 (`KiCommitThreadWait +0x1f2 KiInsertTimerTable` · `+0x39e KiTimerWaitTest` · `KiComputeDueTime`) 는 이미 **Q141c2**, 스레드 객체 신호 (끝내기) 는 **Q141d**.
+- 타이머 만료 (`KiCommitThreadWait +0x1f2 KiInsertTimerTable` · `+0x39e KiTimerWaitTest` · `KiComputeDueTime`) 는 이미 **Q141c2** (→ run78), 스레드 객체 신호 (끝내기) 는 **Q141d**.
 
 ## 디버거 메모 / 도구 메모
 

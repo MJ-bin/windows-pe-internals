@@ -374,7 +374,7 @@ KiInsertDeferredReadyList — 준비 줄 아님: 밀린 스레드 단일 목록 
 - ③ 다른 CPU 훔치기 본체 (`KiSearchForNewThreadsWithinL0SearchContext` · `…L1SearchContext` · `KiSearchForNewThreadsOnTarget` 7609B) — CPU 하나 에뮬레이터면 필요 없음.
 - ④ `KiSearchForNewThread +0xb4` · `+0x109` (`IdleState` 비트 0 + 고를 게 없음 → `INT 0x29`, `ECX = 0x21`) 의 뜻.
 - ⑤ 그룹 스케줄링 단계 ② (SCB 줄, `KiAdvanceReadyQueueEnumeratorToNextScb` 등) — 동적 3 이 0 이면 필요 없음.
-- 퀀텀 끝·선점 길 (`KiQuantumEnd`, `KiCheckForThreadDispatch +0x10e` · `KiHandleDeferredPreemption +0x297` 의 `KiSwapContext`) 은 이미 **Q141b2** — (해결됨 → run76: 퀀텀 끝은 `KiQuantumEnd +0xbd6` 직접, 두 함수는 선점 길), 기다림·깨움 (`KiCommitThreadWait +0x220`, `WaitStatus` 를 쓰는 쪽) 은 **Q141c** — (해결됨, Q141c1 → run77: 깨우는 쪽이 `WaitStatus = 블록 WaitKey` 를 그 자리에서 씀, `KeSetEvent +0x484` 등. 타이머 만료는 Q141c2).
+- 퀀텀 끝·선점 길 (`KiQuantumEnd`, `KiCheckForThreadDispatch +0x10e` · `KiHandleDeferredPreemption +0x297` 의 `KiSwapContext`) 은 이미 **Q141b2** — (해결됨 → run76: 퀀텀 끝은 `KiQuantumEnd +0xbd6` 직접, 두 함수는 선점 길), 기다림·깨움 (`KiCommitThreadWait +0x220`, `WaitStatus` 를 쓰는 쪽) 은 **Q141c** — (해결됨, Q141c1 → run77: 깨우는 쪽이 `WaitStatus = 블록 WaitKey` 를 그 자리에서 씀, `KeSetEvent +0x484` 등. 타이머 만료는 Q141c2 → run78).
 
 ## 디버거 메모 / 도구 메모
 
