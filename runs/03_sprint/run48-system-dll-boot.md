@@ -1,5 +1,7 @@
 # 2026-10-29 run48 — 부팅 준비 갈래 (Q93): ntdll 섹션·기본 주소·`PsNtdllExports` 는 **부팅 때 한 번** 만들어진다. `IoInitSystemPreDrivers +0x10f5` → `PsLocateSystemDlls` → (칸마다) `PspLocateSystemDll` → `PspMapSystemDll` (인자4 = 1) 이 `PspSystemDlls` 칸을 채우고, 뒤에 `PspInitPhase2 → PspInitializeSystemDlls +0x6b` 가 `PsNtdllExports` 를 채운다 (정적)
 
+> **정정 (run81, sast/78)**: 아래 "① 에서 읽는 자리" 표 `PsNtdllExports` 줄의 "`PspInitializeThunkContext +0x1a1 · +0x37f` (`+0x8` → 새 스레드 `Rip`)" 중 **`+0x37f` 는 새 스레드 `Rip` 가 아니다.** 실패 갈래 (`+0x2fc JS +0x37b`) 에서 같은 `+0x8` (`LdrInitializeThunk`) 을 예외 레코드 `ExceptionAddress` (`+0x386 [RBP+0x40]`) 로 읽는 줄이다 (그 뒤 `+0x3c3 KiDispatchException`, 첫 기회 0 → 프로세스 종료). 새 스레드 `Rip` 는 `+0x1a1` 하나 (`runs/03_sprint/run81-exception-kernel.md` "정정").
+
 ## 부팅 준비 호출 사슬 (함수 / call / ret / 하는 일 / 실패하면)
 
 - 결과서 맨 앞 표 바탕. 오프셋은 함수 시작에서. `ret` 이 WinDbg 콜스택 `caller+0x..` 와 같은 값. 모두 `_calls.tsv`·`.asm` 기준 `[정적]`.

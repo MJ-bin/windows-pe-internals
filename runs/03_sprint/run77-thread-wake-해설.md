@@ -4,6 +4,8 @@
 > 근거와 태그는 run 문서·결과서를 따른다.
 >
 > **고쳐 읽기 (run78)**: 2.9 끝 줄 ("여러 물건 기다림의 남은 표는 깨난 쪽이 나가면서 뗀다 `KiCommitThreadWait +0x2b2 ~ +0x32a`") 과 2.16 첫머리 ("`WaitRegister` 안쪽 비트와 번호표 안쪽은 로그에 없다") 는 run78 에서 정정됐다. → [run77 문서](run77-thread-wake.md) 맨 위 정정 안내 · [run78 문서](run78-thread-timer.md) "정정" 절 · [run78 해설 2.16](run78-thread-timer-해설.md#216-헷갈리기-쉬운-곳--run77-정정-둘) (ⓐ · ⓑ).
+>
+> **고쳐 읽기 (run80)**: 2.13 "서비스 안에서 그 칸에 써도 소용없다" 5 · 6번, 2.14 "run 문서가 고친 것" 의 "어떤 때 서나 — 남이 문맥을 넣은 경우 (Q141e) 로 보인다 `[추측]`" 줄, 2.14 "세 출구 나란히" 표 셋째 줄 (`KiRestoreSetContextState +0x401` · `+0x416 IRETQ`) 은 run80 에서 정정됐다. → [run80 문서](run80-thread-setcontext.md) "정정" 절 · [run80 해설 2.16 ①](run80-thread-setcontext-해설.md#216-헷갈리기-쉬운-곳--정정-둘-중-진짜는-하나).
 
 - 대기열: **Q141c1**: Q141c 의 첫 조각 — 깨움과 syscall 출구 (PE_emulator 요청 25 ㄷ-1·ㄷ-3) (`_workspace/plan.md`, 이번에 **끝**)
   - Q141c 는 함수가 많아서 시작할 때 둘로 나눴다. 깨움·출구 (이번, Q141c1) · 타이머 (다음, **Q141c2**).
