@@ -2,6 +2,8 @@
 
 > 이 글은 [run85 문서](run85-user32-init.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **고쳐 읽기 (run86)**: "run86 에서 다룸" 으로 남긴 자리 ("조심할 곳" 5, 2.12 끝, 2.13 끝, 2.15 정정) 의 답은 [run86 해설 2.13](run86-gdi32-init-해설.md) 에 있다 — 결과서 sast/82 의 짐작 둘은 틀렸다 (`GdiDllInitialize` 를 부르는 곳은 user32 `+0x996` 하나, 두 번 불리는 건 `GdiProcessSetup` / 첫 win32k syscall 은 `NtGdiInit` 이 아니라 gdi32full `DllMain +0x2e` **`NtGdiInit2` (`0x12ee`)**). 그리고 1장 그림의 "gdi32 먼저 `[추측]`" 과 2.14 의 "user32 `DllMain` 전에 이미 올라와 있을 것 `[추측: 의존하는 쪽이 먼저]`" 은 — **올라오는 것 (매핑) 은 맞고** (gdi32full 도 gdi32 가 정적으로 가져와 같이 올라온다 `[정적: PE 표]`), **`DllMain` 차례는 user32 → gdi32 → gdi32full → user32 순환이라 로더가 실행 때 정한다** (동적 Q162 1). → [run86 해설 2.5](run86-gdi32-init-해설.md) · [run86 문서](run86-gdi32-init.md) "결과서와 다르게 적은 곳 · 보탠 것" ⑨ · "정정". 하나 더: 3절 · 4절의 "PEB 의 user32 칸 셋" 은 **넷** 이다 (`AppCompatFlagsUser +0x2d0` 포함 — 짐 지도 7.2).
 
 - 대기열: **Q150a** — PE_emulator 요청 28 (user32 · gdi32 초기화 최소 길, "GUI 벽") 의 **첫 조각, user32 · win32u 쪽** (`_workspace/plan.md`)
   - Q150 (요청 28 전체) 은 둘로 나눴다.

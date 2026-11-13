@@ -128,7 +128,7 @@ user32 · win32u PDB 는 공개 심볼만이라 구조체 타입이 0개다 (`ll
 | `0x1000` | `NtUserGetThreadState` | `0x12b0` | (참고) 가장 낮은 번호 |
 | `0x107b` | `NtUserGetThreadDesktop` | `0x2210` | `ClientThreadSetup +0x29c` |
 | `0x10e2` | `NtUserProcessConnect` | `0x2ef0` | `ClientThreadSetup +0x120`, **서버 프로세스 갈래만** |
-| `0x12ed` · `0x12ee` | `NtGdiInit` · `NtGdiInit2` | `0x7050` · `0x7070` | 결과서가 gdi32 쪽 후보 둘로 적음 — **`NtGdiInit` 후보는 틀림, run86 (sast/83) 에서 정정** |
+| `0x12ed` · `0x12ee` | `NtGdiInit` · `NtGdiInit2` | `0x7050` · `0x7070` | 결과서가 gdi32 쪽 후보 둘로 적음 — **`NtGdiInit` 후보는 틀림, run86 (sast/83) 에서 정정** → (run86) 부르는 건 `NtGdiInit2` (`0x12ee`) 하나, gdi32full `DllMain +0x2e` (가져오기 칸 `0xc1fe8`). `NtGdiInit` 칸 `0xc1fe0` 은 내보내기 껍데기만 읽음 |
 | `0x13ec` | `NtUserDisableProcessWindowFiltering` | `0x9030` | `DllMain +0xa17` (조건부) |
 | `0x1440` | `NtUserGetDpiForCurrentProcess` | `0x9ab0` | `GetDpiForCurrentProcess +0x28` (조건부) |
 | `0x1475` | `NtUserGetProcessUIContextInformation` | `0xa150` | `ClientThreadSetup +0x356` |
@@ -302,15 +302,15 @@ user32!__ClientThreadSetup (0x4f7d0)                   ← apfnDispatch +0x2a0 (
   - user32 가 놓을 칸이 test.exe 에선 모두 비었다 `[관찰]`: PEB `KernelCallbackTable` · `PostProcessInitRoutine` · `Win32ClientProcInfo` (null), TEB `Win32ThreadInfo` (null) · `Win32ClientInfo` (`[62] 0`) — P1a ~ P2 (`_P2.txt:2464 · 2505 · 2554 · 2694 · 2726`, `_P1a.txt:1754 · 1795 · 1844 · 1984 · 2016`).
   - ntdll `.mrdata` `NtUserPfn` (`0x1e7130 ~ 0x1e733f`, 66칸) 은 P1a · P2 모두 `0x7ffafb797040` = ntdll 시작 (`0x7ffafb660000`, `.mrdata` `0x7ffafb847000` − `0x1e7000`) + **`0x137040` = `UninitUser32Proc`**, 플래그 `0x1e7340` 은 0 (`_P1a.txt:5766 ~ 5799`, `_P2.txt:6896 ~ 6929`) `[관찰]`. ntdll 파일의 같은 자리도 66칸 모두 `0x180137040`, 플래그 0 이다 (flow-writer `objdump -s`). 곧 **test.exe 에선 아무도 안 쓰고 파일 처음 값 (재배치) 그대로** — `RtlInitializeNtUserPfn` (user32 가 부를 때만) 도, `RtlResetNtUserPfn` (플래그 ≠ 0 일 때만 `UninitUser32Proc` 로 되채움, `+0x8 ~ +0x5f`) 도 안 탔다. 짐 지도 7.3 의 `NtUserPfn` `≤P1a` 가 이것 (짐 지도 7.5 에 실마리로).
 - ⑤ **user32 · win32u · gdi32 · gdi32full 은 `\KnownDlls` 섹션에 있다** `[관찰]` (run44 `\KnownDlls` 목록, `ms/logs/04_baggage-read_P2.txt:1387 · 1396 · 1408 · 1399`). user32 를 import 하는 프로세스는 2.6 의 KnownDll 길로 올릴 것이다 `[추측: 실행은 안 봄]`. PE_emulator 가 KnownDll 섹션을 흉내 낸다면 이 넷이 필요하다.
-- ⑥ **user32 는 GDI32 를 정적으로 가져온다** (flow-writer `pefile`: IAT `0xb4fe0 GdiDllInitialize` · `0xb4fd8 GdiProcessSetup`, 둘 다 `GDI32.dll`) `[정적: PE 표]`. 그러니 gdi32 는 user32 `DllMain` 전에 이미 올라와 있다 `[추측: 2.7 초기화 순서 — 의존하는 쪽이 먼저]`. gdi32 의 몸 · gdi32full 지연 가져오기는 run86.
+- ⑥ **user32 는 GDI32 를 정적으로 가져온다** (flow-writer `pefile`: IAT `0xb4fe0 GdiDllInitialize` · `0xb4fd8 GdiProcessSetup`, 둘 다 `GDI32.dll`) `[정적: PE 표]`. 그러니 gdi32 는 user32 `DllMain` 전에 이미 올라와 있다 `[추측: 2.7 초기화 순서 — 의존하는 쪽이 먼저]`. gdi32 의 몸 · gdi32full 지연 가져오기는 run86. → (run86 결과) gdi32full 은 지연 가져오기로 처음 올라오는 게 아니라 gdi32 의 정적 가져오기 (`api-ms-win-gdi-internal-uap-l1-1-0`) 로 gdi32 와 같이 올라온다 `[정적: PE 표]`. 지연 가져오기는 `GdiDllInitialize` · `GdiProcessSetup` 주소를 처음 풀 때 몫. 올라오는 것은 위 짐작대로지만 `DllMain` 차례는 순환 (user32 → gdi32 → gdi32full → user32) 이라 "의존하는 쪽이 먼저" 로 못 정한다 — run86 보탠 것 ⑨ · 정정 셋째.
 - `_calls.tsv` 의 `alias:` callee (`InitializeUMHandleList+1` 등 — 같은 이름 C++ 꾸민 이름 하나) 는 `pdb_aliases.py --lookup` 으로 별칭 무리가 아님을 확인하고 이름을 그대로 썼다. ntdll `alias:RtlCopyMemory+3` (같은 주소 이름 3개, 후보 `RtlMoveMemory` · `memcpy` · `memmove`) 은 "메모리 복사" 로 적었다.
 
 ## 정정
 
 - 이전 run 이 틀린 것은 없다. run68 의 "정상이면 `CsrpClientConnectToServer` (`+0xb5/+0xba`) 는 안 탄다 — csrss 응답 상태가 음수일 때만" 은 **첫 연결 (kernelbase) 때** 이야기로 맞다. 이번에 같은 줄이 **이미 연결된 둘째 연결 (user32) 의 보통 길** 이기도 하다는 것을 더했다 (flow.md 2.5 run68 절에 한 줄).
 - **결과서 sast/82 의 Q150b 쪽 짐작 가운데 둘은 run86 (sast/83) 에서 정정** — 이 문서엔 틀린 채로 옮기지 않았다:
-  - "`GdiDllInitialize` 가 gdi32 `DllMain` 과 user32 `DllMain` 에서 두 번 (다른 `hmod`) 불린다" — 틀림 (run86).
-  - "`NtGdiInit` (`0x12ed`) 이 gdi32 쪽 첫 win32k syscall 후보" — 틀림 (run86).
+  - "`GdiDllInitialize` 가 gdi32 `DllMain` 과 user32 `DllMain` 에서 두 번 (다른 `hmod`) 불린다" — 틀림 (run86). → (run86 결과) 부르는 곳은 user32 `+0x996` 하나 (refs `0xb4fe0` 1줄). 두 번 불리는 건 `GdiProcessSetup` (`ClientThreadSetup +0x93` · gdi32full `DllMain +0x67`, `gbFirst` 로 둘째는 `+0x1b → +0x428`).
+  - "`NtGdiInit` (`0x12ed`) 이 gdi32 쪽 첫 win32k syscall 후보" — 틀림 (run86). → (run86 결과) 실제는 `NtGdiInit2` (`0x12ee`), gdi32full `DllMain +0x2e` — 이 스레드의 첫 win32k syscall (매니페스트 `uiAccess` 가 없어 이 문서 차례 15 `+0x5d2` 를 안 타고 `gfServerProcess` 가 아닐 때).
 
 ## flow.md · 짐 지도에 반영한 것
 
