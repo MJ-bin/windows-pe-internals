@@ -2,6 +2,8 @@
 
 > 이 글은 [run74 문서](run74-thread-create.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **고쳐 읽기 (run90)**: 유저 쪽 `[추측]` 은 run90 에서 `[정적]` 이 됐다 — "한 줄로 먼저" 끝 · 1절 그림 · 2.2 줄 1 · 2.3 끝 · 2.4 "그다음은 run11 대로" 의 "유저 `CreateThread` 가 `NtCreateThreadEx` 로 오나 · `Worker` 가 그대로 가나", 2.5 (사) 와 4절 표 셋째 줄의 "(0, 0) 을 넘긴다고 **치면**" 은 맞다 (`kernel32!CreateThread +0x36` → `CreateRemoteThreadEx +0x2e2`, 스택 (0, 0) `+0x280 ~ +0x291`, 쪽지 늘 2장 `TotalLength 0x48` — kernel32 콘센트 → KERNELBASE 풀이만 `[추측]`). 2.5 (바) 의 "예약" `[추측]` 은 **예약만** (`MmAllocateUserStack` → `MiReserveUserMemory`, 시작 64KB 정렬), 같은 절 끝 "노드 보통 0 `[추측]`" 은 이상적 프로세서 속성이 있을 때만 노드 + 1 · test.exe 0 으로 닫혔다. 2.7 끝 "'둘만' 은 좁다" 는 커널 기준이고 `CreateThread` 길엔 딱 둘이다. 단 CreateFlags 는 "늘 0" 이 아니라 조건 셋에 따라 0 / 1 이라, 2.6 (바) 의 "`+0x2e0` 은 보통 안 설 것 `[추측]`" 은 그대로 `[추측]` 이다. 4절 표의 Q142 ④ · ⑤ 는 닫혔고 ③ 은 못 찾음 (→ Q168 ②). → [run90 해설](run90-thread-leftovers-해설.md) 2.3 ~ 2.11.
 
 - 대기열: **Q141a**: PE_emulator 요청 25 의 ㄱ — 둘째 스레드 만들기 (커널) (`_workspace/plan.md`, 이번에 **끝**)
   - 다음 항목: **Q141b** (넘기기·퀀텀) → Q141c (기다림·깨움) → Q141d (끝내기) → Q141e (남의 스레드 문맥). 바퀴마다 멈춘다.

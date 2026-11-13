@@ -3,7 +3,7 @@
 ## PE_emulator 쪽에서 쓸 것
 
 - **한 줄**: 둘째 스레드도 첫 스레드와 **같은 몸 만들기 함수** (`PspAllocateThread` → `PspSetupUserStack` → `RtlCreateUserStack`, `MmCreateTeb`) 를 쓴다. 다른 건 셋 — 문맥을 만드는 곳 (`NtCreateThreadEx` 안), 스택 크기의 출처 (사용자 값 그대로, 0 이면 `RtlCreateUserStack` 이 헤더로), 만들기 플래그 (`0x40` InitialThread 가 절대 안 켜짐 → `SameTebFlags` 를 커널이 안 씀) `[정적]`.
-- test.exe 의 `CreateThread(NULL, 0, Worker, NULL, 0, NULL)` (`[소스]` `sample/test.c:34`) 가 커널에 (0, 0) 을 넘긴다면: 예약 `M = 0x100000`, 커밋 `C = 0x1000`, 가드 `0x3000` — **첫 스레드와 같은 값** `[정적]` (유저 쪽이 정말 0 을 넘기는지는 `[추측]`, 아래 동적).
+- test.exe 의 `CreateThread(NULL, 0, Worker, NULL, 0, NULL)` (`[소스]` `sample/test.c:34`) 가 커널에 (0, 0) 을 넘긴다면: 예약 `M = 0x100000`, 커밋 `C = 0x1000`, 가드 `0x3000` — **첫 스레드와 같은 값** `[정적]` (유저 쪽이 정말 0 을 넘기는지는 `[추측]`, 아래 동적). (→ run90 `[정적]`: 넘긴다 — `KERNELBASE!CreateRemoteThreadEx +0x280 ~ +0x291` 이 `dwStackSize = 0` 이면 9·10번째를 (0, 0) 으로. 그래서 Worker 스택 = 위 값.)
 - 질문마다 "지금 우리" (결과서 sast/69 · sast/70 그대로):
 
 | 질문 | 답 (한 줄) | 지금 우리 (PE_emulator) | 근거 줄 |
@@ -185,7 +185,7 @@
   9. 7·8 실패면 `+0x26c` → `+0x28d ZwFreeVirtualMemory(&A, &0, 0x8000 MEM_RELEASE)` (이미 쓴 InitialTeb 칸은 안 지움).
 - 그 뒤: `MmCreateTeb +0x12a ~ +0x13a` 가 InitialTeb `+0x10/+0x18/+0x20` 을 TEB `StackBase`/`StackLimit`/`DeallocationStack` 로 옮김 (run54).
 - `X` (`PEB+0x318`) 의 출처: 커널 `MmCreatePeb +0x4c6/+0x4cc` (`MmRegistryState+0x28` ← 레지스트리 `MinimumStackCommitInBytes`, run70) · ntdll `LdrpInitializeExecutionOptions +0x406 ~ +0x413` (IFEO 값이 더 클 때만). 그래서 첫 스레드는 레지스트리 값만, 둘째부터는 IFEO 값까지 볼 수 있다 `[추측: 순서로만]`.
-- ntdll 에도 같은 이름 `RtlCreateUserStack` (rva `0xf5130`, 709B) 이 있다. 크기가 비슷해 같은 모양일 것 `[추측]` — 본문 안 봄.
+- ntdll 에도 같은 이름 `RtlCreateUserStack` (rva `0xf5130`, 709B) 이 있다. 크기가 비슷해 같은 모양일 것 `[추측]` — 본문 안 봄. (→ run90 `[정적]`: 같은 꼴. 다른 점은 헤더를 PEB `ImageBaseAddress` + `RtlImageNtHeaderEx` 로 찾음 · PE32 갈래 없음 · 5번째 인자 (할당 단위) · `Nt*` syscall. 부르는 곳은 kernelbase `CreateFiberEx +0xce` 하나.)
 
 ### PE_emulator ㄱ-2 최종 답 (sast/70 결과서 요약)
 
@@ -262,7 +262,7 @@ NtCreateThreadEx                            (인자 11개, 이름은 [추측])
 
 1. 새 TEB `SameTebFlags` 실제 값 (기대 `0` `[추측]`): `nt!PspAllocateThread+0x661` (MmCreateTeb 뒤, `rbx` = TEB) 에서 `dx ((nt!_TEB*)@rbx)->SameTebFlags`, `+0x66f` 에서 `r12w` (0 이면 `+0x793` 안 탐), `+0x6f4` 에서 다시.
 2. 첫 CONTEXT 실제 값: `nt!NtCreateThreadEx+0x2cd` 에서 `rbx` = CONTEXT (`ContextFlags`·`SegCs`·`Rip`·`Rcx`·`Rdx`, `Rsp` 는 아직 0), `dq @r14+8 L3` (StackInfo). `nt!PspSetupUserStack+0xe3` 에서 `dq @r13+0x98 L1` (`Rsp`).
-3. `RtlCreateUserStack` 실제 크기: `nt!PspSetupUserStack+0x89` 에서 `rcx`·`rdx`·`r8`·`r9` (유저가 (0, 0) 을 넘겼나 — `KERNELBASE!CreateRemoteThreadEx` 는 안 읽음), `nt!RtlCreateUserStack+0x1eb` 가 서나 (헤더 갈래), `+0x207` 에서 `dq @rax+0x60 L2` · `dw @rax+0x18 L1`, `+0x81` 에서 `rax`·`rbx`.
+3. `RtlCreateUserStack` 실제 크기: `nt!PspSetupUserStack+0x89` 에서 `rcx`·`rdx`·`r8`·`r9` (유저가 (0, 0) 을 넘겼나 — `KERNELBASE!CreateRemoteThreadEx` 는 안 읽음 → run90 `[정적]`: 읽었고 (0, 0) 을 넘긴다 (`+0x280 ~ +0x291`). 여기선 값 대조만), `nt!RtlCreateUserStack+0x1eb` 가 서나 (헤더 갈래), `+0x207` 에서 `dq @rax+0x60 L2` · `dw @rax+0x18 L1`, `+0x81` 에서 `rax`·`rbx`.
 4. `PEB+0x318`: `+0x104` 에서 `dq @r13+0x318 L1` (둘째 스레드 때도 0 인가 — run44 사진은 P2 까지 0).
 5. `ZwSetInformationProcess(0x29)`: `+0x104` 에서 `dq @rsp+0x50 L5` (노드·`M`·ZeroBits), `+0x109` 에서 `eax`·`dq @rsp+0x70 L1` (`A`, 64KB 정렬인가) + `!address`. 가드 3쪽 보호값 (`+0x1c6` 뒤 `!address` / `!vad`). `+0x1d7` 에서 `dq poi(@rsp+0xe8) L5` (InitialTeb). 노드 값 (`r9 >> 0x38`) 이 0 인가.
 6. (선택) `AttributeList` 가 NULL 인가·항목 수 (`nt!NtCreateThreadEx+0x70` 에서 `rdi`, `poi(@rdi)`), `SecureProcess` (`+0x170` 비트 0) 가 0 인가, `nt!PspInsertThread+0x8e` 가 서나 (첫 스레드 길이 아님), `+0x2e0` 이 안 서나, `+0x5a1` 시점. 기능 게이트 `Feature_CreateProcessSegmentHeapEnablement` 값.
@@ -271,10 +271,10 @@ NtCreateThreadEx                            (인자 11개, 이름은 [추측])
 
 정적 — 다음 바퀴 후보 (대기열 번호는 오케스트레이터가):
 
-- 유저 쪽 `KERNELBASE!CreateRemoteThreadEx` 가 `NtCreateThreadEx` 에 주는 `CreateFlags`·9·10번째 인자 (`dwStackSize`·`STACK_SIZE_PARAM_IS_A_RESERVATION`)·`AttributeList` — 위 동적 3 으로도 닫힘.
-- `ZwSetInformationProcess` 클래스 `0x29` 갈래 (Mm 쪽) 가 정말 예약하나 — 동적 5 가 이상할 때만.
-- `PspBuildCreateProcessContext` 끝 `ctx+0x10` 비트 0 을 누가 읽나 (`+0x1876 ~ +0x1882`).
-- `PspAllocateThread +0x8c7` 노드 갈래 (`KeGetProcessorNodeNumber` 뒤) 조건 — 노드 값이 0 이 아닐 때.
+- 유저 쪽 `KERNELBASE!CreateRemoteThreadEx` 가 `NtCreateThreadEx` 에 주는 `CreateFlags`·9·10번째 인자 (`dwStackSize`·`STACK_SIZE_PARAM_IS_A_RESERVATION`)·`AttributeList` — 위 동적 3 으로도 닫힘. (→ run90 `[정적]`: `kernel32!CreateThread +0x36` → `CreateRemoteThreadEx +0x2e2 NtCreateThreadEx` 가 스택 **(0, 0)** (`+0x280 ~ +0x291`) · ZeroBits 0 · 속성 **2개** (`0x10003` · `0x10004`, `TotalLength 0x48`) 를 넘긴다. CreateFlags 는 조건 셋이 다 거짓이면 0, 아니면 1 (`+0x22e ~ +0x274`) — 조건 (다) 만 동적 Q42.)
+- `ZwSetInformationProcess` 클래스 `0x29` 갈래 (Mm 쪽) 가 정말 예약하나 — 동적 5 가 이상할 때만. (→ run90 `[정적]`: **예약만** — `NtSetInformationProcess +0x485` → `+0x50e MmAllocateUserStack` (`+0xcb` 할당 종류 `0x2000` 하나) → `+0x12f MiAllocateVirtualMemory` → `+0x334 MiReserveUserMemory`. 시작 64KB 정렬. 클래스 이름은 PDB 에 없어 `[추측: 이름]` 그대로.)
+- `PspBuildCreateProcessContext` 끝 `ctx+0x10` 비트 0 을 누가 읽나 (`+0x1876 ~ +0x1882`). (→ run90: 못 찾음 — 네 함수 + 이웃 셋 안엔 읽는 줄 없음, 훑기 한계. `[공백]` 그대로 → 넓게 훑기는 Q168 ②.)
+- `PspAllocateThread +0x8c7` 노드 갈래 (`KeGetProcessorNodeNumber` 뒤) 조건 — 노드 값이 0 이 아닐 때. (→ run90 `[정적]`: 이상적 프로세서 속성 (`0x3000e`) 이 있을 때만 (`+0x18b` · `+0x1b9 JNZ → +0x886`), 값 = **노드 + 1** (0 = 선호 없음). test.exe 는 그 속성이 없어 0.)
 - 스레드 넘기기·기다림·끝내기·남의 스레드 문맥 → Q141b ~ e (이미 대기열).
 
 ## 디버거 메모 / 도구 메모
