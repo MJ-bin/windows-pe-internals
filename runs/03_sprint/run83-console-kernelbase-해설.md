@@ -2,6 +2,8 @@
 
 > 이 글은 [run83 문서](run83-console-kernelbase.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **고쳐 읽기 (run84)**: "한 줄로 먼저" 의 "거기서 하나라도 실패하면 kernelbase 시작 함수가 **FALSE**" 와 2.7 끝 "하나라도 실패를 돌려주면 kernelbase 시작 함수가 FALSE 다" 는 너무 넓다 — 새 콘솔 길에선 **`ConsoleAllocate` 가 실패를 돌려줄 때만** FALSE 다 (`ConsoleInitialize +0x14d JNS` 안 탐 → AL 0 → `_KernelBaseBaseDllInitialize +0x528 JZ`). 마무리 (commit) 쪽 a2 · a3 · a4 (새 콘솔 길에선 b9 ~ b11) 실패로는 시작이 안 깨진다 — a4 (`GetConsoleLangId`) 실패는 오류 코드만, a2 · a3 실패는 FALSE 근거 없음. 붙기 길에선 a1 실패가 FALSE 다. → [run84 문서](run84-console-crt.md) "정정" 절 · [run84 해설](run84-console-crt-해설.md) 2.12 "시작이 깨지는 곳은 어디인가" · 2.14.
 
 - 대기열: **Q149a** — PE_emulator 요청 27 (콘솔 입출력) 의 **kernelbase 쪽** (`_workspace/plan.md`, 이번에 **끝**)
   - Q149 (요청 27 전체) 는 둘로 나눴다.

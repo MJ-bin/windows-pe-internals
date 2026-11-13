@@ -304,9 +304,9 @@ condrv!CdpDispatchWrite → (Client 만) CdpClientWrite (0xa890)
 - 9 **[정적 후보로 — msvcp140 analyze 필요]** `std::cout` 쓰기 길 — 아래 ④.
 - 10 **[범위 밖 — 기록만]** 입력 쪽 (`_read_nolock` · `ReadConsoleW` · `std::cin`).
 - (flow-writer 더함) **[지금 test.exe 로]** 위 "보탠 것" ④ — `nt!NtQueryVolumeInformationFile` 이 test.exe 조건으로 **은퇴 앞** (dll2 · dll1 CRT 준비) 에 서나, 선다면 몇 번 · 어느 핸들 (`0x68` · `0x6c` · `0x70`?) · 콜스택이 `dllN!initialize_stdio_handles_nolock` 인가 (`k`).
-- 새 샘플 (4 · 5 · 6 일부 · 7) 은 하나로 묶을 수 있다: `printf` 만 쓰는 `/MD` 콘솔 프로그램 (+ `setlocale` 판, 리다이렉트로 한 번 더). 만들지 · 언제는 사용자 결정.
+- 새 샘플 (4 · 5 · 6 일부 · 7) 은 하나로 묶을 수 있다: `printf` 만 쓰는 `/MD` 콘솔 프로그램 (+ `setlocale` 판, 리다이렉트로 한 번 더). 만들지 · 언제는 사용자 결정. → 대기열 **Q160** (run85 때 붙임).
 
-정적 — 다음 바퀴 후보 (대기열 번호는 오케스트레이터가):
+정적 — 다음 바퀴 후보 (~~대기열 번호는 오케스트레이터가~~ → 대기열 **Q159** — run85 때 붙임. plan.md Q159 엔 ⑦ UTF-8 · UTF-16 텍스트 길의 끝 · ⑧ `/MD` 프로그램의 ucrtbase 표준 핸들 묻기가 은퇴 앞인가 가 더 붙음):
 
 - ① sample `/MT` CRT 의 lowio 초기화 (test · dll1 · dll2, 위 ④) — 초기화 표에 lowio 가 있나, dll1 · dll2 `dllmain_crt_process_attach` (run40) 아래에서 닿나 = 은퇴 앞 syscall 이 되나. ucrtbase 와 같은 갈림인지.
 - ② `__acrt_stdio_allocate_buffer_nolock` (비 tty `stdout` 버퍼 크기) · 종료 때 비우는 길 (`exit` → `common_flush_all`) — (가) 에서 출력이 언제 나가나.

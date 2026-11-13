@@ -4,6 +4,8 @@
 > 근거와 태그는 run 문서·결과서·짐 지도(`baggage.md`)를 따른다.
 >
 > **고쳐 읽기 (run83)**: "한 줄로 먼저" 표 "그 밖" 줄의 "(syscall 3)", 2.1 표 순서 12 의 syscall "3", 그 아래 합의 "콘솔 3" · "15 ~ 16번", 2.8 의 "syscall **3번**" 은 run83 에서 정정됐다 — 부모 콘솔에 붙기 갈래의 syscall 은 **4번** (넷째 = 콘솔 언어 ID 를 묻는 `NtDeviceIoControlFile`), kernelbase 시작 함수 syscall 합은 **16 ~ 17번** (+ NLS 모름) 이다. → [run68 문서](run68-dll-init-rest.md) 맨 위 "정정 (run83, sast/80)" · [run83 문서](run83-console-kernelbase.md) "정정" 절 · [run83 해설 2.6](run83-console-kernelbase-해설.md#26--run68-정정--넷째-syscall-어느-나라-말-써요).
+>
+> 같은 run83 에서 하나 더: 2.8 의 "새 콘솔 만들기 (`ConsoleAllocate`, conhost 띄우기)" 는 — kernelbase 는 conhost 를 **직접 띄우지 않고**, 콘솔 상담실 (condrv) 에 IOCTL `0x500037` 주문서 (입력 = conhost 용 개업 서류) 를 넣어 **맡긴다**. `ConsoleAllocate` 아래엔 프로세스를 만드는 syscall 이 없다. → [run83 해설 2.7](run83-console-kernelbase-해설.md) "여기서 꼭 짚을 것".
 
 - 대기열: **Q129** — PE_emulator 요청 16 의 나머지 본문 (`_workspace/plan.md`, 이번에 **끝**)
   - 이것으로 **PE_emulator 요청 16 이 전부 끝났다** (급한 셋은 run67 = Q128).
