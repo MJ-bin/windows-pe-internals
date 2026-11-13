@@ -2,6 +2,8 @@
 
 > 이 글은 [run87 문서](run87-sxs-create.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **고쳐 읽기 (run88)**: "run88 에서 다룸" 으로 남긴 자리 ("조심할 곳" 1, 2.7 끝 "책자 재료", 2.12 끝, 2.13 끝, 3절 짐 지도 끝 · "큰 그림에서" 끝, 4절 표 1 · 6 · ② · 마지막 줄) 의 답은 [run88 해설 2.12](run88-sxs-redirect-해설.md) 에 모았다 — 블롭은 위치를 전부 오프셋으로 적어 **어느 주소에 붙여도 읽히고**, 로더는 스레드 문맥 → `+0x2f8` → `+0x308` 차례로 편다. 블롭엔 **키만** (조립 폴더 이름 + 파일 이름) 있고 루트 `C:\WINDOWS\WinSxS\` 는 ntdll 이 붙이며, 폴더를 여는 쪽은 짐작대로 **ntdll** (`RtlpProbeAssemblyStorageRootForAssembly +0x26c NtOpenFile`). 공통 책자엔 조립 6개 · **v6 없음** `[관찰: 사진 덤프 오프라인, test.exe 블롭인지는 머리 0x20B 만 확인]`, "6.0.0.0" 은 `6.0.26100.9278` 로 묶였다 (고르는 코드 길은 Q164 ②). PEB `+0x300` · `+0x310` 은 ntdll `RtlpGetActivationContextDataStorageMapAndRosterHeader +0x292` 가 쓴다 (test.exe 는 안 탐).
 
 - 대기열: **Q151a** — PE_emulator 요청 29 (SxS 활성화 문맥) 의 **첫 조각, 만드는 쪽** (`_workspace/plan.md`)
   - Q151 (요청 29 전체) 은 둘로 나눴다 (2026-11-13).

@@ -20,6 +20,7 @@
   - `ProcessParameters.Flags` 비트 13 (`0x2000`, 커널 `PspLocateInPEManifest +0x99` 가 켬 — 짐 지도 3.2) 을 켜는지.
   - 진짜에선 이 둘이 부모 → csrss 로 넘어가 "앱 문맥을 만들까" 를 정한다 (`InternalSxsCreateProcess +0x405 TEST [R15],0x2000`). 엔진이 앱 블롭을 넣을지 고를 때 같은 기준을 쓰면 된다 `[추측: 엔진 쪽]`.
 - 블롭 **안쪽 모양** (머리 · 목차 · 구역), 어느 주소에 붙여도 읽히는지, 로더가 세 문맥을 어떤 차례로 보는지 → **run88 (Q151b, sast/85)**.
+  - → run88: 위치 칸이 모두 32비트 오프셋이라 **어느 주소에 붙여도 읽힘**. 차례는 스레드 문맥 → `+0x2f8` → `+0x308`, 리다이렉트가 KnownDll 보다 먼저. 칸 표 · 최소 블롭 B (`0x1dc`B) 는 `runs/03_sprint/run88-sxs-redirect.md` 맨 위.
 
 ### 원문 질문이 어디서 답해졌나
 
@@ -38,8 +39,8 @@
 |---|---|---|---|
 | 1 부모 쪽 | 부모는 exe 자원을 직접 안 뒤진다 — 매니페스트 (`RT_MANIFEST` 24, ID 1) 는 **커널** `PspLocateInPEManifest` 가 찾아 만들기 정보로 주소 · 크기를 돌려준다 (sast/54). 메시지 만드는 함수 = **kernel32 `BasepConstructSxsCreateProcessMessage`** (rva `0x26070`, 1877B — kernelbase 가 **지연 import** 로 부름). 그 뒤 `BasepCsrCaptureSxsMessage` (kernelbase rva `0xfadc0`) 가 문자열을 캡처하고 `CsrClientCallServer(메시지, 캡처, 0x1001d, 0x218)`. **매니페스트가 없어도 메시지는 그대로 보낸다** (프로세스 등록 알림이라 늘) — 없는지 알아보는 쪽은 csrss | 부모 흉내는 필요 없음. 커널 몫 (비트 13 · 주소 · 크기) 은 위 확인거리 | `CreateProcessInternalW +0x3f51 ~ +0x3f72` · `+0x4361/+0x4366` · `+0x4458/+0x445f` · `+0x463b/+0x4640` · `+0x464f ~ +0x4672` (오케스트레이터 · flow-writer) |
 | 2 csrss 쪽 — 누가 무엇을 자식에 넣나 | **csrss 가 넣는다.** 블롭 만드는 함수 = sxs `SxsGenerateActivationContext` (rva `0x5a2b0`, 내보내기). 넣는 법은 **섹션을 자식에 붙이기 + 자식 PEB 에 주소 쓰기** 둘 다 (아래 표) | 빠져 있음 (틀림). 3 ~ 5 · 10 ~ 12 를 엔진이 대신 | `BaseSrvSxsDoSystemDefaultActivationContext +0x1ab` · `+0x1fa ADD RDX,0x308` · `+0x211` (오케스트레이터 · flow-writer), `FromStructEx +0xadb` · `+0xb09` (오케스트레이터 · flow-writer), `InternalSxsCreateProcess +0x60c LEA RAX,[R13+0x2f8]` (flow-writer) |
-| 3 시스템 기본 문맥 | **매니페스트 없는 exe 에도 늘 만든다** (부모가 SxS 를 통째로 건너뛰는 보호 프로세스류만 빼고). `BaseSrvSxsCreateProcess` 가 **먼저** 시스템 기본을, 그다음 앱 문맥을 부른다. 시스템 기본 섹션은 csrss 전역 표 `SxsSystemDefaultActivationContexts` (5칸, 구조마다) 에 **한 번 만들고 돌려쓴다**. 만드는 재료는 코드가 짓는 합성 요청 하나 (`Microsoft.Windows.SystemCompatible,version="6.0.0.0",…` · 이름표 `"System Default Context"` · 루트 `<Windows>\WinSxS`). 실제 내용 (어떤 조립이 들었나) 은 결과서 `[공백]` → **run88 (sast/85) 에서 닫힘** | 빠져 있음. test.exe 도 `+0x308` 이 채워져야 맞다 | `BaseSrvSxsCreateProcess +0x1a` · `+0x2f` · `+0x8d` · `+0x94` · `+0x96` (flow-writer), `DoSystemDefault +0x13e` · `+0x5ef` (flow-writer) |
-| 4 WinSxS 경로 규칙 | (일부만) csrss (sxs) 쪽에 어셈블리 이름 → 폴더 이름 함수 다섯 (`SxspGenerateKeyform` · `SxspGenerateTextualIdentity` · `SxspGenerateSxsPath` · `SxspGenerateManifestPathForProbing` · `SxspGenerateManifestPathOnAssemblyIdentity`) 과 문자열 `\WinSxS\` · `manifests` · `.manifest` 가 있다 — 의존 어셈블리를 찾을 때 csrss 가 `WinSxS\manifests\<키폼>.manifest` 로 간다. **블롭 안에 전체 경로냐 키만이냐** 는 결과서 `[공백]` → **run88 (sast/85) 에서 닫힘**. 폴더를 실제로 여는 쪽 (`[추측: 로더 = ntdll]`) · "6.0.0.0 요청이 어느 6.0.26100.x 로 묶이나" 는 **run88 (sast/85) 에서 다룸** | 블롭 모양을 알기 전엔 못 정함 → run88 | `ms/decomp/sxs/_index.tsv`, sxs.dll UTF-16 문자열 (결과서) |
+| 3 시스템 기본 문맥 | **매니페스트 없는 exe 에도 늘 만든다** (부모가 SxS 를 통째로 건너뛰는 보호 프로세스류만 빼고). `BaseSrvSxsCreateProcess` 가 **먼저** 시스템 기본을, 그다음 앱 문맥을 부른다. 시스템 기본 섹션은 csrss 전역 표 `SxsSystemDefaultActivationContexts` (5칸, 구조마다) 에 **한 번 만들고 돌려쓴다**. 만드는 재료는 코드가 짓는 합성 요청 하나 (`Microsoft.Windows.SystemCompatible,version="6.0.0.0",…` · 이름표 `"System Default Context"` · 루트 `<Windows>\WinSxS`). 실제 내용 (어떤 조립이 들었나) 은 결과서 `[공백]` → **run88 (sast/85) 에서 닫힘** → run88: 조립 6개 (`SystemCompatible` 루트 · `IsolationAutomation` · `GdiPlus` · **`Common-Controls 5.82.26100.8328`** · `IsolationAutomation.ProxyStub` · `Common-Controls.Resources` ko-KR), DLL 키 12, **v6 없음** `[관찰: 사진 덤프 오프라인, test.exe 블롭인지는 머리 0x20B 만 확인]` | 빠져 있음. test.exe 도 `+0x308` 이 채워져야 맞다 | `BaseSrvSxsCreateProcess +0x1a` · `+0x2f` · `+0x8d` · `+0x94` · `+0x96` (flow-writer), `DoSystemDefault +0x13e` · `+0x5ef` (flow-writer) |
+| 4 WinSxS 경로 규칙 | (일부만) csrss (sxs) 쪽에 어셈블리 이름 → 폴더 이름 함수 다섯 (`SxspGenerateKeyform` · `SxspGenerateTextualIdentity` · `SxspGenerateSxsPath` · `SxspGenerateManifestPathForProbing` · `SxspGenerateManifestPathOnAssemblyIdentity`) 과 문자열 `\WinSxS\` · `manifests` · `.manifest` 가 있다 — 의존 어셈블리를 찾을 때 csrss 가 `WinSxS\manifests\<키폼>.manifest` 로 간다. **블롭 안에 전체 경로냐 키만이냐** 는 결과서 `[공백]` → **run88 (sast/85) 에서 닫힘** → run88: **키만** (조립 폴더 이름 + 파일 이름, 루트 `C:\WINDOWS\WinSxS\` 는 ntdll 이 런타임에 붙임. 전체 경로는 매니페스트 `loadFrom=` 일 때만). 폴더를 실제로 여는 쪽 (`[추측: 로더 = ntdll]`) · "6.0.0.0 요청이 어느 6.0.26100.x 로 묶이나" 는 **run88 (sast/85) 에서 다룸** → run88: 여는 쪽 = **ntdll** (`RtlpProbeAssemblyStorageRootForAssembly +0x26c NtOpenFile`, 짐작 맞음) · 6.0 → **`6.0.26100.9278`** (사진 덤프 앱 블롭 `[관찰]`, 고르는 코드 길은 Q164 ②) | 블롭 모양을 알기 전엔 못 정함 → run88 | `ms/decomp/sxs/_index.tsv`, sxs.dll UTF-16 문자열 (결과서) |
 | 5 nt 엔진이 직접 만든다면 | **미리 만든 블롭 (시스템 기본 1 + 앱 1) 을 덤프에서 떠 와 붙이고 `PEB+0x308` · `+0x2f8` 에 주소만 쓰는 게 가장 싸다.** 해석 · 정책 · 캐시는 흉내 안 내도 된다. 한계: 앱 블롭은 exe 마다, 시스템 기본은 구조마다 다르고, 같은 빌드 · 같은 WinSxS 에서만 맞는다 | 맞는 방향 (요청서의 "덤프에서 떠 와 매핑" 과 같음) | 아래 표 3 ~ 5 · 10 ~ 12 |
 
 ### 누가 무엇을 자식에 넣나 (결과서 질문 2 표, 차례는 코드 순서)
@@ -251,14 +252,14 @@ SxS 칸 (`+0x38` 부터, 쓰는 줄 · 읽는 줄로 확인한 것만):
 동적 — 결과서 "동적으로 확인할 것" 번호 그대로.
 
 - **test.exe 로 볼 수 있는 것 (1 ~ 5 · 7) → 대기열 Q104**, 그중 3 은 **Q83**:
-  - 1 블롭 덤프: 자식 `PEB+0x308` (test.exe 는 이것만) 이 가리키는 곳의 `Actx` 머리 · 전체 크기만큼. → run88 (sast/85) 이 사진 덤프를 **오프라인으로** 읽어 다룸 — 라이브 대조는 남음.
+  - 1 블롭 덤프: 자식 `PEB+0x308` (test.exe 는 이것만) 이 가리키는 곳의 `Actx` 머리 · 전체 크기만큼. → run88 (sast/85) 이 사진 덤프를 **오프라인으로** 읽어 다룸 — 라이브 대조는 남음. → run88: **머리 `0x20`B 는 run44 로그 (`04_baggage-read_P1b.txt:4469 ~ 4470` · `_P2.txt:4481 ~ 4482`) 의 test.exe 값과 같다** (`TotalSize 0x3084` · `DefaultTocOffset 0xdc`) `[관찰]`. 몸통 `0x3064`B 대조만 남음 (run88 Q104 3).
   - 2 `!address` / `!vad` 로 두 보기의 크기 · 보호 · 유형. → test.exe 몫은 run44 사진 VAD 로 이미 `[관찰]` (위 보탠 것 ③). 남은 건 `NtMapViewOfSection` 인자 (`0x400000`, 공유 1, 보호 2) 를 그 줄에서 직접 보는 것.
   - **3 PEB 쓰기 순간 → Q83** (Q83 의 질문 "누가 쓰나" 는 이번 정적으로 답이 나왔다 — 부모 `+0x57d0` · csrss sxssrv. **남은 건 실제 순간 · 값 확인**): csrss 문맥에서 `sxssrv!BaseSrvSxsDoSystemDefaultActivationContext+0x211` (rva `0x1651`) 의 `rdx` = 자식 `PEB+0x308`, 부모 문맥에서 `KERNELBASE!CreateProcessInternalW+0x57d0` 의 `rdx` = 자식 `PEB+0x2d8`, 둘의 앞뒤. (`FromStructEx+0xb09` (rva `0x3c79`) 는 test.exe 에선 안 서야 맞다.)
   - 4 빠른 길인지: 부모 `CreateProcessInternalW+0x445f` 직후 `dd @rsp+0xc58 L2` → SxS Flags `0x40`, 메시지 `+0x7c` 비트 13.
   - 5 csrss 가 SxS 를 부르는 조건 (`InternalBaseSrvCreateProcess +0xca ~ +0xee`): 첫 인자 (`esi`) · 부모 CSR_PROCESS `[+0x5c]` 비트 `0x2000`, test.exe 때 `+0xfb` 가 타나.
   - 7 test.exe `PEB+0x2f8` 이 0 인지 → 값은 run44 사진 8장 (null) 로 이미 `[관찰]`. 남은 건 `InternalSxsCreateProcess +0x40c JZ` 로 빠졌는지 (Probe 결과).
   - 추천 멈춤점 (결과서): csrss 안 `sxssrv!BaseSrvSxsCreateProcess` (rva `0x1cd0`) 입구 — `r8` = 메시지, `[r8+0x78]` SxS Flags, `[r8+0x7c]` 매개변수 Flags, `[r8+0x240]` PEB, `[r8+0x60]` CreationFlags. csrss 문맥이 필요하다.
-- **test.exe 아닌 프로세스 (6) → 대기열 Q162** (notepad 류 · GUI 샘플 행): comctl32 6.0 이 어느 버전 폴더로 묶이나. run88 (sast/85) 오프라인 덤프로 `.9278` 이 나왔다 — **남은 건 라이브 확인뿐**.
+- **test.exe 아닌 프로세스 (6) → 대기열 Q162** (notepad 류 · GUI 샘플 행): comctl32 6.0 이 어느 버전 폴더로 묶이나. run88 (sast/85) 오프라인 덤프로 `.9278` 이 나왔다 — **남은 건 라이브 확인뿐**. → run88 Q162 1 (notepad 류 리다이렉트 결과 문자열) 과 같이 본다.
 
 정적 — 다음 바퀴 후보, 대기열 **Q164**:
 
