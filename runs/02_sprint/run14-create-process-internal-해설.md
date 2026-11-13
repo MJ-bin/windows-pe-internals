@@ -2,6 +2,8 @@
 
 > 이 글은 [run14 문서](run14-create-process-internal.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **고쳐 읽기 (run87)**: 2.6 의 짐작 둘은 이제 `[정적]` 이다. ① "있나" 검사 (같은 주소 이름 21개) 는 kernel32 지연 import 들의 `Is<이름>Present` 다 — 이 자리의 정확한 이름은 여전히 못 고른다 → [run87 해설 2.3](../03_sprint/run87-sxs-create-해설.md). ② 자식 PEB `+0x2d8` 쓰기는 `pShimData` 가 맞다 — 둘째 쓰기 `+0x57d0/+0x57d7` → [run87 해설 2.9](../03_sprint/run87-sxs-create-해설.md).
 
 - 대기열: **Q5b** — 2.2 부모 쪽에서 첫 스레드를 풀어 주는 곳: `KERNELBASE!CreateProcessInternalW` 가 `NtCreateUserProcess` 뒤에 `NtResumeThread` 를 부르나 (`_workspace/plan.md`)
   - run13 바퀴 시작 때 Q5 를 **Q5a(nt) / Q5b(KERNELBASE)** 로 나눴다. Q5a 는 run13 에서 끝났고, 이번이 남은 반쪽이다.

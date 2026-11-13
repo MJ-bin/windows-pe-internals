@@ -2,6 +2,8 @@
 
 > 이 글은 [run45 문서](run45-work-list.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서·짐 지도(`baggage.md`)를 따른다.
+>
+> **고쳐 읽기 (run87)**: 2.8 (415줄 근처) "Q87 부모 `KERNELBASE!BasepInitAppCompatData`" 는 **kernel32** 함수다 (KERNELBASE 는 지연 import 로 부를 뿐). 이 함수는 자식 PEB 를 **안 쓴다** — 부모가 쓰는 칸은 `pShimData` (`CreateProcessInternalW +0x57d0`) 하나다. Q87 은 run87 에서 끝났다 → [run87 해설 2.9](run87-sxs-create-해설.md).
 
 - 대기열: **Q81** — 일 목록: 초기화 동안 nt·ntdll 이 하는 **일**을 빠짐없이 적고 (가)/(나)/(다) 로 나누기 (`_workspace/plan.md`, 이번에 **끝**)
   - Q81 은 사용자 질문 (2026-10-26) 으로 생긴 항목이고, 사용자 결정으로 **Q78 앞에** 끼워 넣었다.

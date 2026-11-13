@@ -4,6 +4,8 @@
 
 > **정정 (run57)**: 1장 일 47 의 "`NtGetNlsSectionPtr` ×3" (그리고 트리의 ×2 · ×1) 은 **부르는 자리 수**다. 실행 횟수는 조건에 달려 (ANSI == OEM 이면 코드 페이지 쪽 1번, `UseCaseMapping` 0 이면 대문자 쪽 0번) test.exe 는 2번으로 보인다 `[추측]`. 그리고 PEB `ActiveCodePage`·`OemCodePage` 를 K1 전에 처음 쓴 쪽 (`[공백]`) = 커널 `MmCreatePeb +0x546`·`+0x555` (`UseCaseMapping` 은 `+0x564`) `[정적]`. → `run57-nls-apiset.md` "정정"·"확인된 것"
 
+> **정정 (run87)**: 1장 일 37 의 사슬 끝 `+0x597d BasepInitAppCompatData` 는 "자식 메모리에 써 넣기" 가 아니다 — **kernel32 함수** (kernelbase 가 지연 import 로 부름, rva `0x78e40`) 이고 `g_CompatCacheServiceApi(0xa, …)` 하나만 불러 **자식 PEB 를 안 쓴다** (4장 · "아직 확인 필요" 의 "부모 KERNELBASE `BasepInitAppCompatData` 본문" 도 모듈은 kernel32). 같은 줄의 짐작은 맞았다: `pShimData` = `CreateProcessInternalW +0x57d0/+0x57d7 NtWriteVirtualMemory` `[정적]`, 활성화 컨텍스트 데이터 (`+0x2f8` · `+0x308`) 는 csrss sxssrv 가 쓴다 `[정적]`. → `run87-sxs-create.md` "Q87 닫힘"
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 결과서 날짜.
