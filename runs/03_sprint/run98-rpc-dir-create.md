@@ -238,6 +238,7 @@ ntdll!LdrpInitializeProcess +0xdb8  NtOpenDirectoryObject(…, 3, "\KnownDlls") 
 - ② (보탬) `SmpLoadDataFromRegistry` 에는 **둘째 `RtlQueryRegistryValuesEx`** 가 있다 — `+0xbc5` (표 `SmpRegistryConfigurationTable2`, `+0xbb5`, `ECX = 0`). 이번 범위 밖 (본문 안 읽음).
 - ③ (보탬) csrsrv `CsrParseServerCommandLine.c` 88 ~ 95줄: 서비스 세션이 **아니면** 디렉터리 이름이 명령줄 값 그대로가 아니라 `_snprintf_s(…, "%ws\%ld%s", …)` 로 만든 글이다 (`+0x15b`, 세션 번호가 들어감). 그래서 **`\Windows` 자체를 고치는 건 서비스 세션 (0) 의 csrss** 이고, 세션 1 csrss 는 세션 아래 이름을 고친다 `[정적: .c]`. 들어가는 글이 `\Sessions\1\Windows` 꼴인지는 `[추측]` (형식 인자 셋을 다 안 따라감). 결과서 "`ObjectDirectory=` 값이 `\Windows` 인지는 `[확인 필요]`" 와 같은 줄을 이어서 본 것.
 - ④ (보탬, `[추측]`) `ObjectDirectories` 콜백은 받은 버퍼를 **이중 NUL 까지** 돈다 (`+0x12b ~ +0x13a`). `RtlQueryRegistryValuesEx` 가 `REG_MULTI_SZ` 를 줄마다 따로 넘겨도 포인터가 원래 버퍼 안이면 뒤 이름을 또 만들게 되는데, `OBJ_OPENIF` 라 열기만 하고 닫으니 결과는 같다. 결과서 후보 4 (낮음) 와 같은 질문.
+- ⑤ (보탬, run99 때 `.asm` 으로 확인) `SmpOpenKnownDllsHandles` 는 **디렉터리를 새로 만들었을 때만** `KnownDllPath` 링크를 만든다 — `+0x19d CMP EAX,0x40000000` · `+0x1a2 JZ → +0x219` (이미 있어 열기만 했으면 `+0x1fc NtCreateSymbolicLinkObject` 를 건너뜀), `+0x1a6 JNS → +0x1c2` (새로 만들었으면 링크로), 음수면 `+0x1bb SmpLogFailure` (`.c` 95줄과 같음).
 - 정정 없음. 결과서 값과 다르게 적은 오프셋 없음 (다시 본 줄 모두 일치).
 
 ## 아직 확인 필요
