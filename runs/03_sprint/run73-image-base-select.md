@@ -1,5 +1,7 @@
 # 2026-11-07 run73 — 이미지 기준 주소 고르기 (Q139a, PE_emulator 요청 23 의 3번): `MiCreateNewSection` 은 `MiRelocateImage` 여섯째 인자의 **비트 0 을 늘 0** 으로 준다 (`+0x391 AND ESI,2`). 그래서 dll1·dll2 는 **파일마다 다른 기준 주소** (전역 비트맵 칸) 를 받는다. 맵 결과 기대 `0` 의 근거가 `[추측]` → `[정적]`
 
+> 정정 (run103, sast/101): 아래 "같은 파일 컨트롤 영역이 살아 있으면 `MiRelocateImageAgain +0x87 JNZ` 로 먼저 고른 주소를 그대로 쓴다" 는 **반만 맞다.** 그대로 쓰는 건 컨트롤 영역 `+0x5c` 비트 22 (`ImageActive`) 가 켜져 있을 때뿐이다. 뷰 · 섹션 참조가 다 없어지면 `MiCheckControlArea +0xc9 → MiImageUnused +0x83 BTR [RBX+0x5c],0x16` 이 비트를 끄고 (컨트롤 영역은 살아 있어도), 다음 공유 길은 `+0xd3 MiSelectImageBase` 로 **다시 고른다** (값이 다르면 `+0x17e MiSwitchBaseAddress`). `runs/03_sprint/run103-image-share.md` "정정".
+
 ## PE_emulator 쪽에서 쓸 것
 
 - **한 줄**: `MiCreateNewSection` 은 여섯째 인자 비트 0 을 늘 0 으로 줌 (`AND ESI,2`) → 커널이 dll1·dll2 에 파일마다 다른 기준 주소 (전역 비트맵) 를 줌 → 그 범위가 test.exe 에서 비어 있으면 맵 결과 `0`, 재시도 길 안 탐 `[정적]`.
