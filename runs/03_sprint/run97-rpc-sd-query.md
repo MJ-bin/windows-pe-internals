@@ -211,7 +211,7 @@
 - **만들기**: 복제 `SepDuplicateToken +0x158 ObCreateObjectEx`, 새로 `SepCreateTokenEx +0x5dc ObCreateObject`.
 - **SD 는 만드는 쪽 것 + 계산**: `ObjectAttributes` 의 SD 를 먼저 보고 (`NtDuplicateToken +0xb2`, `SepCreateTokenEx +0x118`), 넣을 때 `ObInsertObjectEx +0x325 SeAssignSecurityEx2` 가 계산해 `+0x38c SeDefaultObjectMethod` (새로 달기) 로 건넨다. 형 기본 SD 가 아니다. `ObpCreateDefaultObjectTypeSD` 는 형 객체 자신의 SD 용.
 - **라벨 여지**: `NtDuplicateToken` 은 SD 를 안 받았을 때 넣은 뒤 `+0x21e SepAppendAceToTokenObjectAcl(토큰, 8, SeAliasAdminsSid)` → `+0x338 SepSetProcessTrustLabelAceForToken` → `RtlAddProcessTrustLabelAce` (**형 `0x14` 만**, `+0x3c CMP [RSP+0x60],0x14`) → `ObSetSecurityObjectByPointer`. 그래서 붙는 건 `0x14` 이고 **`0x17` 질문에는 안 나온다** (마스크 `0x10` 은 `0x14` 를 안 고름).
-- `0x11` 라벨을 붙이는지는 `SeAssignSecurityEx2` / `RtlpNewSecurityObject` 안 — `[공백]` (= Q180d, sast/96 진행 중).
+- `0x11` 라벨을 붙이는지는 `SeAssignSecurityEx2` / `RtlpNewSecurityObject` 안 — `[공백]` (= Q180d, sast/96 진행 중). **(해결됨 → run100, Q180d)** 붙는다 `[정적]` — 토큰 형 `SeMandatoryLabelMask = 1` (`SepTokenInitialization +0x8a`) 이라 이름 없는 길 (`ObInsertObjectEx +0x2c8` · `+0x325`) 에서 `RtlpNewSecurityObject` 가 `{0x11, 플래그 0, 마스크 1, SID = 만든 쪽 무결성}` 을 붙인다 (명시 라벨이 있으면 그 마스크에 `| 1`). SID 값은 `[VM]`.
 - (보탬) **test.exe 토큰은 `NtDuplicateToken` 길이 아니다** — run49 의 `PspInitializeProcessSecurity +0xf7 SeSubProcessToken → +0x43c SepDuplicateToken`. `SeSubProcessToken` 안에도 `+0x80e ObInsertObjectEx` → `+0x847 SepAppendAceToTokenObjectAcl` → `+0x85b SepFinalizeTokenAcls` 가 있다 (`_calls.tsv`, 본문 안 읽음). 이 길이 토큰 객체 SD 에 무엇을 붙이나는 `[공백]`.
 
 ### test.exe 길에 있나
@@ -301,7 +301,7 @@ nt!SepInitializationPhase0 +0x18 → SepTokenInitialization +0x8d ──┤
 
 **정적** (결과서 "다음 요청 후보" + 보탬):
 
-- ① (= **Q180d**, sast/96 진행 중) `SeAssignSecurityEx2` / `RtlpNewSecurityObject` — 새 객체 SD 에 `0x11` 라벨 ACE 를 기본으로 붙이나 (질문 6 `[공백]`).
+- ① (= **Q180d**, sast/96 진행 중) `SeAssignSecurityEx2` / `RtlpNewSecurityObject` — 새 객체 SD 에 `0x11` 라벨 ACE 를 기본으로 붙이나 (질문 6 `[공백]`). **(해결됨 → run100, Q180d)** — 토큰 객체엔 늘 붙음 (형 마스크 1). Directory 처럼 형 마스크 0 이면 만든 쪽 무결성이 Medium (`0x2000`) 미만일 때만 마스크 1 로 붙임. 명시 라벨은 그대로.
 - ② `NtOpenDirectoryObject("\RPC Control", 0x20001)` 의 접근 검사 (`ObpCheckObjectReference` · `ObpGetObjectSecurity` 쪽, `SeAccessCheck` 는 이름만) — 에뮬레이터가 핸들에 `0x20001` 을 줄 조건.
 - ③ (보탬) `SeSubProcessToken +0x80e ~ +0x85b` (`ObInsertObjectEx` · `SepAppendAceToTokenObjectAcl` · `SepFinalizeTokenAcls`) — test.exe 토큰 객체 SD 에 무엇을 붙이나. ① 과 같이 보면 좋다. 짐 지도 후보: 토큰 · 프로세스 객체 헤더 SD (지금 baggage.md 에 칸 없음).
 - ④ (보탬, 작음) `+0x98` 을 형을 만든 뒤 덮는 줄이 있나 — ntoskrnl 에서 `[reg+0x98]` 쓰기 + 형 객체 전역 읽기 훑기. 동적 ② 가 더 빠르다.
