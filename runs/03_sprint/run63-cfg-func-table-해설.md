@@ -2,6 +2,8 @@
 
 > 이 글은 [run63 문서](run63-cfg-func-table.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서·짐 지도(`baggage.md`)를 따른다.
+>
+> **고쳐 읽기 (run107)**: 2.8 의 "`LdrpIsModuleUnderSystem32` 가 ntdll 에서 거짓인 까닭 — 왜 거짓인지는 Q121 (c)" 는 run107 에서 닫혔다 — 그 함수는 폴더 길이가 `LdrpSystem32.Length + 2` 보다 길 때만 비교해서 **System32 하위 폴더 안 모듈만 참**이고, ntdll 은 System32 바로 아래라 거짓이다 `[정적]`. 본문은 그대로 두었다 → [run107 해설 2.11](run107-search-path-small-해설.md)
 
 - 대기열: **Q120a** — PE_emulator 요청 11 의 질문 1 ~ 6: "ntdll 모듈 항목 덫 안 함수 표·CFG 본문" (`_workspace/plan.md`, 이번에 **Q120a 끝**)
   - 다음 항목: **Q120b** (요청 11 의 7번 묶음 — TLS, `LdrpAllocateSchedulerSharedData`, KnownDlls 등) → Q104 VM 단계 → …

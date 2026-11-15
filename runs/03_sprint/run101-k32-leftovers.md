@@ -161,7 +161,7 @@ test!try_get_function_slow
 
 ### 정적 (결과서 "다음 요청 후보" + 보탬)
 
-1. `ntdll!LdrpInitializeProcess +0x1b72 LdrpInitializePerUserWindowsDirectory` — `BaseThreadInitThunk(1,0,0)` 바로 뒤, flow.md 2.4 · 2.6 에 "뜻 모름" (`RtlpSystemDirs` · `RtlpSystem32Dirs` 를 다시 쓰는 줄, run39 refs). `.asm` 아직 없음. 넘겨받는 `TermsrvGetWindowsDirectoryW` (칸 `0xc1d10` 0) 의 반환값도 같이.
+1. `ntdll!LdrpInitializeProcess +0x1b72 LdrpInitializePerUserWindowsDirectory` — `BaseThreadInitThunk(1,0,0)` 바로 뒤, flow.md 2.4 · 2.6 에 "뜻 모름" (`RtlpSystemDirs` · `RtlpSystem32Dirs` 를 다시 쓰는 줄, run39 refs). `.asm` 아직 없음. 넘겨받는 `TermsrvGetWindowsDirectoryW` (칸 `0xc1d10` 0) 의 반환값도 같이. **(해결됨 → run107, Q71)** — 칸 0 이라 `TermsrvGetWindowsDirectoryW` 가 0 을 주고, `LdrpInitializePerUserWindowsDirectory +0x4e` 에서 0 반환 → 아무것도 안 바꿈 `[정적]` (칸 값은 `[VM]`).
 2. (필요할 때만) kernelbase `LoadLibraryW` · `LoadLibraryA` `.asm` — 이번엔 PE 바이트만. test.exe 는 `LoadLibraryExW` 만 쓴다.
 3. (낮음) ntdll `ApiSetpSearchForApiSet` — "끝 버전 숫자는 안 본다" 규칙을 코드로 (지금 `[추측]`, 결과는 run7 `[관찰]` 이 받침).
 4. (낮음) test.exe 의 다른 KERNEL32 import (`OutputDebugStringA` 등, flow.md 2.10 끝 `[확인 필요]`) 도 같은 스텁 꼴인지 — run36 forwarder 목록 밖이면 같은 꼴일 것 `[추측]`.

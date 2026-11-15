@@ -2,6 +2,10 @@
 
 > 이 글은 [run39 문서](run39-dll-search-path.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **고쳐 읽기 (run107)**: 2.6 "안 탈 것 둘" 의 `LdrSystemDllInitBlock+0xa0` 비트 60~61 은 "목록 전체를 시스템 폴더 **하나로**" 가 아니라 "시스템 폴더 글을 목록 **맨 앞으로**" (나머지 순서 그대로, 완화 옵션 15 `PREFER_SYSTEM32`) 다. 본문은 그대로 두었다 → [run107 해설 2.6 ~ 2.8](../03_sprint/run107-search-path-small-해설.md)
+>
+> **고쳐 읽기 (run107)**: 2.9 · 4절의 `LdrpInitializePerUserWindowsDirectory` "무엇을 바꾸는지 · test.exe 에서 타는지 `[공백]`" 과 "`LoadLibraryExW` ×3 에 영향이 있을 수 있다 `[추측]`" 은 run107 에서 닫혔다 — test.exe 에선 `+0x4e` 에서 0 을 돌려주고 아무것도 안 바꾸며, `LoadLibraryExW` ×3 에 영향 없음 `[정적]` (칸 `pfnTermsrvGetWindowsDirectoryW` 값 자체는 `[VM]`). 본문은 그대로 두었다 → [run107 해설 2.3 ~ 2.5](../03_sprint/run107-search-path-small-해설.md)
 
 - 대기열: **Q53** — 2.6 DLL 검색 경로: `ntdll!LdrpSearchPath`, `LdrpInitializeDllPath` — exe 폴더가 검색 경로에 들어가는 자리, dll1·dll2 를 어디서 찾나 (`_workspace/plan.md`, 이번에 **끝**)
   - 원래 [run26](run26-map-dll-file-해설.md) 4절에서 넘긴 질문이다 ("exe 폴더가 검색 경로에 들어가는 줄은 이 세 함수 어디에도 없다").

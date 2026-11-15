@@ -1,5 +1,7 @@
 # 2026-10-24 run39 — DLL 검색 경로: 목록은 첫 `LdrpSearchPath` 때 지어지고 (`+0x36d LdrpComputeLazyDllPath` → … → `RtlpComputePath`), 첫 칸은 exe 폴더 (`RtlpGetDirPath`, exe 항목 `FullDllName`) (정적)
 
+> **정정 (run107)**: "시스템 폴더 대체 모드" 의 "`LdrSystemDllInitBlock+0xa0` 비트 60~61 이 1 이면 **목록 전체를 시스템 폴더 하나로** 바꾼다" 는 틀렸다. 그 비트는 완화 옵션 15 `PS_MITIGATION_OPTION_IMAGE_LOAD_PREFER_SYSTEM32` 이고, 1 이면 시스템 폴더 글 (칸 코드 2 `RtlpSystemDirs` 또는 7 `RtlpSystem32Dirs`) 이 목록 **맨 앞으로 옮겨지고** 나머지 칸은 원래 순서대로 남는다 (`RtlpComputePath +0x37a` · `+0x460` · `+0x671` · `+0x699` · `+0x613`). test.exe 는 값 0 이라 결과는 같다. → `runs/03_sprint/run107-search-path-small.md` "정정"
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 결과서 날짜.
