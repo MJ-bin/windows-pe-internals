@@ -2,6 +2,8 @@
 
 > 이 글은 [run94 문서](run94-bcrypt-resolve.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **고쳐 읽기 (run96)**: 2.9 "칸 하나하나" 표의 `0x60` 줄 "`BCryptOpenAlgorithmProvider +0x4bb` 가 핸들 안에 복사" 는 틀렸다 — `+0x4bb` 가 핸들에 복사하는 건 **호출자 `pszAlgId`** 이고, 답장의 `pszFunction` (`0x20` → `0x60`) 은 공급자 DLL `Get…Interface` 의 **둘째 인자**, `pszProvider` (`0x28`) 는 **첫째 인자** 로 간다 (그래서 `-1` 이면 진짜 DLL 에 NULL 이 간다). 또 2.3 · 2.9 의 "1 = 암호 `[추측]`" 은 번호 1 ↔ `GetCipherInterface` 로 `[정적]` 이 됐다. 답장이 `BCryptResolveProviders` 를 통과한다는 결론은 그대로. 본문은 그대로 두었다 → [run96 해설 2.9](run96-bcrypt-interface-해설.md#29--run94-정정--이름-두-개가-각각-어디로-가나)
 
 - 대기열: **Q173a** — Q173 ② 를 나눈 것: attach 뒤 첫 막힘 `BCryptOpenAlgorithmProvider` → `BCryptResolveProvidersForBcoapCached` → `BCryptResolveProviders` 의 IOCTL `0x390400` (기능 `0x20000`) 입출력 모양, `0xc00000e5` 자리, 최소 조건 표 (`_workspace/plan.md`, 이번에 **끝**)
   - **한 바퀴로 끝났다.** 사용자 결정 (2026-11-15): Q104 VM 단계 앞 멈춤 자리에서 끼워 **지금 먼저**, 정적만.
