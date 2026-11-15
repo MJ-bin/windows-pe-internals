@@ -293,7 +293,7 @@ bcrypt!DllMain (Ghidra entry, rva 0x11140, PE 진입점)   이유 = EDX         
 **정적 — 대기열 Q173** (결과서 "다음 요청 후보" 1 · 2 · 3 · 4 + 위 ① 의 구성):
 
 - ① ntdll `LdrAddRefDll` (고정) 과 `RtlPcToFileHeader` — `DllMain` 안에서 `GetModuleHandleExW(5, &DllMain)` 가 syscall 없이 성공하는 조건. KsecDD 가 풀리면 **다음 벽 후보** (FALSE ②).
-- ② attach 가 TRUE 된 **다음** 첫 막힘: `BCryptOpenAlgorithmProvider +0x259` → `BCryptResolveProvidersForBcoapCached` → `BCryptResolveProviders` 의 IOCTL (`0x390400`, 기능 `0x20000`) 입출력 모양 (`IoUnpack_ProviderRef` 가 읽는 칸). 출력 0 으로는 안 될 수 있다.
+- ② **(해결됨 → run94)** (Q173a, sast/90 — 두 길 다 `BCryptResolveProviders +0x5eb` 직접 IOCTL, 입력 `0x30 + Σ((글자수×2+9)&~7)` · 출력 첫 시도 `0x180`, 길이는 `IOSB.Information` 만, 기본 대답은 `+0x7f8` `0x54f` → `0xc00000e5`, 공급자 하나 가장 작은 답 `0x98` 바이트) attach 가 TRUE 된 **다음** 첫 막힘: `BCryptOpenAlgorithmProvider +0x259` → `BCryptResolveProvidersForBcoapCached` → `BCryptResolveProviders` 의 IOCTL (`0x390400`, 기능 `0x20000`) 입출력 모양 (`IoUnpack_ProviderRef` 가 읽는 칸). 출력 0 으로는 안 될 수 있다.
 - ③ (후순위) `ksecdd.sys` 의 `0x390400` 처리 — attach 의 `0x10500` 은 "status 0" 으로 충분해서 필요 없을 가능성이 크다.
 - ④ (후순위) 실패 길 `NtClose` × 5 의 나머지 2 (정리 길 `TlgUnregisterAggregateProvider` · `CloseThreadpoolTimer` 쪽 ntdll `[추측]`). TRUE 가 되면 필요 없음. run91 의 Q170 ① (FALSE 뒤 로더 정리) 과 같이 볼 수 있다.
 - (새로) `NtTraceControl` × 4 구성 — `TlgRegisterAggregateProviderEx` 안 몇 번 (위 ①).
