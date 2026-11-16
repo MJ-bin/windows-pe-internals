@@ -3,6 +3,8 @@
 > 이 글은 [run48 문서](run48-system-dll-boot.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서·짐 지도(`baggage.md`)를 따른다.
 
+> **고쳐 읽기 (run119)**: 2.4 "덤" · 4장 표의 "`\SystemRoot` 링크 만드는 곳 — 후보 `Phase1InitializationDiscard +0xc31 CreateSystemRootLink` 는 이름 짐작 `[추측]`" 은 이제 `[정적]` 이다 — 부르는 곳은 그 한 곳뿐이고, `CreateSystemRootLink +0x2b4 NtCreateSymbolicLinkObject` 가 `\SystemRoot` (→ `\Device\BootDevice` + `NtBootPathName` 끝 한 글자 뺌) 를 만든다. `PsLocateSystemDlls` (`+0x10f5`) 보다 늘 먼저다. 뒤의 `IopReassignSystemRoot` (`+0x1139`) 는 `\Device\BootDevice` 만 다시 만들고 `\SystemRoot` 는 안 바꾼다 (Q95 끝). 본문은 그대로 두었다 → [run119 해설](run119-systemroot-link-해설.md) 2.4 · 2.9 · 2.10
+
 - 대기열: **Q93** — 부팅 준비 갈래, 시스템 DLL (`_workspace/plan.md`, 이번에 **끝**)
   - 원래 대기열에 없던 주제다. 사용자가 2026-10-29 "다음 분석" 으로 직접 꺼냈다. 그래서 맨 뒤에 Q93 으로 넣고, **Q78c 앞에** 먼저 했다 (결정 기록).
   - 다음 항목: **Q78c** (프로세스 객체) → Q78d → Q78e → Q78f → Q78g → Q79 → Q80 → Q82.
