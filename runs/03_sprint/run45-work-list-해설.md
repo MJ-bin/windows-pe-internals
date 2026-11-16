@@ -4,6 +4,8 @@
 > 근거와 태그는 run 문서·결과서·짐 지도(`baggage.md`)를 따른다.
 >
 > **고쳐 읽기 (run87)**: 2.8 (415줄 근처) "Q87 부모 `KERNELBASE!BasepInitAppCompatData`" 는 **kernel32** 함수다 (KERNELBASE 는 지연 import 로 부를 뿐). 이 함수는 자식 PEB 를 **안 쓴다** — 부모가 쓰는 칸은 `pShimData` (`CreateProcessInternalW +0x57d0`) 하나다. Q87 은 run87 에서 끝났다 → [run87 해설 2.9](run87-sxs-create-해설.md).
+>
+> **고쳐 읽기 (run114)**: 2.10 (1) (493줄 근처) 과 4절 표의 "`EnvironmentVersion` 나머지 +2 는 `+0xa0 RtlpSetupEnvironmentHashTable` 쪽 `[추측]`" 은 **틀렸다**. 해시 표 함수가 아니라 같은 `RtlpInitEnvironmentBlock` 의 `+0xa4 RtlpWow64ThunkEnvironmentTo64` 안 `+0x126 RtlSetEnvironmentVar` 두 번 (`ProgramFiles` ← `ProgramW6432` · `CommonProgramFiles` ← `CommonProgramW6432`) 이다 `[정적]` sast/111 → [run114 해설 2.6](run114-ntdll-globals-early-해설.md#26-정정-1--environmentversion-나머지-2-run45-고침).
 
 - 대기열: **Q81** — 일 목록: 초기화 동안 nt·ntdll 이 하는 **일**을 빠짐없이 적고 (가)/(나)/(다) 로 나누기 (`_workspace/plan.md`, 이번에 **끝**)
   - Q81 은 사용자 질문 (2026-10-26) 으로 생긴 항목이고, 사용자 결정으로 **Q78 앞에** 끼워 넣었다.

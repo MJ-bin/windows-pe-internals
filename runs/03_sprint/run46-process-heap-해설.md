@@ -2,6 +2,8 @@
 
 > **정정 (run61)**: run46 때 적은 "시스템 콜 12개"·"`RtlRandom` 두 번 … 시스템 콜 없이" 는 틀렸다. 첫 `RtlRandom` 이 난수 벡터를 처음 켜면서 `NtQueryInformationProcess(0x24)` 를 한 번 더 불러 힙 구간 시스템 콜은 **13개** (n = 0 이면 12개), `NtQueryInformationProcess` 는 2번이다. 본문도 run61 에 맞춰 고쳤다 — 옛 숫자는 ~~취소선~~, 고친 곳엔 "(run61)". `#` 번호는 run46 문서처럼 **새 번호** 로 바꿨다 (맨 앞에 새 #1 `RtlpInitRandomExVector +0x29` 가 들어가 옛 #n = 새 #n+1). → `run61-random-ex-init.md` "정정", `run46-process-heap.md` 맨 앞 표, [run61 해설](run61-random-ex-init-해설.md) 2.8
 
+> **고쳐 읽기 (run114)**: 4절 표의 "조건부로만 쓰는 힙 전역 8개 … test.exe 에선 조건이 안 맞아" 와 run 문서의 "LFH 는 나중에 켜짐 — 범위 밖" 은 LFH 두 칸 (`RtlpLowFragHeapGlobalFlags` 비트 0 · `RtlpLowFragHeapRandomData`) 에 대해 **틀렸다**. 두 칸 다 사진 P1a 에 이미 값이 있다 (`1` · 32칸 난수 `[관찰]` run44) — 프로세스 힙 LFH 는 `LdrpInitializeProcess` 가 끝나기 전 첫 힙 할당들 중 하나 안에서 켜진다 (`RtlpAllocateHeap +0xe5 → RtlpPerformHeapMaintenance +0x22 → RtlpActivateLowFragmentationHeap +0xde → RtlpCreateLowFragHeap` `[정적]` sast/111, 어느 할당인지는 동적). 1절 "블록 나눠 주는 속은 범위 밖" 은 분석 범위 결정이라 그대로다 → [run114 해설 2.7](run114-ntdll-globals-early-해설.md#27-정정-2--프로세스-힙-lfh-는-p1a-앞에-이미-켜진다-run46-고침).
+
 > 이 글은 [run46 문서](run46-process-heap.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서·짐 지도(`baggage.md`)를 따른다.
 

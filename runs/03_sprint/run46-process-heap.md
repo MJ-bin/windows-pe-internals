@@ -2,6 +2,8 @@
 
 > **정정 (run61)**: 힙 구간 시스템 콜은 **13개** 다 (무작위 몫 n = 0 이면 12개). `RtlHpGlobalsInitialize` 의 첫 `RtlRandom` (call `+0x4c`) 이 상태 0 인 `RtlpRandomExInit` 을 켜면서 `RtlpInitRandomExVector` 안 `NtQueryInformationProcess(-1, 0x24, …, 4)` (call `+0x24` / ret `+0x29`) 를 한 번 부른다 — 이 문서는 "시스템 콜 없이" 로 적었다. 맨 앞 표에 새 #1, 옛 #1 ~ #12 → #2 ~ #13, `NtQueryInformationProcess` 1 → 2. → `run61-random-ex-init.md` "정정"
 
+> **정정 (run114)**: `RtlpLowFragHeapGlobalFlags` 비트 0 (`RtlpCreateLowFragHeap +0x24a ~ +0x256`) 과 `RtlpLowFragHeapRandomData` (`RtlpInitializeLfhRandomDataArray`) 를 "LFH 는 나중에 켜짐 — 범위 밖" 으로 적었는데 틀렸다. 두 칸 다 사진 P1a 에 이미 값이 있다 (`1` · 32칸 난수) — 프로세스 힙 LFH 는 `LdrpInitializeProcess` 가 끝나기 전 첫 힙 할당들 중 하나 안에서 켜진다 (`RtlpAllocateHeap +0xe5 → RtlpPerformHeapMaintenance +0x22 → RtlpActivateLowFragmentationHeap +0xde → RtlpCreateLowFragHeap`, `[정적]` sast/111 — 어느 할당인지는 동적). → `run114-ntdll-globals-early.md` "정정"
+
 ## 보통 길 시스템 콜 목록 (함수 / 이름 / 클래스 / 크기 / 횟수 / 조건)
 
 - 보통 길 = test.exe 값으로 가는 길 (NT 힙 길). 구간 `LdrpInitializeProcess +0x9ed ~ +0xa50` 안 시스템 콜 ~~**12개** (무작위 몫 n 이 0 이면 #11 이 빠져 11개)~~ → (run61) **13개** (무작위 몫 n 이 0 이면 #12 가 빠져 12개).

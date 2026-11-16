@@ -6,6 +6,8 @@
 
 > **정정 (run87)**: 1장 일 37 의 사슬 끝 `+0x597d BasepInitAppCompatData` 는 "자식 메모리에 써 넣기" 가 아니다 — **kernel32 함수** (kernelbase 가 지연 import 로 부름, rva `0x78e40`) 이고 `g_CompatCacheServiceApi(0xa, …)` 하나만 불러 **자식 PEB 를 안 쓴다** (4장 · "아직 확인 필요" 의 "부모 KERNELBASE `BasepInitAppCompatData` 본문" 도 모듈은 kernel32). 같은 줄의 짐작은 맞았다: `pShimData` = `CreateProcessInternalW +0x57d0/+0x57d7 NtWriteVirtualMemory` `[정적]`, 활성화 컨텍스트 데이터 (`+0x2f8` · `+0x308`) 는 csrss sxssrv 가 쓴다 `[정적]`. → `run87-sxs-create.md` "Q87 닫힘"
 
+> **정정 (run114)**: 매개변수 `EnvironmentVersion` 0 → 3 의 나머지 +2 를 "`RtlpInitEnvironmentBlock +0xa0 RtlpSetupEnvironmentHashTable` 쪽 `[추측]`" 으로 적었는데 틀렸다. 해시 표 함수가 아니라 같은 함수의 `+0xa4` (ret `+0xa9`) **`RtlpWow64ThunkEnvironmentTo64`** 안 `+0x126 RtlSetEnvironmentVar` 두 번 (`ProgramFiles` ← `ProgramW6432` · `CommonProgramFiles` ← `CommonProgramW6432`) 이다 `[정적]` sast/111. → `run114-ntdll-globals-early.md` "정정"
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 결과서 날짜.
