@@ -2,6 +2,8 @@
 
 > 이 글은 [run70 문서](run70-cpu-features.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **고쳐 읽기 (run115)**: 4절 (c) "`+0x16b` `R15D` = 1 이 `+0x406` 까지 그대로인지" `[추측]` 은 **늘 1** 로 확정됐다 `[정적]` (`+0x6d` 에서 1, 중간 갈래 `+0x123` 에서 바뀌어도 `+0x16b` 에서 다시 1). 4절 (b) · 2.8 의 `XState` `[공백]` 도 닫혔다 — `KiInitializeXSaveConfiguration +0x196 ~ +0x202` 가 840B 를 통째 복사한다. 2.9 의 둘째 각도 (절대 주소 `0xFFFFF780000002xx`) 는 **쓰기에선 빈 모양** 이었다 — 24H2 는 게시판을 `MmWriteableSharedUserData` 하나로만 쓴다. 2.1 나무의 `+0x387 KiSetFeatureBits (게시판 안 씀)` (flow.md 나무도 같은 말) 은 너무 넓었다 — `ProcessorFeatures` 는 안 쓰지만 `EnclaveFeatureMask` (`+0x36c`) 를 SGX 일 때만 쓴다 (`+0x83a` · `+0x859`, 이 VM 은 안 탐). 2.7 의 "`KiSetFeatureBits` 가 쓰는 줄 알았는데 아니다" (기본 64칸 이야기) 는 그대로 맞다. 본문은 그대로 둔다 → [run115 해설 2.2 · 2.11](run115-kusd-boot-해설.md)
 
 - 대기열: **Q133** — PE_emulator 요청 21: "SymCrypt CPU 기능 찾기 · KUSD `ProcessorFeatures` · 스택 건드리기" (`_workspace/plan.md`, 이번에 **끝**)
   - 새로 생긴 할 일: **Q135** (정적, 맨 뒤) — 4절.

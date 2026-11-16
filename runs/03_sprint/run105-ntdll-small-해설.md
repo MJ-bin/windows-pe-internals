@@ -2,6 +2,8 @@
 
 > 이 글은 [run105 문서](run105-ntdll-small.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **고쳐 읽기 (run115)**: 2.3 "누가 쓰나 — 이 방법으로는 안 보임" 과 3절 "KUSD `SystemCall` 은 쓰는 쪽을 몰라 아직 모름" 은 닫혔다. 쓰는 줄 = **`KiInitializeKernel +0x8e`** (`MOV [RAX+0x308],ESI`, `RAX` = `MmWriteableSharedUserData`) `[정적]`, 조건 `KiSystemCallSelector == 1` 그리고 `HvlEnlightenments` 비트 19 — 이 VM 은 **조건부 안 탐** (사진 0 `[관찰]`). 안 보였던 까닭은 24H2 가 게시판을 고정 주소가 아니라 쓰기 별칭 포인터로만 쓰기 때문이다. 스텁이 모두 `SYSCALL` 길이라는 결론은 그대로다. 본문은 그대로 둔다 → [run115 해설 2.8](run115-kusd-boot-해설.md)
 
 - 대기열: **Q66 + Q67** 묶음 (`_workspace/plan.md`, 이번에 **둘 다 끝**)
   - **Q66** — 2.2 부모 쪽 작은 정적 둘: `0x7ffe0308` 칸 이름, `CsrClientCallServer` 가 csrss 답을 기다리나 (run34 가 남긴 것)
