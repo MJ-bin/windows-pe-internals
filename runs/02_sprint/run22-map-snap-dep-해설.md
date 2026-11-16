@@ -5,6 +5,8 @@
 
 > **정정 (run36)**: 2.5 이야기 그림·남은 질문과 4절의 "dll2 의 import `?`" 는 채워졌다 — `KERNEL32.dll` 하나(88개) `[정적+샘플]` (샘플 PE 표를 센 값). 2.8 "IAT 쓰기 가능"(덮개 열기)의 짝인 되돌리기는 `LdrpDoPostSnapWork +0x3e` 다 `[정적]`. 본문은 그대로 두었다 → [run36 해설 2.12](run36-snap-module-해설.md#212-testexe-에서는--파일을-세어-본-값) · [2.9](run36-snap-module-해설.md#29-질문-4--끝맺음-ldrpdopostsnapwork)
 
+> **고쳐 읽기 (run113)**: 2.7 의 "명부 줄과 연결 카드를 한 쌍으로" 는 **같이 태어나지만 따로 두 번 빌린 종이** 라는 뜻으로 읽는다 (`+0x29` · `+0x5b`, 한 덩어리 아님 — 카드는 늘 명부 줄 `+0x98 DdagNode` 로 찾는다). 그리고 "`| 8` = 0 으로 채워 달라" `[추측]` 은 이제 `[정적]` 이다 — 두 할당 모두 `HEAP_ZERO_MEMORY` (sast/109). 본문은 그대로 두었다 → [run113 해설 2.4](../03_sprint/run113-ntdll-user-structs-해설.md#24-정정-1--명부-줄과-연결-카드는-따로-두-번-빌린다)
+
 - 대기열: **Q12a** — 2.5·2.6 import 를 하나씩 도는 바깥 고리 `ntdll!LdrpMapAndSnapDependency` (호출 23곳) + 노드·항목을 만드는 `LdrpAllocateModuleEntry` (5곳) (`_workspace/plan.md`, 이번에 **끝**)
 - 근거:
   - run 문서 [`run22-map-snap-dep.md`](run22-map-snap-dep.md) (가장 중요)

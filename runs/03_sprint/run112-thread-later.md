@@ -231,6 +231,7 @@ KiSystemCall64 ─(+0x2a2 이어짐)─ KiSystemServiceUser  +0xcb FirstArgument
 
 - **첫 덮임 = `P1` 의 `int3` (`KiBreakpointTrap`)**, 24칸의 첫 값 = `P1~P1a` 의 syscall · 페이지 오류 입구 `[정적]` + 사진 `[관찰]` run44.
   - 요청서는 "첫 syscall — 사진 `P1` 직전" 이라 했는데 사진은 다르다: P1 프레임은 이미 `int3` 입구가 덮은 것 (`Rip` = `LdrInitializeThunk +1`) 이고, 이 24칸은 P1 에서도 0 이다.
+  - (run113 보탬) 위 표 `Rax` · `R8 ~ R11` 줄과 안 어긋난다: `KiBreakpointTrap +0x18 · +0x24 ~ +0x30` 은 **P1 에서도 이 다섯 칸을 쓰고, 쓴 값이 첫 유저 레지스터 0** 이다 (`.asm`). 같은 입구가 쓴 `Rcx` (`+0x1c`) · `Rdx` (`+0x20`) · `ExceptionActive` (`+0x14`, 1) 는 P1 사진에서 0 이 아니다 (`ms/logs/04_baggage-read_P1.txt:1061 ~ 1069`). 그래서 다섯 칸은 "안 써서 0" 이 아니라 "0 을 써서 0", 표의 "P1a 부터 유저 값" 은 "0 이 아닌 첫 값" — run113 "정정".
   - `P1a` · `P1b` · `P2` 도 `int3` 로 멈춘 사진이라, 그 사진의 `P1Home` · `PreviousMode` · `GsBase` · `FaultAddress` · `Rbx` · `ErrorCode` 등은 **`int3` 입구가 안 쓰는 칸에 남은 syscall · 페이지 오류 흔적**이다.
 - LSTAR 가 `KiSystemCall64` 인지 `KiSystemCall64Shadow` (KVA 그림자 변형) 인지는 정적으로 못 정함 (`KiKvaShadow` 전역 · MSR 값) → D1.
 
