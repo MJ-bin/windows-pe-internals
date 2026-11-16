@@ -1,5 +1,7 @@
 # 2026-11-16 (작성일) run104 — 매개변수 블록 · CFG 비트맵 칸 · ScpCfg 전역 · 표준 핸들 상태 (Q63a = Q63 (a)·(b)·(c)·(e)·(f), 커널 쪽, 정적만): **`Flags` 마스크 `0xf4010e11` 은 "켜져 있으면 거절하는 비트" 목록이다** (`(Flags ^ 1) & 마스크 ≠ 0 → 0xC000000D`) `[정적]`. 비트 0 만 켜져 있어야 하고, 4·9·10·11·16·26·28·29·30·31 은 꺼져 있어야 한다. PDB 에 비트 이름은 없다. **Environment 는 따로 할당하지 않고 블록 바로 뒤 (`블록 + Length`) 에 붙인다** — 한 번의 `ExAllocatePool2(0x41, Length + EnvironmentSize, 'PsPb')`. **작업 집합 구조 `+0x4a0`/`+0x4a8` (CFG 비트맵 시작·크기) 은 `MiCfgInitializeProcess` 가 아니라 그 아래 `MiReferenceCfgVad` 가 쓴다** — 그리고 CFG 가 꺼진 프로세스면 `MiCfgInitializeProcess +0x1e` 에서 아무것도 안 쓰고 끝난다. `PspNtdllScpFunctions` 넷에는 ntdll 함수 주소가 아니라 **"ntdll 끝 바로 뒤 쪽" 안의 주소** 가 들어간다. 만들기 정보 `+0x11` 은 **비트 2~3 = 표준 핸들 상태 (0 · 1 · 2, 3 은 거부)**, **비트 7 = `PsAttributeChpe`**. `Flags` 비트 31 을 켜는 커널 줄은 못 찾았다. `PspSystemDlls[0]+0x20` = `PspNativeSystemDllData+0x20` (같은 칸).
 
+> **정정 (run123, sast/119 Q113)**: 아래 "아직 확인 필요" 정적 6 의 `[추측]` "셋째 인자 구조는 `PspBuildCreateProcessContext` 속성 `0x20` 대 (`PsAttributeHeapFeatures` 류)" 는 틀림 — 셋째 인자 (`R15`) = **만들기 정보 `+0x1d8` 의 매개변수 덮어쓰기 구조** (`NtCreateUserProcess +0xab3 PspGetProcessParameterOverrides` 가 확장 import 로 받아 `+0x4a` 에 씀 → `PspCaptureProcessParameters +0x26` 이 읽어 넘김). 속성 목록 (`+0x448`, 속성 `0x22`) 과는 별개 줄기. `+0x4` 비트 0 · 1 · 2 · 3 = CPU 집합 · `RedirectionDllName` · 힙 파티션 · 스레드 최대. (sast/104 결과서의 "`PS_CREATE_INFO` 비트 0/2" 이름도 같은 정정 — 이 문서는 이미 "셋째 인자" 로 적어 줄 · 동작은 그대로.) → `run123-run58-60-leftovers.md` Q113 (b).
+
 (오프셋은 call 자리. ret 자리는 아래 "정적 — 호출 지점" 표.)
 
 ## 환경

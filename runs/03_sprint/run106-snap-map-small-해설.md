@@ -3,6 +3,8 @@
 > 이 글은 [run106 문서](run106-snap-map-small.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
+> **고쳐 읽기 (run123)**: 2.9 · 4절의 "`0x40000036` 이름은 `[추측: 기억]` 그대로" 는 닫힘 — **`[정적]` `STATUS_IMAGE_AT_DIFFERENT_BASE`** (`0x40000003` = `STATUS_IMAGE_NOT_AT_BASE`). PDB 엔 여전히 없고, 같은 빌드 `nltest.exe` 의 값 → 이름 표 (rva `0x64770` · `0x64440`) 에서 바이트로 확정. 뜻 ("fixup 은 자동") 과 ntdll 이 재배치를 안 하는 갈래는 그대로. 본문은 그대로 두었다 → [run123 해설](run123-run58-60-leftovers-해설.md) 2.3
+
 - 대기열: **Q69 + Q70** 묶음 (`_workspace/plan.md`, 이번에 **둘 다 끝**)
   - **Q69**: snap 실패 길 작은 정적. 노드 `State = −3` (`LdrModulesSnapError`) 을 **처음** 쓰는 곳은 어디인가, 그리고 `LdrpSnapModule` 실패 반환이 `*(ctx+0x28)` 에 들어간 뒤 누가 그걸 State 로 바꾸나. run36 이 남긴 질문이다.
   - **Q70**: 매핑 갈래 작은 정적. 로드 문맥 `ctx+0x20` 비트 `0x800` · `0x800000` 을 켜는 줄, 그리고 결과 코드 `0x40000036` 의 이름. run38 이 남긴 질문이다.

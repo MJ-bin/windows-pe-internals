@@ -3,6 +3,8 @@
 > 이 글은 [run60 문서](run60-func-table-mrdata.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서·짐 지도(`baggage.md`)를 따른다.
 
+> **고쳐 읽기 (run123)**: 4절 (덤 줄) 의 속성 `0x22` 공개 이름 "PDB 에 없음" 은 틀림 — PDB `_PS_ATTRIBUTE_NUM` 에 **`PsAttributeHeapFeatures = 34`** 가 있다 (2.11 `0x1ce268` "세그먼트 힙 요청" 은 뜻 그대로, 속성 이름이 붙음). 닫힘: 2.11 의 "목록이 `+0x448` 에 이어지는 줄 `[공백]`" → 사슬 끝까지 `[정적]`, 2.10 `LdrpSuppressedExportOverrideListPtr` 를 읽는 곳 → ntdll 안에 없음, 2.6 "`+0xdc4` 의 `ECX` 가 1 은 `[추측]`" → `[정적]` 1 (`0x30 − 0x2f`), `LdrpMakePermanentImageCommit` 은 쪽마다 같은 값 되쓰기 (목적은 여전히 `[추측]`). 본문은 그대로 두었다 → [run123 해설](run123-run58-60-leftovers-해설.md) 2.13 ~ 2.15
+
 - 대기열: **Q111** — PE_emulator 요청 5: 함수표·`.mrdata` 보호. `LdrpInitializeProcess +0x3e6 ~ +0x4a1` 에서 "공사 중 빈 함수" 로 둔 다섯의 본문·쓰는 칸·syscall (`_workspace/plan.md`, 이번에 **Q111 끝**)
   - 다음 항목: **Q104 VM 단계** → Q78d4 → Q78e → …
   - 남은 질문이 간 곳: 선택 동적 1 ~ 6 → **Q104 VM 단계** (Q111 의 VM 몫이 원래 여기 얹혀 있었다), 새 공백 ①② 와 질문 밖 메모 → 새 **Q115** (맨 뒤). run35 의 **Q67 (a)** 는 이번에 답이 이어졌다 (2.12).

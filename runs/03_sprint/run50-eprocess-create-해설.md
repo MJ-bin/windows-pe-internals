@@ -5,6 +5,8 @@
 
 > **고쳐 읽기 (run120)**: 2.4 "범위 밖 길에서만 씀 `[추측]`" 표의 `ThreadListLock` (`+0x5e0`) 과 같은 52칸 안의 `InvertedFunctionTableLock` (`+0x5d0`) 은 범위 밖이 **아니다** — 둘 다 초기화 길에서 잡고 풀어 0 으로 돌아온다 (① `PspInsertThread +0x6c3 BTS` … `+0x24e XADD −1`, ② `RtlInsertDynamicUserFunctionTable +0xbc BTS` … `+0x125 XADD −1`). 짐 지도에선 "잡고 푸는 잠금 칸 2" 로 아는 칸에 옮겼다 (범위 밖 53 → 51, 끝까지 0 가름의 범위 밖 52 → 50). 본문은 그대로 두었다 → [run120 해설](run120-eprocess-locks-해설.md) 2.4 ~ 2.7
 
+> **고쳐 읽기 (run123)**: 2.11 "다섯 걸음" 2번 "시스템 기본·**부모**와 합치기" 의 "부모" 는 틀림 — `PspInheritMitigationOptions` (`+0x1aea` · `+0x1be0`) 의 A 는 시스템 전역 `PspSystemMitigationOptions` (부팅 때 레지스트리 `Session Manager\Kernel` `MitigationOptions`), B 는 IFEO · 사용자 속성이고, 이 길에 부모 값은 없다. 같은 절의 "`MitigationFlags2` `0x40000000` 의 뿌리는 `PspSystemMitigationOptions` 로 보인다 `[추측]`" 도 흔들렸다 — 사진 셋째 칸 비트 16~17 (옵션 36) 이 0 이라, "0 이면 `PspApplyMitigationOptions +0x6b0` EBX 비트 19 꺼짐일 때 켬" 갈래일 수 있다 `[추측]` (EBX 뜻은 `[공백]`, Q216 ①). 본문은 그대로 두었다 → [run123 해설](run123-run58-60-leftovers-해설.md) 2.8 · 2.10
+
 - 대기열: **Q78c2a** — Q78c2 (`_EPROCESS` 모르는 칸 241) 를 시간 순서로 나눈 **첫 조각**: "만들 때" 몫 212칸 (`K1 이전` 52 + 끝까지 0 160) (`_workspace/plan.md`, 이번에 **끝**)
   - 나눈 법 (오케스트레이터 기본값 2026-10-30): Q78c2a = 만들 때, Q78c2b = 그 뒤 구간 29칸 (`K2~K3` 3 · `K3~P0` 11 · `P0~P1` 9 · `P1~P1a` 5 · `P1a~P1b` 1) + `OwnerProcessId` + 옛 Q65 몫.
   - 다음 항목: **Q78c2b** → Q78d → Q78e → Q78f → Q78g → Q79 → Q80 → Q82.

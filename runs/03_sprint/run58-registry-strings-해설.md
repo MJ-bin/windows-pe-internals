@@ -3,6 +3,8 @@
 > 이 글은 [run58 문서](run58-registry-strings.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
+> **고쳐 읽기 (run123)**: 2.14 · 4절의 "상태 `0xc000090b` 의 이름은 확인 안 했다" 는 닫힘 — **`STATUS_BAD_DATA`** `[정적]` (PDB 엔 없음, 같은 빌드 `nltest.exe` · `certca.dll` · `tdhres.dll` 의 값 → 이름 표 + ntdll 메시지 글 "Bad data."). 커널 사본 `nt!RtlpQueryNlsSystemCodePages` 의 키 · 값 글도 ntdll 것과 **같고** (`Zw*` 호출 꼴만 다름), 같은 `.rdata` 글을 쓰는 ntdll 자리는 두 함수 8줄뿐이다. 본문은 그대로 두었다 → [run123 해설](run123-run58-60-leftovers-해설.md) 2.3 ~ 2.5
+
 - 대기열: **Q109 첫 일 (ⓠ-1·ⓠ-2)**: PE_emulator 요청 4 의 ⓠ — 레지스트리 키·값 이름 **글자 전체** (`_workspace/plan.md`, 이번에 ⓠ 만 **끝**)
   - 사용자 결정 (2026-11-02) 으로 Q109 안에서 맨 앞으로 옮긴 일이다. PE_emulator 가 이걸 기다리고 있었다.
   - Q109 의 나머지 (B ntdll 본문 · C ntoskrnl 비트 뜻 · D (1)~(3) 기록 정정 · E) 는 **다음 바퀴**.

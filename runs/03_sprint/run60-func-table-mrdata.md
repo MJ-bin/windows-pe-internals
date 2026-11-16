@@ -2,6 +2,10 @@
 
 > 정정 (run63, sast/58): 아래 "결과서와 다르게 적은 곳" 의 `LdrpMrdataHeap`·`HeapUnprotected` 두 `[추측]` ("test.exe 에선 쓰기까지 안 간 것", "`LdrEnsureMrdataHeapExists +0xa` 의 CFG 확인도 그 갈래일 것") 은 맞았다 → `[정적]`. 단 갈림 자리는 `RtlAddGrowableFunctionTable` 쪽이 아니다 — `+0x40` (ret `+0x45`) 은 인자 검사 `+0x27`/`+0x3a` 뒤 **늘** `LdrEnsureMrdataHeapExists` 를 부르고, CFG 확인은 그 안 `+0xa/+0xf LdrControlFlowGuardEnforced` · `+0x11 JZ +0x1f` (test.exe 0 → 바로 0 반환) 다. "② 조건부" 의 조건 = 그 안 갈래 → `runs/03_sprint/run63-cfg-func-table.md` "정정"
 
+> **정정 (run123, sast/119 Q115)**: 아래 "아직 확인 필요" 의 "속성 번호 `0x22` 공개 이름 (**PDB 에 없음**)" 은 틀림 — PDB `_PS_ATTRIBUTE_NUM` 에 **`PsAttributeHeapFeatures = 34`** 가 있다 (sast/104 f-2 가 먼저 봄). `.data 0x1ce268` = 프로세스 만들 때 힙 기능 요청 (세그먼트 힙 0/1). → `run123-run58-60-leftovers.md` Q115 (c).
+
+> **닫힘 (run123)**: "아직 확인 필요" 정적 넷 — ① `+0x448` 이음 줄 끝까지 (`PspProcessUserCopyAttribute` → `PspCalculateUserAttributeListSize` → `PspCopyAndFixupParameters +0x3eb PspCopyUserAttributes` → `+0x3f8 ~ +0x402` `+0x448` 쓰기, 스위치 켜짐 · 개수 > 0 일 때만) ② `LdrpSuppressedExportOverrideListPtr` 를 읽는 곳은 **ntdll 안에 없다** (쓰기만 있는 칸) ③ `+0xdc4` 의 `ECX` = **1** (`+0xd65 LEA EBX,[RAX+0x2e]` = `0x30` → `+0xdc1 LEA ECX,[RBX-0x2f]`) ④ `LdrpMakePermanentImageCommit` = 쪽마다 같은 값 되쓰기 (목적은 `[추측]` copy-on-write 쪽 미리 확보). → run123 Q115.
+
 ## PE_emulator 쪽에서 쓸 것
 
 결과서 (`_workspace/sast/55_func-table-mrdata_result.md`) 의 "PE_emulator 가 그대로 쓸 작은 표" 를 1절에 옮겼다. 표 밑 글머리와 2 ~ 4절은 flow-writer 가 `.asm` 의 `CALL … ret=` 줄로 다시 맞춘 것이다. 오프셋 읽는 법:

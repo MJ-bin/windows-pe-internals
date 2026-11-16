@@ -2,6 +2,8 @@
 
 > 정정 (run120, sast/115): 아래 "범위 밖 길에서 씀" 의 `InvertedFunctionTableLock` (`+0x5d0`) · `ThreadListLock` (`+0x5e0`) 은 **초기화 길에서 잡고 푼다** — ② `NtSetInformationProcess(0x35) +0x566 → RtlInsertDynamicUserFunctionTable +0xbc BTS` … `+0x125 XADD −1`, ① `PspInsertThread +0x6c3 BTS` … `+0x24e XADD −1`, 끝 값 0. 짐 지도 3.11 아는 칸으로 옮김 (범위 밖 53 → 51). run120 문서.
 
+> **정정 (run123, sast/119 Q113)**: 아래 "완화 옵션 칸 값은 **부모**·시스템 기본 (`PspSystemMitigationOptions`)·이미지 헤더에서만 온다" 의 "부모" 는 틀림 — `PspInheritMitigationOptions` (`+0x1aea` · `+0x1be0`) 의 A 는 시스템 전역 `PspSystemMitigationOptions` (부팅 때 레지스트리 `Session Manager\Kernel` `MitigationOptions`), B 는 IFEO · 사용자 속성 (`PsAttributeMitigationOptions`) 이고 이 길에 부모 값은 없다. 또 셋째 칸 비트 12~13 · 24~25 는 `PspAllocateProcess +0x1e03 ~ +0x1e30` 이 그 자리에서 2 로 쓴다. → `run123-run58-60-leftovers.md` Q113 (a).
+
 ## 요약 표 (모르는 칸 212 → ?)
 
 - 결과서 맨 앞 표 그대로. 분류 뜻:

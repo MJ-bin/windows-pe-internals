@@ -3,6 +3,8 @@
 > 이 글은 [run59 문서](run59-init-leftovers.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서·짐 지도(`baggage.md`)를 따른다.
 
+> **고쳐 읽기 (run123)**: 2.12 ⓗ 의 "**12~13·24~25 의 2 는 입력 표가 갖고 온 값**" (출처 `[공백]`) 은 틀림 — 호출한 쪽 `PspAllocateProcess` 가 그 자리에서 쓴다 (비트 12~13 = `+0x1e03 ~ +0x1e15` 무조건, 비트 24~25 = `+0x1e1d ~ +0x1e30` `KeIsCoreIsolationMitigationPolicyEnforceable` 거짓일 때). 4절의 "PDB 에 옵션 열거형이 없음" 도 틀림 — PDB `PS_MITIGATION_OPTION` 이 있다 (32 ~ 39 이름은 run123). 4절 "만들기 정보 `+0x1d8` 을 **읽는** 함수" 는 닫힘 — `PspCaptureProcessParameters +0x26` · `PspDeleteCreateProcessContext +0x11a`. 본문은 그대로 두었다 → [run123 해설](run123-run58-60-leftovers-해설.md) 2.6 · 2.7 · 2.11
+
 - 대기열: **Q109 나머지 (B·C·D (1)~(3)·E)** — PE_emulator 요청 4-B~E: "공사 중 빈 함수" 본문 · 커널 비트 뜻 · 기록 정정 (`_workspace/plan.md`, 이번에 **Q109 전체가 끝**)
   - Q109 의 첫 일 ⓠ (레지스트리 글자) 는 run58 에서 끝났다. 이번이 나머지 전부다.
   - 다음 항목: **Q111** (PE_emulator 요청 5 — 함수표·`.mrdata` 보호) → Q104 VM 단계 → Q78d4 → …

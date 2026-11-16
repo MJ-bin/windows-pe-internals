@@ -1,5 +1,7 @@
 # 2026-11-02 run58 — 레지스트리 키·값 이름 글 8개 (Q109 첫 일 ⓠ-1·ⓠ-2, PE_emulator 요청 4): NLS 코드 페이지는 **`\Registry\Machine\System\CurrentControlSet\Control\Nls\CodePage` 의 `ACP`·`OEMCP`**, 제품 종류는 **`…\Control\ProductOptions` 의 `ProductType`** 을 `WinNt`/`LanmanNt`/`ServerNt` 와 대소문자 무시로 비교한다. 글은 모두 ntdll `.rdata` 의 UTF-16LE + NUL. `RtlpQueryNlsSystemCodePages` 는 **늘 0 을 돌려준다** (`+0x226`), 제품 종류 실패 때 `*type = 1` 은 **부른 쪽 `RtlGetNtProductType +0x69`** 가 쓴다 (정적)
 
+> **닫힘 (run123, sast/119 Q112)**: 아래 "아직 확인 필요" 3 (정적 Q112) 이 닫혔다 — `0xc000090b` = **`STATUS_BAD_DATA`** (PDB 엔 없음, 같은 빌드 `nltest.exe` · `certca.dll` · `tdhres.dll` 의 값 → 이름 표 + ntdll 메시지 글 "Bad data."), 커널 사본 `nt!RtlpQueryNlsSystemCodePages` 의 키 · 값 글은 ntdll 것과 **같다** (`Zw*` 호출 꼴만 다름), 같은 `.rdata` 글 8개를 쓰는 자리는 ntdll 전체에서 두 함수 8줄뿐 (데이터 포인터 0). → `run123-run58-60-leftovers.md` Q112.
+
 ## PE_emulator 쪽에서 쓸 것
 
 결과서 (`_workspace/sast/53_registry-strings_result.md`) 의 "run 문서에 그대로 옮길 글 표" 를 **글자 하나 안 바꾸고** 아래 1절에 옮겼다 (표·범례·밑 글머리·바이트까지). 그 뒤 절은 flow-writer 가 `.asm` 줄로 한 번 더 맞춘 것이다. 오프셋은 모두 `ms/disassemble/ntdll/<함수>.asm` 의 `+0x` 줄 (이 폴더는 커밋 안 함).

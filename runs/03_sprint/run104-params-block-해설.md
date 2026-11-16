@@ -3,6 +3,8 @@
 > 이 글은 [run104 문서](run104-params-block.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
+> **고쳐 읽기 (run123)**: 4절 "커널 사본 셋째 인자 (`R15`) 의 정체" 의 짐작 "속성 `0x20` 대 (`PsAttributeHeapFeatures` 류) `[추측]`" 은 틀림 — 셋째 인자 = **만들기 정보 `+0x1d8` 의 매개변수 덮어쓰기 구조** (`NtCreateUserProcess +0xab3 PspGetProcessParameterOverrides` 가 확장 import 로 받아 `+0x4a` 에 씀 → `PspCaptureProcessParameters +0x26` 이 읽어 넘김). 속성 목록 (`+0x448`, 속성 `0x22`) 과는 별개 줄기다. 본문은 그대로 두었다 → [run123 해설](run123-run58-60-leftovers-해설.md) 2.11 · 2.13
+
 - 대기열: **Q63a** — Q63 의 (a)·(b)·(c)·(e)·(f), 커널 쪽: `Flags` 마스크 `0xf4010e11` 비트 · Environment 자리, `MiCfgInitializeProcess` 와 `+0x4a0`/`+0x4a8` · `PspLocateNtdllAddressesForScpCfg` 가 넣는 것, `PspBuildCreateProcessContext` 의 만들기 정보 `+0x11`, `Flags` 비트 31 을 누가 켜나, 작은 것 셋 (`_workspace/plan.md`, 이번에 **끝**)
   - Q63 은 원래 run32 가 남긴 "작은 정적 묶음" 이다. 2026-11-15 에 둘로 나눴다.
     - 커널 쪽 = **Q63a** (이번 바퀴).

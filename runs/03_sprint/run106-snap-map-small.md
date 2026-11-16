@@ -1,5 +1,7 @@
 # 2026-11-16 (작성일) run106 — snap 실패 길 · 매핑 갈래 작은 정적 (Q69 + Q70, 정적만): **노드 `State = −3` (`LdrModulesSnapError`) 을 "처음" 쓰는 줄은 ntdll 에 없다** — ntdll 전체 `.text` 에서 State 칸 (`_LDR_DDAG_NODE +0x38`) 에 −3 을 쓰는 줄은 전파 `LdrpCondenseGraphRecurse +0x14e` 딱 하나 `[정적]`. **snap 이 실패하면 노드는 `State 4` 그대로**고, 실패는 문맥 상태 칸 `*(ctx+0x28)` 으로만 위로 간다 → 바깥 `LdrpLoadDllInternal +0x277` 이 음수를 보고 `LdrpPrepareModuleForExecution` 을 통째로 건너뛰고 해제 길 (`+0x2e6 LdrpDecrementModuleLoadCountEx` → `LdrpUnloadNode`) 로 간다. **로드 문맥 `ctx+0x20` 비트 `0x800` · `0x800000` 은 `OR`/`BTS` 로 켜는 줄이 없고, 만들 때 받은 flags 로 들어온다** — `0x800` = `LdrpLoadWow64 +0x98` (WoW64 만), `0x800000` = `LdrLoadEnclaveModule +0xe5` · `LdrpEnclaveAddDependentModule +0x9a` (enclave 만), 의존 DLL 은 `LdrpLoadDependentModuleInternal +0x1e2 AND ESI,0x1800800` 로 물려받는다. test.exe 는 둘 다 안 탄다 (`UseWOW64` 0 `[관찰]` run44). **`0x40000036` 은 PDB 에 이름이 없다** — ntdll 메시지 표 글은 "{Image Relocated} … 다른 주소에 붙었지만 fixup 은 자동으로 된다", 그래서 ntdll 은 이 값으론 재배치를 안 한다 (`LdrpCompleteMapModule +0x1b4`).
 
+> **닫힘 (run123, sast/119 Q112 덤)**: 아래 `0x40000036` 이름 `[추측: 기억]` → **`[정적]` `STATUS_IMAGE_AT_DIFFERENT_BASE`** (`0x40000003` = `STATUS_IMAGE_NOT_AT_BASE`) — PDB 엔 여전히 없고, 같은 빌드 `nltest.exe` 의 값 → 이름 표 (rva `0x64770` · `0x64440`) 에서 바이트로 확정. → `run123-run58-60-leftovers.md` Q112 (1).
+
 (오프셋은 call 자리. ret 자리는 아래 "정적 — 호출 지점" 표.)
 
 ## 환경

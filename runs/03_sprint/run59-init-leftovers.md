@@ -2,6 +2,10 @@
 
 > 정정 (run62, sast/57): 아래 `RtlpFcProcessManager` "전부 0" 은 `LdrpInitializeProcess +0x21c ~ +0x286` 직후 값이다. 같은 함수 뒤 `+0xaad` (ret `+0xab2`) 의 **첫 기능 상태 검사**가 `RtlpFcUpdateLocalConfiguration +0xff` (ret `+0x104`) `RtlpFcBufferManagerUpdateBuffers` 로 설정 버퍼 두 벌·도장 (`+0xe0`) 을 채운다 (사진 P1a 값). 그 길의 syscall `NtQuerySystemInformationEx(0xd3)` + `NtMapViewOfSection`·`NtClose` 각 k 도 여기 없었다 → `runs/03_sprint/run62-tp-etw-init.md` "정정".
 
+> **정정 (run123, sast/119 Q113)**: 아래 ⓗ 의 "**12~13·24~25 의 2 는 입력 표가 갖고 온 값** — 출처 `[공백]`" 은 틀림 — `PspAllocateProcess` 가 그 자리에서 쓴다: 비트 12~13 = `+0x1e03 ~ +0x1e15` (무조건, 옵션 35 `POINTER_AUTH_USER_IP`), 비트 24~25 = `+0x1e1d ~ +0x1e30` (`KeIsCoreIsolationMitigationPolicyEnforceable` 거짓일 때, 옵션 38 `RESTRICT_CORE_SHARING`). "부모 상속 (`PspInheritMitigationOptions`)" 의 A 는 부모가 아니라 시스템 전역 `PspSystemMitigationOptions`. "옵션 번호 ↔ 이름 PDB 에 열거형 없음" 도 틀림 — PDB `PS_MITIGATION_OPTION` 이 있다 (run107 이 일부 먼저 씀). → `run123-run58-60-leftovers.md` Q113 (a).
+
+> **닫힘 (run123)**: "아직 확인 필요" 정적 2 (만들기 정보 `+0x1d8` 을 읽는 함수) — 둘: `PspCaptureProcessParameters +0x26` (→ `PspCaptureUserProcessParameters` 셋째 인자 = 매개변수 덮어쓰기 구조) · `PspDeleteCreateProcessContext +0x11a` (→ 지우기, 0 이면 아무것도 안 함). 결과서 표 밖 전역 셋은 run68 · run114 가 이미 3.8 에 셌다 (셈 그대로). → run123 Q113 (b) · (c).
+
 ## PE_emulator 쪽에서 쓸 것
 
 결과서 (`_workspace/sast/54_init-leftovers_result.md`) 의 표 둘을 **글자 하나 안 바꾸고** 아래 1절·2절에 옮겼다. 표 밑 글머리와 3절은 flow-writer 가 `.asm` 의 `CALL … ret=` 줄로 다시 맞춘 것이다. 오프셋 읽는 법:
