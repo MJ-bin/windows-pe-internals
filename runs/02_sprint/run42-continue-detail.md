@@ -1,5 +1,7 @@
 # 2026-10-24 run42 — `NtContinue` 길 세부: 맡긴 문맥 `ContextFlags` 는 **정말 `0x10001b`** (CET 스레드는 `0x10005b`). `KiVerifyContextIpForUserCet` 가 올린 (+8) 새 그림자 스택 포인터는 **아무도 MSR 에 안 쓴다** (지역 칸에서 버려짐). `KiInitiateUserApc` 는 문맥을 보관하지 않고 `KiDeliverApc` 하나를 부르며, 복사는 **`KiInitializeUserApc +0x1fb`** 가 유저 스택에 한다 (정적)
 
+> **정정 (run111, sast/106)**: 아래 "`WRMSR 0x6a7` 이 있는 곳" 표의 "이름 없는 조각 `FUN_1406f9e12 +0xf4` (`nt+0x6f9f06`) … `KeUserModeCallback` 쪽 `[추측]`" 은 틀렸다. `FUN_1406f9e12` 는 **`PopFxIdleDevicesFromSx` 꼬리 조각** (MSR 줄 없음) 이고, `nt+0x6f9f06` 의 `RDMSR` → −8 → `WRUSSQ` → `WRMSR 0x6a7` 은 다른 `.pdata` 항목 = **`RtlCreateEnclaveReturnFrame +0x243f7e`** (엔클레이브용) 이다 (`NtContinue` 길과 무관하다는 결론은 그대로). 또 "아직 확인 필요" 정적 1 (a) 의 전제 "CET_U 칸을 `KeContextFromKframes` 가 채우나" — 시동 길엔 `KeContextFromKframes` 가 없다 (부르는 곳 `KiDispatchException` · `KiInitializeUserApc` 뿐). 칸은 `PspGetContextThreadInternal` 아래 **`PspGetContext +0x33d RtlXSaveS`** 가 채운다. → `runs/03_sprint/run111-cet-context-small.md` "정정"
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 결과서 날짜.

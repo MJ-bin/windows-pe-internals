@@ -2,6 +2,8 @@
 
 > 이 글은 [run42 문서](run42-continue-detail.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **고쳐 읽기 (run111)**: 2.4 "시동 사물함 메모에 대 보면" 5·6번과 4절 표 Q75 (a)·(b)·(c) 세 줄은 run111 에서 닫혔다. (a) 별지 CET_U 칸 값 = 예약 줄 적기 **전** SSP (S0) `[정적, 순서]`. 시동 스레드가 `PspGetContext +0x33d RtlXSaveS` 의 `XSAVES` 로 담고, `RtlCopyContext → RtlpCopyXStateChunk` 는 복사만 한다 (MSR 을 오가는 부분만 `[추측: CPU 설명서]`). 4절 (a) 줄의 후보 `KeContextFromKframes` 는 시동 길에 **없다** (부르는 곳은 `KiDispatchException` · `KiInitializeUserApc` 뿐). (b) `PspGetSetContextInternal` 도 5번째 칸을 안 쓴다 `[정적]`. (c) `FUN_1406f9e12` = `PopFxIdleDevicesFromSx` 꼬리 (MSR 줄 없음), `nt+0x6f9f06` 줄 = `RtlCreateEnclaveReturnFrame +0x243f7e` (엔클레이브용) `[정적]`. run42 **문서** 표의 "`KeUserModeCallback` 쪽 `[추측]`" 은 틀렸다 (이 해설 2.4 표엔 그 줄이 없음). "`NtContinue` 길이 아니다" 는 그대로 맞다. 본문은 그대로 두었다 → [run111 해설 2.3 · 2.6 ~ 2.10](../03_sprint/run111-cet-context-small-해설.md)
 
 - 대기열: **Q58** — 2.10 `NtContinue` 길 작은 정적 넷: 맡긴 문맥 `ContextFlags` = `0x10001b` 가정, 새 그림자 스택 포인터를 누가 유저 SSP 로 쓰나, `KiInitiateUserApc` 본문, `RtlLeaveCriticalSection` 특례 이유 (`_workspace/plan.md`, 이번에 **끝**)
   - 넷째(`RtlLeaveCriticalSection` 특례)는 이미 run41 로 답한 것으로 보고 요청에서 뺐다. 이번에 푼 건 **셋**이다.
