@@ -2,6 +2,8 @@
 
 > 이 글은 [run41 문서](run41-tls-lock-detail.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **고쳐 읽기 (run110)**: 2.4 표 · 4절의 칸 **bit 0** `[공백]` 은 풀렸다 — 켜는 곳은 커널 `KeWaitForAlertByThreadId +0x2db`, 끄는 곳은 `KiAbUmPostWait +0x88` (위치 `[정적]`, 뜻 "이 락 때문에 유저 모드 대기에 들어감" 은 `[추측]`). 본문은 그대로 둔다 → [run110 해설 2.3](../03_sprint/run110-tls-lock-small-해설.md)
 
 - 대기열: **Q56** — 2.7 TLS 락 세부 (작은 정적): TEB `+0x1850` 8칸 표 이름, 추적 칸 맨 위 비트를 켜는 곳, `ImageTlsCallbackCaller` 의 `RtlAcquireSRWLockExclusive` 직접 호출 갈래, `LdrShutdownProcess +0x168` 앞 `[RDI+0x58]` 조건 (`_workspace/plan.md`, 이번에 **끝**)
   - 실행 때 확인할 거리는 새 번호 없이 **Q25** (락 소유 칸, `+0x1e8`) 와 **Q30** (`RtlUserThreadStart +0x23`) 에 출처로 붙었다.
