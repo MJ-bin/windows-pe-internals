@@ -2,6 +2,8 @@
 
 > **정정 (run74, sast/70)**: 아래 "`INITIAL_TEB` 는 `RtlCreateUserStack` 이 채운다 (… `RtlCreateUserStack (호출 +0x89) +0x128`)" 의 `+0x128` 은 **`AllocationBase` (+0x20) 한 칸**만 쓰는 줄이다. `StackBase` (+0x10) 는 `+0x130`, `StackLimit` (+0x18) 는 `+0x187` (첫 커밋 뒤). `DeallocationStack` 의 원본 `+0x128` 은 맞다. 자세히는 `runs/03_sprint/run74-thread-create.md`.
 
+> **정정 (run121, sast/117)**: 아래 "범위 밖 길에서 씀 59" 표의 **다른 DLL (39)** 짐작 중 `ws2_32 1` (`WinSockData`) 은 **mswsock.dll**, `WOW64 1` (`WOW32Reserved`) 은 **KERNELBASE** (`Wow64SetThreadDefaultGuestMachine +0x33`) 이고, `GDI 6` 중 쓰는 줄이 있는 건 `GdiTebBatch` · `GdiBatchCount` 둘 (주로 gdi32full) 뿐이다. 39칸 중 16칸은 System32 어디에서도 쓰는 줄을 못 찾았다. 칸마다는 `runs/03_sprint/run121-teb-other-dlls.md` · 짐 지도 3.3.1.
+
 ## 요약 표 (모르는 칸 133 → ?)
 
 - 결과서 맨 앞 표 그대로. 분류 뜻은 run50·run52·run53 과 같다.

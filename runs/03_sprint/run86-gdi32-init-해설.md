@@ -3,6 +3,8 @@
 > 이 글은 [run86 문서](run86-gdi32-init.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
+> **고쳐 읽기 (run121)**: 2.14 ⑧ · 3절 짐 지도의 "짐 지도 3.3 의 `gdi32 6 (Gdi*)` 짐작은 그대로 `[추측]`" — 그 짐작은 둘만 맞다. `GdiTebBatch` · `GdiBatchCount` 는 **gdi32full** (본관) 이 주로 쓰고 (gdi32 는 `InternalDeleteObject` · `DeleteRegion` 둘만, 커널 win32kfull `GdiThreadCalloutFlushUserBatch` 가 비움), 넷 (`GdiCachedProcessHandle` · `GdiClientPID` · `GdiClientTID` · `GdiThreadLocalInfo`) 은 System32 어디에서도 쓰는 줄을 못 찾았다 `[공백]`. "`DllMain` 줄기엔 `Gdi*` 쓰기가 없다" 는 그대로 맞다. 본문은 그대로 두었다 → [run121 해설 2.6](run121-teb-other-dlls-해설.md)
+
 - 대기열: **Q150b** — PE_emulator 요청 28 (user32 · gdi32 초기화 최소 길, "GUI 벽") 의 **둘째 · 마지막 조각**. gdi32 · gdi32full `DllMain` 과 "창 안 만드는 프로세스가 진입점까지 가는 **최소 조건 표 둘**" (`_workspace/plan.md`, 이번에 **끝**)
   - 이것으로 **요청 28 이 끝났다**. 첫 조각 Q150a 는 [run85](run85-user32-init.md) ([해설](run85-user32-init-해설.md)).
   - 다음 항목: **Q151a** (요청 29 첫 조각 — 기본 활성화 문맥) → Q151b → Q152 → Q142 → [멈춤] (Q104 VM 단계 앞).

@@ -3,6 +3,8 @@
 > 이 글은 [run54 문서](run54-teb-fill.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서·짐 지도(`baggage.md`)를 따른다.
 
+> **고쳐 읽기 (run121)**: 2.13 "다른 DLL 39 의 속" 표의 짐작 중 `ws2_32 1` (`WinSockData`) 은 **mswsock.dll**, `WOW64 1` (`WOW32Reserved`) 은 **KERNELBASE** (`Wow64SetThreadDefaultGuestMachine +0x33`) 이고 (그래서 KERNELBASE 몫은 4 → 5칸), `GDI 6` 중 쓰는 줄이 있는 건 `GdiTebBatch` · `GdiBatchCount` 둘 (주로 gdi32full) 뿐이다. 39칸 = 쓰는 줄 있음 23 `[정적]` · System32 어디에서도 쓰는 줄을 못 찾음 16 `[공백]` ("없음 증명" 은 아님). 초기화 동안 0 · 2장 숫자는 그대로. 4절의 "지금 대기열 항목으로 적혀 있지 않다" 는 Q102 로 들어가 run121 에서 끝났다. 본문은 그대로 두었다 → [run121 해설](run121-teb-other-dlls-해설.md)
+
 - 대기열: **Q78d3**: Q78d (첫 스레드) 넷 중 **셋째 조각**. `_TEB` 모르는 칸 133 (`_workspace/plan.md`, 이번에 **끝**)
   - 다음 항목: **Q78d4** (스레드 그 뒤 구간, 커널) → Q78e → Q78f → Q78g → Q79 → Q80 → Q82.
   - 남은 질문이 간 곳: D1 (덤프로 답할 수 있음) → **Q79** 출처 · D2·D3 (콜스택이 필요) → 새 **Q101** (맨 뒤) · D4 ~ D6 (낮음) → **Q100**.
