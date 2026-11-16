@@ -1,5 +1,7 @@
 # 2026-10-31 run55 — 맡긴 문맥 길이 (Q103, PE_emulator 요청 1): `RtlGetExtendedContextLength2` 는 **`rcx`·`rdx`·`r8` 그대로 + `r9` = 상수 `0xFFFFF780000003D8`** 로 `RtlGetExtendedContextLength3` 를 CALL 하고 `eax` 를 그대로 돌려준다. 비-CET 스레드면 길이 **`0x4ff`** (정적)
 
+> **닫힘 (run122)**: 아래 "아직 확인 필요" 둘째 줄 (CET 스레드 길이 `0x32f + RtlpGetEntireXStateAreaLength2(…)` 안 풂) 이 닫혔다 — 그 함수는 `ControlFlags` bit 1 (압축) 꺼짐이면 `XState.Size`, 켜짐이면 `0x240` + 마스크 비트마다 `AllFeatures[i]` (`[정적]`). 이 VM (run44 사진 XState) 으로 CET 스레드 길이 **`0x57f`** (마스크 `0x800` → `0x240 + 0x10`). 이 문서의 다른 내용 (비-CET `0x4ff` 등) 은 그대로 맞다. → `run122-cet-xstate-len.md`
+
 ## PE_emulator 용 한 줄 요약
 
 결과서 (`_workspace/sast/49_context-length2_result.md`) "한 줄 요약" 그대로, 근거 태그를 붙였다:

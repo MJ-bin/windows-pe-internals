@@ -2,6 +2,8 @@
 
 > 이 글은 [run55 문서](run55-context-length2.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
+>
+> **고쳐 읽기 (run122)**: "한 줄로 먼저" 표 (덤) 줄 · 2.10 · 4절 둘째 줄의 "CET 스레드 길이 `0x32f + RtlpGetEntireXStateAreaLength2(…)`, 함수 안은 **안 풂**" 은 닫혔다. 그 함수는 게시판 `ControlFlags` bit 1 (압축) 꺼짐이면 `XState.Size`, 켜짐이면 `0x240` + 마스크 비트마다 `AllFeatures[i]` 를 돌려준다 `[정적]`. 이 VM (run44 사진 `XState`) 으로 CET 스레드 길이는 **`0x57f`** (마스크 `0x800` → `0x240 + 0x10 = 0x250`) `[정적 계산]`. 비-CET `0x4ff` 등 나머지는 그대로 맞다. 본문은 그대로 두었다 → [run122 해설](run122-cet-xstate-len-해설.md)
 
 - 대기열: **Q103**: PE_emulator 요청 1 (정적, 작음). `RtlGetExtendedContextLength2` 가 `RtlGetExtendedContextLength3` 에 인자를 그대로 넘기나, 바꾸나 (`_workspace/plan.md`, 이번에 **끝**)
   - 사용자 결정 (2026-10-31) 으로 Q78d4 보다 앞에 끼운 항목이다.
