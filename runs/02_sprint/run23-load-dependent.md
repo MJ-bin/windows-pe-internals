@@ -2,6 +2,8 @@
 
 > **정정 (run24)**: "일감 vs 바로" 절의 `[추측]` "`LdrpQueueWork` 가 그 자리에서 다 올렸으면 `+0x12df` 에서 자식 `State ≥ 2` → 병렬 켜기 앞뒤 차이가 여기 나타날 수 있다" 는 틀렸다. `LdrpQueueWork` 는 큐에 넣기만 하고, 자식 `State = 2` 는 같은 `LdrpModuleDatatableLock` 안(`LdrpProcessMappedModule +0x1c2`)에서만 써지므로 새로 일감에 넣은 자식은 `+0x12df` 에서 늘 `State < 2` 다. 부모 카운터의 그 몫은 나중에 `LdrpSignalModuleMapped +0x45` 가 줄인다 → run24.
 
+> **정정 (run108, sast/103)**: "간선 칸 비트 0 은 '대비용 `+0x17c2` 로 잡은 칸' 표시로 보인다 `[추측]`" 은 근거를 잃었다. `+0x17c2` 상자로 가는 `+0xf4d JZ` (RCX == 0) 는 RCX 가 `+0xed8` 에서 이미 쓰인 값이라 **탈 수 없는 길로 보인다** `[정적 추정]`. 비트 0 을 켜는 곳은 넷 (`LdrpRecordModuleDependency +0x11a` · `LdrpFastpthReloadedDll +0x1a5` · `LdrpBuildForwarderLink +0x11c` · 이 함수 `+0x17d9`), 지우는 곳은 이 함수 `+0xede` 와 `LdrpMergeNodes +0xe3`. test.exe 정적 import 간선은 `+0x929` 상자 → `+0xede` 로 비트 0 = 0 → `runs/03_sprint/run108-static-import-flags.md`
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 작성일.

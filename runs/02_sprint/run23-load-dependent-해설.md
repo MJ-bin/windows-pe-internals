@@ -9,6 +9,8 @@
 
 > **정정 (run37)**: 2.5 "남은 `[추측]` 셋" 중 둘째 "그게 `KERNELBASE.dll` 로 풀리나" 는 같은 OS 의 별명 사전 파일로는 kernel32 별명 102개 중 99개 kernelbase · 3개 ntdll 이다 `[정적: PE 표]` (첫째 "정말 api-set 이름인가" 는 run25 에서 닫힘). 그리고 kernelbase 를 **처음** 들이는 바퀴는 별명 줄이 아니라 목록 #3 본명 `KERNELBASE.dll` 이라, 그 바퀴는 사슬 그림의 `+0x2ff` 를 안 탈 것이다 `[추측: run23 조건]`. 실행 때 사전 값·KnownDll 여부는 그대로 Q20. 본문은 그대로 두었다 → [run37 해설 2.3](run37-k32-import-order-해설.md#23-질문-답--처음-들이는-줄은-3번-본명-그대로)
 
+> **고쳐 읽기 (run108)**: 2.3 끈 칸 표의 "비트 0 의 뜻 `[추측]` '대비용 칸 표시'" 와 "`+0x17c2` 는 **대비용** 끈 (`+0xf4a` 에서 `RCX == 0` 일 때만)" 은 근거를 잃었다. 그 길 (`+0xf4d JZ +0x179d`) 의 RCX 는 `+0xed8` 에서 이미 메모리를 읽은 값이라 **탈 수 없는 길로 보인다** `[정적 추정]`. 비트 0 을 켜는 곳은 넷 (`LdrpRecordModuleDependency +0x11a` · `LdrpFastpthReloadedDll +0x1a5` · `LdrpBuildForwarderLink +0x11c` · 이 함수 `+0x17d9`), 지우는 곳은 둘 (이 함수 `+0xede` · `LdrpMergeNodes +0xe3`), 뜻은 `[공백]`. test.exe import 끈은 `+0x929` 상자 → `+0xede` 로 비트 0 = 0 `[정적]`. 본문은 그대로 두었다 → [run108 해설 2.11 · 2.16](../03_sprint/run108-static-import-flags-해설.md)
+
 - 대기열: **Q12b** — 2.5·2.6 의존 DLL 하나를 처리하는 `ntdll!LdrpLoadDependentModuleInternal` (9250바이트, 호출 75곳): 간선(의존 관계)을 만드는 곳, 이미 있는 DLL·KnownDll·새로 올리기 갈림 (`_workspace/plan.md`, 이번에 **끝**)
 - 근거:
   - run 문서 [`run23-load-dependent.md`](run23-load-dependent.md) (가장 중요)

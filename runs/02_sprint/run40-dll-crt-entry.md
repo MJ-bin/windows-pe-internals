@@ -2,6 +2,8 @@
 
 > **지도 범위**: 2026-10-23 결정 "진입점 = 경계, CRT 한 상자" 는 dll 에도 그대로다. 진입점 뒤 CRT 함수(`dllmain_dispatch` 등)는 이 문서와 flow.md 2.8 "CRT 안쪽 (참고)" 에만 적고, 그림 2 에는 안 넣는다.
 
+> **정정 (run108, sast/103)**: "다른 항목 정리" 절 Q54 줄의 "간선 `+0x18` 비트 0 = 켬 `LdrpLoadDependentModuleInternal +0x17d9` · `LdrpRecordModuleDependency +0x11a`, 지움 `+0xede`" 는 모자랐다. 켬은 넷 (`LdrpFastpthReloadedDll +0x1a5` · `LdrpBuildForwarderLink +0x11c` 더함, `+0x17d9` 는 탈 수 없는 길로 보임 `[정적 추정]`), 지움은 `LdrpLoadDependentModuleInternal +0xede` · `LdrpMergeNodes +0xe3`. "test.exe 에선 GR 이 건너뛸 간선 없을 것 `[추측]`" 은 `[정적]` 으로 (정적 import 간선 비트 0 = 0). 남은 전수 확인 Q72 는 run108 에서 끝 → `runs/03_sprint/run108-static-import-flags.md`
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 결과서 날짜.

@@ -2,6 +2,8 @@
 
 > **정정 (run28)**: "TLS 콜백이든 DllMain 이든 예외를 던지면 Node 의 `__except` 가 잡는다" 에서 **TLS 콜백 쪽은 틀렸다.** TLS 콜백 예외는 안쪽 `LdrpCallTlsInitializers` 의 `__try` (`+0x12b ~ +0x1a2`, 필터 늘 1) 가 먼저 잡아 그 모듈의 남은 콜백만 건너뛰고 아무것도 위로 안 올린다. Node 의 `__except` 로 가는 건 DllMain(진입점) 예외다.
 
+> **정정 (run108, sast/103)**: "이 비트를 켜는 곳: `LdrpRecordModuleDependency +0x11a`, run23 `LdrpLoadDependentModuleInternal +0x17d9`. 지우는 곳: run23 `+0xede`" 는 모자랐다. 켜는 곳은 **넷** (`LdrpFastpthReloadedDll +0x1a5` · `LdrpBuildForwarderLink +0x11c` 이 더 있고, `+0x17d9` 는 탈 수 없는 길로 보임 `[정적 추정]`), 지우는 곳은 **`LdrpLoadDependentModuleInternal +0xede`** 와 `LdrpMergeNodes +0xe3`. 비트 0 을 보고 건너뛰는 곳도 하나 더 (`LdrpInitializeShimDllDependencies +0xa6`). 뜻 "대비용 칸" `[추측]` 은 근거를 잃어 `[공백]` → `runs/03_sprint/run108-static-import-flags.md`
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 작성일.

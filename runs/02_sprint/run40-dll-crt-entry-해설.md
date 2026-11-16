@@ -3,6 +3,8 @@
 > 이 글은 [run40 문서](run40-dll-crt-entry.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
+> **고쳐 읽기 (run108)**: 2.10 "정리된 답" 2번의 "끈 칸 `+0x18` 비트 0 = 대비용으로 할당한 끈 칸에서 켠다 (`+0x17d9` · `LdrpRecordModuleDependency +0x11a`), 보통 칸은 `+0xede` 에서 지운다" 는 모자랐다. 켜는 곳은 넷 (`LdrpFastpthReloadedDll +0x1a5` · `LdrpBuildForwarderLink +0x11c` 더함, `+0x17d9` 는 탈 수 없는 길로 보임 `[정적 추정]`), 지우는 곳은 `LdrpLoadDependentModuleInternal +0xede` · `LdrpMergeNodes +0xe3`. "test.exe 에선 GR 이 건너뛸 끈이 없을 것 `[추측]`" 은 `[정적]` 으로 (정적 import 끈 비트 0 = 0). 1번 스티커 쪽: 붙이는 줄은 ntdll 전체에서 `+0x194` 하나 `[정적]`, dll1 · dll2 에 붙은 것은 사진 P1b · P2 로 봤다 `[관찰]` run44. 남은 전수 확인 Q72 는 run108 에서 끝. 본문은 그대로 두었다 → [run108 해설 2.4 · 2.7 · 2.16](../03_sprint/run108-static-import-flags-해설.md)
+
 - 대기열: **Q55** — 2.8 sample dll 의 `_DllMainCRTStartup` → `DllMain` 이 `lpReserved`(셋째 인자)를 그대로 넘기나. 덤으로 dll1·dll2 시작 함수 안 `LoadLibraryExW` ×3 (run7 `0x7ffd80e2f5fb`·`0x7ffd80ebf60b`) 도 UCRT `try_get_function_slow` 인가 (`_workspace/plan.md`, 이번에 **끝**)
   - 실행 때 확인할 거리는 새 번호 없이 **Q27** (사슬·`r8`·`k`) 와 **Q31** (`LoadLibraryExW` ×3 이름·순서) 에 출처로 붙었다.
   - 새 정적 공백 셋은 **Q73** (a)·(b)·(c) 로 맨 아래에 붙었다.

@@ -5,6 +5,8 @@
 >
 > **정정 (run64)**: 아래 "ApiSet 섹션은 부팅 **위상 0** (`InitBootProcessor` → `MmInitSystem(0)` → …)" 은 틀렸다. **위상 1** 이다: `Phase1Initialization` → `Phase1InitializationDiscard` → `MmInitSystem(1)` → `MiInitSystem(1)` → `MiInitializeApiSets`. 틀린 줄에 "(run64 정정: 위상 1)" 을 달았다. 자세한 건 `runs/03_sprint/run64-apiset-phase.md`.
 
+> **고쳐 읽기 (run108)**: 2.1 트리의 `└─ +0x27  ExInitializeNls` 는 트리 규칙 (ret 자리) 대로 **`+0x2c`** 다 (`Phase1InitializationIoReady` call `+0x27`, ret `+0x2c`). 본문의 "`Phase1InitializationIoReady +0x27` → `ExInitializeNls`" 처럼 call 자리로 적은 곳은 그대로 맞다. 본문은 그대로 두었다 → [run108 해설 2.17](run108-static-import-flags-해설.md#217-q123--run57-트리-한-줄)
+
 - 대기열: **Q108**: PE_emulator 요청 4-A — 2-I (kernel32·kernelbase 올리기) 전에 꼭 필요한 셋. (1) NLS 글자표, (2) ApiSet 뷰, (3) `PEB.ApiSetMap` 첫 읽기 알림 (`_workspace/plan.md`, 이번에 **끝**)
   - 사용자 결정 (2026-11-01) 으로 맨 앞에 끼운 항목이다 (Q104 VM 단계 앞).
   - 다음 항목: **Q109** (PE_emulator 요청 4-B~E, 정적) → Q104 VM 단계 → Q78d4 → …

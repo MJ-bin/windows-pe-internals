@@ -175,7 +175,7 @@ Phase1Initialization                                   위상 1 (run64 정정, s
  │                                    ├─ +0xb1  (메모리 복사, 이름 4개)  로더 표 → 뷰, 그대로
  │                                    │  +0xb1 · +0xb8 · +0xce          전역 nt+0xe2d818 · 820 · 828
  └─ … → Phase1InitializationIoReady
-      └─ +0x27  ExInitializeNls
+      └─ +0x2c  ExInitializeNls
                ├─ +0x2d  ZwCreateDirectoryObject   \NLS (영구)
                ├─ +0x96  (커널 사본) RtlpInitCodePageTables
                │        └─ +0x6e · +0x96  NtGetNlsSectionPtr(0xb, ANSI/OEM)   커널 모드 → 열기 실패 → 파일로 만들기 → 시스템 공간 뷰

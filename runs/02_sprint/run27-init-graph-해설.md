@@ -5,6 +5,8 @@
 >
 > **정정 (run35)**: 2.5 와 4절의 "ntdll 카드 도장은 9 로 짐작 `[추측]`" 은 `[정적]` 이 됐다. `LdrpInitializeNtdllDataTableEntry +0x150` 이 ntdll 카드 `State` 를 **9** (`LdrModulesReadyToRun`) 로 쓴다. run7 `[관찰]` 과 맞는다. 본문은 그대로 두었다 → [run35 해설 2.8](run35-ntdll-entry-해설.md#28-질문-4--마무리-점검을-같이-받고-도장은-9)
 
+> **고쳐 읽기 (run108)**: 2.6 "건너뛰는 끈 — 표시 비트" 의 "켜는 곳: `LdrpRecordModuleDependency +0x11a`, run23 `+0x17d9`. 지우는 곳: run23 `+0xede`" 는 모자랐다. 켜는 곳은 **넷** (`LdrpFastpthReloadedDll +0x1a5` · `LdrpBuildForwarderLink +0x11c` 더함, `+0x17d9` 는 탈 수 없는 길로 보임 `[정적 추정]`), 지우는 곳은 **둘** (`LdrpLoadDependentModuleInternal +0xede` · `LdrpMergeNodes +0xe3`), 보고 건너뛰는 곳도 하나 더 (`LdrpInitializeShimDllDependencies +0xa6`). 뜻 "대비용 칸" `[추측]` 은 근거를 잃어 `[공백]`. 2.8 · 4절의 "dll1·dll2 에 `ProcessStaticImport` 가 켜져 있을 것 `[추측]`" 은 사진 P1b · P2 `0y1` `[관찰]` run44 로 맞았다 (켜는 줄은 ntdll 전체에서 `LdrpAllocateModuleEntry +0x194` 하나 `[정적]`). 본문은 그대로 두었다 → [run108 해설 2.6 · 2.7 · 2.16](../03_sprint/run108-static-import-flags-해설.md)
+
 - 대기열: **Q15** — 2.7 `LdrpInitializeGraphRecurse`, `LdrpInitializeNode` 본문 (`_workspace/plan.md`, 이번에 **끝**)
   - 새 항목 하나: **Q54** (작은 정적) — 항목 `Flags.ProcessStaticImport` 를 켜는 곳, 간선 칸 `+0x18` 비트 0 의 뜻.
   - 동적으로 볼 것은 새 번호 없이 **Q24** (재귀 단계 ↔ 모듈), **Q25** (TLS 쪽 인자), **Q27** (`DllMain` 의 `lpReserved`) 에 출처를 더했다.
