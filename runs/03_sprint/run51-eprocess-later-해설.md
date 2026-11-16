@@ -3,6 +3,8 @@
 > 이 글은 [run51 문서](run51-eprocess-later.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서·짐 지도(`baggage.md`)를 따른다.
 
+> **고쳐 읽기 (run120)**: 2.8 의 `DeviceMap` "ntdll 쪽 호출자 `[공백]`" 은 이제 `[정적]` 이다 — `LdrpInitializeProcess +0x1517 → RtlpInitCurrentDir +0x32 → RtlpCreateNewDirectoryReference +0xbb NtOpenFile` (이름 `\??\` + 현재 디렉터리, `P1~P1a`). 탔는지는 동적 그대로 (F5). 2.6 의 `ModifiedPageCount` "어느 목록인지 `[추측]`" 은 **변경 목록 (`ModifiedPageList`) `[정적]`** 이고, 0 으로 되돌리는 줄 `MiUserFault +0x116` (16 넘을 때만, test.exe 는 안 탐) 이 더 있다. 4절 표의 Q99 줄은 끝났다. 본문은 그대로 두었다 → [run120 해설](run120-eprocess-locks-해설.md) 2.8 · 2.9
+
 - 대기열: **Q78c2b**: Q78c2 (`_EPROCESS` 모르는 칸 241) 를 시간 순서로 나눈 **둘째 조각**. "만든 뒤" 몫 29칸 (`K2~K3` 3 · `K3~P0` 11 · `P0~P1` 9 · `P1~P1a` 5 · `P1a~P1b` 1) + `OwnerProcessId` 둘째 쓰기 + 옛 Q65 몫 (`_workspace/plan.md`, 이번에 **끝**)
   - 이걸로 `_EPROCESS` 의 모르는 칸은 **1칸** (`SharedCommitCharge`) 만 남았다.
   - 다음 항목: **Q78d** (첫 스레드) → Q78e → Q78f → Q78g → Q79 → Q80 → Q82.

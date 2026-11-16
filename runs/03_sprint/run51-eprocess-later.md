@@ -6,6 +6,8 @@
 
 > 정정 (run63, sast/58): 아래 `InvertedFunctionTable` 줄과 동적 질문 **F7** 의 "ntdll 안 CFG 갈래로 syscall 까지 가는지 `[공백]`" 은 **정적으로 거의 닫혔다**. 갈림은 CFG 가 아니라 `RtlpInsertOrRemoveScpCfgFunctionTable +0x58` 의 `NtQueryVirtualMemory` 클래스 `0xe` (이미지 뒤 확장 쪽) 출력이고, 진짜 VM 의 ntdll 노드 `Flags 0x20a2c4` 비트 21 `[관찰]` (`ms/logs/04_baggage-read_P1a.txt:2795`) 은 `RtlAddGrowableFunctionTable` → `NtSetInformationProcess(0x35)` 가 성공해야만 켜진다 (`LdrpProcessMappedModule +0x1a9`). 남은 것은 풀 블록 내용 직접 확인뿐 → `runs/03_sprint/run63-cfg-func-table.md` "정정"
 
+> 정정 (run120, sast/115): 아래 `DeviceMap` 줄의 "ntdll 첫 호출자 `[공백]`" 은 정적으로 답이 났다 — `LdrpInitializeProcess +0x1517 → RtlpInitCurrentDir +0x32 → RtlpCreateNewDirectoryReference +0xbb NtOpenFile` (이름 `\??\` + 현재 디렉터리, `P1~P1a`). 탔는지는 F5 그대로. `ModifiedPageCount` 의 "변경 목록? `[추측]`" 은 **변경 목록 (`ModifiedPageList`) `[정적]`** 이고, 0 으로 되돌리는 줄 `MiUserFault +0x116` (16 넘을 때만, test.exe 안 탐) 이 더 있다. run120 문서.
+
 ## 요약 표 (30칸 + `OwnerProcessId` 둘째 쓰기 → ?)
 
 - 결과서 맨 앞 표 그대로 (구간별). 열 뜻:

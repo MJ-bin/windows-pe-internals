@@ -3,6 +3,8 @@
 > 이 글은 [run50 문서](run50-eprocess-create.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서·짐 지도(`baggage.md`)를 따른다.
 
+> **고쳐 읽기 (run120)**: 2.4 "범위 밖 길에서만 씀 `[추측]`" 표의 `ThreadListLock` (`+0x5e0`) 과 같은 52칸 안의 `InvertedFunctionTableLock` (`+0x5d0`) 은 범위 밖이 **아니다** — 둘 다 초기화 길에서 잡고 풀어 0 으로 돌아온다 (① `PspInsertThread +0x6c3 BTS` … `+0x24e XADD −1`, ② `RtlInsertDynamicUserFunctionTable +0xbc BTS` … `+0x125 XADD −1`). 짐 지도에선 "잡고 푸는 잠금 칸 2" 로 아는 칸에 옮겼다 (범위 밖 53 → 51, 끝까지 0 가름의 범위 밖 52 → 50). 본문은 그대로 두었다 → [run120 해설](run120-eprocess-locks-해설.md) 2.4 ~ 2.7
+
 - 대기열: **Q78c2a** — Q78c2 (`_EPROCESS` 모르는 칸 241) 를 시간 순서로 나눈 **첫 조각**: "만들 때" 몫 212칸 (`K1 이전` 52 + 끝까지 0 160) (`_workspace/plan.md`, 이번에 **끝**)
   - 나눈 법 (오케스트레이터 기본값 2026-10-30): Q78c2a = 만들 때, Q78c2b = 그 뒤 구간 29칸 (`K2~K3` 3 · `K3~P0` 11 · `P0~P1` 9 · `P1~P1a` 5 · `P1a~P1b` 1) + `OwnerProcessId` + 옛 Q65 몫.
   - 다음 항목: **Q78c2b** → Q78d → Q78e → Q78f → Q78g → Q79 → Q80 → Q82.

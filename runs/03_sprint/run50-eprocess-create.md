@@ -1,5 +1,7 @@
 # 2026-10-30 run50 — 프로세스 객체를 만들 때 (Q78c2a): `_EPROCESS` 모르는 칸 212 → **여전히 모름 1** (`SharedCommitCharge`). `K1 이전` 50칸은 `PspAllocateProcess` 와 callee 몇 개가 쓰고, 끝까지 0 160칸은 0 을 씀 50 · 조건부 안 탐 30 · 아무도 안 씀 28 · 범위 밖 길 52 `[추측]` 으로 갈림. test.exe 는 **IFEO 키가 없는 길** — 커널이 IFEO 값을 하나도 안 읽고, 그 표시가 매개변수 `Flags 0x4000` 으로 ntdll 까지 간다 (정적)
 
+> 정정 (run120, sast/115): 아래 "범위 밖 길에서 씀" 의 `InvertedFunctionTableLock` (`+0x5d0`) · `ThreadListLock` (`+0x5e0`) 은 **초기화 길에서 잡고 푼다** — ② `NtSetInformationProcess(0x35) +0x566 → RtlInsertDynamicUserFunctionTable +0xbc BTS` … `+0x125 XADD −1`, ① `PspInsertThread +0x6c3 BTS` … `+0x24e XADD −1`, 끝 값 0. 짐 지도 3.11 아는 칸으로 옮김 (범위 밖 53 → 51). run120 문서.
+
 ## 요약 표 (모르는 칸 212 → ?)
 
 - 결과서 맨 앞 표 그대로. 분류 뜻:
