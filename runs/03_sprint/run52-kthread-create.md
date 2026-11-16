@@ -1,5 +1,7 @@
 # 2026-10-30 run52 — 스레드 객체 앞부분을 만들 때 (Q78d1): `_KTHREAD` 모르는 칸 180 → **여전히 모름 0**. `K1~K2` 42칸은 `KeInitThread`·`PspAllocateThread`·`KiInitializeContextThread` 와 도우미 셋 (`KeAbInitializeThreadState`·`KeInitializeApc`·`KeInitializeTimer`) 이 쓰고, 끝까지 0 138칸은 0 을 씀 35 · 조건부 안 탐 12 · 아무도 안 씀 21 · 범위 밖 길 70 `[추측]` 으로 갈림. test.exe 첫 스레드는 **사용자 스레드 · 새 커널 스택 · CET 꺼짐** 길 (정적)
 
+> **정정 (run112, sast/108)**: 아래 "`*` 칸 20개" 줄의 "`ThreadFlags` 비트 13 `+0xb9`·`+0x1b7`" 은 틀렸다 (짐 지도 3.14 머리 run52 메모가 이 두 줄을 7.2 `K2~K3` `ThreadFlags.SharedReadyQueueAffinity` 후보로 센 것도). `KeStartThread +0xb9` 는 비트 3 `DisableBoost`, `+0x1b7` 은 비트 8 `DisableQuantum` (둘 다 프로세스 값, `ThreadFlags` DWORD 통째 쓰기) 이고, **비트 13 `SharedReadyQueueAffinity` 는 `KeStartThread +0x344 → KiUpdateSharedReadyQueueAffinityThread +0x55`** (`XOR.LOCK [RDX+0x78],0x2000`) 가 쓴다. → `runs/03_sprint/run112-thread-later.md` "정정".
+
 ## 요약 표 (모르는 칸 180 → ?)
 
 - 결과서 맨 앞 표 그대로. 분류 뜻은 run50 과 같다:

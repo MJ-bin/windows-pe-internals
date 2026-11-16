@@ -2,6 +2,8 @@
 
 > 이 글은 [run52 문서](run52-kthread-create.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서·짐 지도(`baggage.md`)를 따른다.
+>
+> **고쳐 읽기 (run112)**: 2.5 "`*` 칸 20개" 의 "`KeStartThread` — `ThreadFlags` 비트 13 (`+0xb9`·`+0x1b7`)" 은 틀렸다. `+0xb9` 는 비트 3 `DisableBoost`, `+0x1b7` 은 비트 8 `DisableQuantum` 이고, 비트 13 `SharedReadyQueueAffinity` 는 `KeStartThread +0x344 → KiUpdateSharedReadyQueueAffinityThread +0x55` 가 쓴다. 2.4 의 "실제 목록이 들어가는 때는 안 봤다" 와 4절 표 "친화도 블록 비트맵이 채워지는 때" `[공백]` 도 닫혔다 (`KeStartThread +0xec` · `+0x134` · `+0x147` `KiCopyAffinityEx`). → [run112 문서](run112-thread-later.md) "정정" · [run112 해설 2.4 · 2.15](run112-thread-later-해설.md#215-정정과-결과서와-다르게-적은-곳).
 
 - 대기열: **Q78d1**: Q78d (첫 스레드, 모르는 칸 564) 를 시간 순서 + 구조체별로 나눈 **첫 조각**. `_KTHREAD` "만들 때" 몫 180칸 (`K1~K2` 42 + 끝까지 0 138) (`_workspace/plan.md`, 이번에 **끝**)
   - 나눈 법 (오케스트레이터 기본값 2026-10-30): Q78d1 `_KTHREAD` 만들 때 180 → Q78d2 `_ETHREAD`·`_KTRAP_FRAME` 만들 때 169 → Q78d3 `_TEB` 133 → Q78d4 스레드 그 뒤 구간 (커널) 82. 합 564.
