@@ -4,6 +4,8 @@
 
 > **고쳐 읽기 (run114)**: 4절 표의 "조건부로만 쓰는 힙 전역 8개 … test.exe 에선 조건이 안 맞아" 와 run 문서의 "LFH 는 나중에 켜짐 — 범위 밖" 은 LFH 두 칸 (`RtlpLowFragHeapGlobalFlags` 비트 0 · `RtlpLowFragHeapRandomData`) 에 대해 **틀렸다**. 두 칸 다 사진 P1a 에 이미 값이 있다 (`1` · 32칸 난수 `[관찰]` run44) — 프로세스 힙 LFH 는 `LdrpInitializeProcess` 가 끝나기 전 첫 힙 할당들 중 하나 안에서 켜진다 (`RtlpAllocateHeap +0xe5 → RtlpPerformHeapMaintenance +0x22 → RtlpActivateLowFragmentationHeap +0xde → RtlpCreateLowFragHeap` `[정적]` sast/111, 어느 할당인지는 동적). 1절 "블록 나눠 주는 속은 범위 밖" 은 분석 범위 결정이라 그대로다 → [run114 해설 2.7](run114-ntdll-globals-early-해설.md#27-정정-2--프로세스-힙-lfh-는-p1a-앞에-이미-켜진다-run46-고침).
 
+> **고쳐 읽기 (run118)**: 2.4 조건표 ④ "못 봄 (D1)" · "아직 아닌 것" 4번 · 4절 D1 줄 (Q91 동적) 은 이제 답이 있다 — 사진 덤프를 오프라인으로 읽어 `PEB.pShimData` 블록 `+0x11b2` = 0 · `+0x11aa` = 0 `[덤프 오프라인]`, 그래서 `RtlpHpOptIntoSegmentHeap +0x197 JZ` 로 ④ 에서 멈추지 않고 ⑤ 로 넘어가 끝까지 내려간 뒤 NT 힙이다 (sast/116). 라이브 확인은 선택 (Q91) → [run118 해설 2.8](run118-shimdata-read-해설.md#28-세그먼트-힙--run46-d1-이-닫혔다).
+
 > 이 글은 [run46 문서](run46-process-heap.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서·짐 지도(`baggage.md`)를 따른다.
 
