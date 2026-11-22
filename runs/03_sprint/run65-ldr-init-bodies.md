@@ -1,5 +1,8 @@
 # 2026-11-05 run65 — `LdrpInitializeProcess` 줄기 위 초기화 본문 (Q120b, PE_emulator 요청 11 의 7번): `\KnownDlls` 열기 · DLL 정책 · 현재 디렉터리 · CPU 기능 비트맵 · 스케줄러 공유 데이터 · TLS 준비, 그리고 모듈 올리기 길 부품·공용 부품. **test.exe 기본 길에서 이 묶음의 syscall 은 8번**이고, `RtlFreeUnicodeString` (`+0x1563`) 은 **현재 디렉터리가 빈 갈래에서만** 불린다
 
+> **닫힘 · 작은 정정 (run130, sast/120 — Q124)**: 아래 "`LdrpInitializeExecutionOptions +0x733` (`LdrpQueryIllegalCWDDevices`) 이 test.exe 에서 실제로 닿는지는 안 봤다" → **닿는다** — IFEO 키 없음 표시 (`+0xad JNZ → +0x604`) 도 `+0x71c` 에서 합쳐져 `RCX = 0` 으로 `+0x733`. "마스크는 어느 쪽이든 0" 은 test.exe 에선 맞지만 이유는 **KUSD `CurDirDevicesSkippedForDlls = 0`** (이 VM 정책) 이다 — 코드가 0 을 보장하지 않음. TLS 블록 `0x11`B `[추측]` → `[정적]` (`LdrpAllocateTls +0xb7 · +0xec · +0xf0` = `End − Start` + 정렬 `0x10`, `SizeOfZeroFill` 안 읽음). 스케줄러 공유 데이터 섹션 크기 = 커널 상수 `0x2000` (`PspSchedulerSharedDataRegionCreate +0x127`). `LdrpPolicyBits` 자리는 run114 가 이미 옮김. 자세히는 `run130-run65-66-leftovers.md`.
+
+
 - run 번호: 요청서 머리에는 "예정 run64" 라고 적혀 있지만, 같은 날 Q120c (sast/60) 가 먼저 끝나 run64 가 됐다. 이 문서는 `next_index.py next run` 값 **run65** 다.
 
 ## PE_emulator 쪽에서 쓸 것

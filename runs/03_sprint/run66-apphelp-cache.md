@@ -1,5 +1,8 @@
 # 2026-11-05 run66 — 모듈을 올린 뒤 알림 길의 apphelp 캐시 묻기 (Q125, PE_emulator 요청 13 의 8번): `LdrpNotifyLoadOfGraph` → `LdrpSendPostSnapNotifications` → `LdrpCheckModule` → `CompatCachepLookupCdb` → **`NtApphelpCacheControl(6, 버퍼)`** (syscall `0x4c`) → 커널은 `\Device\ahcache` 에 IOCTL `0x22001B` 를 던지고 **ahcache.sys** 가 대답한다. **ntdll 이 부르기 전에 출력을 0 으로 비우므로 "성공 + 출력 안 씀" 기본 대답은 안전하다**
 
+> **닫힘 (run130, sast/120 — Q127)**: 아래 "이 비트 (`LoadNotificationsSent`) 를 켜는 곳이 `+0xce` 하나뿐인지는 안 봤다" → **`LdrpSendPostSnapNotifications +0xce` 하나뿐, 끄는 줄 0** (ntdll · KernelBase · kernel32 전수). "모듈 다섯" 은 `[정적]`, syscall 5번은 `LdrpCheckModule` 안 조건이 따로라 `[추측]` 그대로 (받침 더 강함). "shim 엔진 올리는 쪽의 조건" → 문지기는 `LdrpInitializeProcess +0x19d7` · `+0x19dc` (`[pShimData+0x210] ≠ 0`) 둘뿐, `g_ShimsEnabled = 1` 은 `LdrpLoadShimEngine +0x148` 한 줄, 입구 셋 (`+0x19ef` · `LdrInitShimEngineDynamic` · `LdrpGetProcApphelpCheckModule +0x285`) 모두 test.exe 안 탐. 자세히는 `run130-run65-66-leftovers.md`.
+
+
 ## PE_emulator 쪽에서 쓸 것
 
 ### 한 줄 결론
