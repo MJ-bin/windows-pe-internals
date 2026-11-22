@@ -1,5 +1,7 @@
 # 2026-11-22 (작성일, 정적 분석 2026-11-21) run128 — NSI 부르는 쪽 (Q221, 정적만): `WinHttpSendRequest` 에서 NSI 장치 (`0x12000f`) 까지는 winhttp 가 직접이 아니라 **IPHLPAPI `GetAdaptersAddresses(0, 0x80f)`** 를 거치고, 이 길은 NSI 오류를 **삼킨다** (연결 이름 NULL 로 이어 감). `WinHttpSendRequest` 를 0 으로 만들 수 있는 줄은 따로 — `+0x25a` 웹 I/O 시작 (`webio!WebInitialize`) 안의 `NotifyIpInterfaceChange` · `NotifyUnicastIpAddressChange` 인데, 이 둘은 NSI 장치가 아니라 **winnsi RPC** 다. 구조체 `0x68` · `0x50` · `0x70` 칸 표 셋, 모듈 ID 셋, 빈 표 대답 (`0x12001b` 개수 0 → `GetAdaptersAddresses` = `0xe8`)
 
+> **일부 닫힘 · 정정 (run129, sast/127 — Q223)**: "`NsiConnectToServer` 가 실제로 서버를 만나는지 `[공백]` → run129 예정" (요약 · 3절 · 정적 1) 은 **닫혔다** — `[정적]` `ncalrpc` · 끝점 없는 바인딩만 만들고 연결은 안 한다. 서버는 등록 RPC (`winnsi!NsiRpcRegisterChangeNotificationEx +0x1e8`, 비동기 프로시저 5) 때 처음 만나고, 그때 rpcrt4 가 `\RPC Control\epmapper` 에 먼저 붙는다. **정정**: 3절 · 요약의 "F1 이 F2 (`+0x2fa`) 앞이라 `0x12000f` 가 찍힌 호출은 F1 을 이미 지난 것" 은 성립하지 않는다 — F1 안에서도 winnsi `+0x112` 가 등록마다 `nsi!NsiGetAllParameters(1, NDIS, 8)` (= `0x12000f`) 를 내고, 실패하면 RPC 없이 그 오류로 끝나 (`+0x120 → +0x636`) `WinHttpSendRequest` 0 까지 간다. 그래서 "`0x12000f` 가 보인 호출의 0 반환" 에 정적 후보 사슬이 생겼다 (그 로그가 이 자리 것인지는 `[추측]`, Q222 · Q231). 9절 2 "→ run129 예정" 의 답은 run129 8절 · PE_emulator 표. `runs/03_sprint/run129-winnsi-rpc.md` "정정".
+
 (글의 오프셋은 함수 안 줄 · call 자리. ret 는 아래 "정적 — 호출 지점" 표. 콜스택으로 본 적은 없다 — 정적만.)
 
 > **지도 범위**: 이번 바퀴는 **PE_emulator 요청** ("WinHTTP · iphlpapi 가 NSI (`\\.\Nsi`) 에 무엇을 묻고 대답을 어떻게 읽나 — 루프백만 있는 PC 의 최소 대답", 튜닝 `290_tune09.md N1`) 이고 test.exe 초기화 (프로세스 생성 → `NtContinue` 은퇴) **밖**이다. test.exe 는 winhttp · webio · IPHLPAPI · dnsapi · ws2_32 · nsi 를 안 올린다 — 초기화 끝 (P2) 모듈 6개에 없음 `[관찰]` (`ms/logs/04_baggage-read_P2.txt:3398 ~ 3923`, run124 와 같은 줄), `sample/*.c` 에 소켓 · HTTP · 어댑터 API 가 없다 `[소스]`. 그래서 **그림은 안 바꿨다.** flow.md 는 기준 (PDB 다섯 · 근거 줄) · 3장 끝 새 절 하나 · 3장 run124 절 끝 줄 · 4장 (run124 줄 일부 닫힘 표시, run125 ~ run127 대기열 번호, run128 줄) · 5장만 고쳤고, 짐 지도 (`baggage.md`) 는 건드리지 않았다.
@@ -11,7 +13,7 @@
 
 ## 요약
 
-- **부르는 모듈** `[정적]`: winhttp · webio · IPHLPAPI · dnsapi · ws2_32 모두 nsi 를 **지연 가져오기** 로만 쓴다 (일반 가져오기 표엔 없음). winhttp 는 nsi 에서 `NsiAllocateAndGetTable` · `NsiFreeTable` 둘만, webio 는 nsi 를 안 가져온다. **실제로 NSI 를 묻는 쪽은 IPHLPAPI** (그리고 dnsapi 일부).
+- **부르는 모듈** `[정적]`: nsi 를 가져오는 넷 (winhttp · IPHLPAPI · dnsapi · ws2_32) 은 모두 **지연 가져오기** 로만 쓰고 (일반 가져오기 표엔 없음), webio 는 nsi 를 안 가져온다. winhttp 는 nsi 에서 `NsiAllocateAndGetTable` · `NsiFreeTable` 둘만. **실제로 NSI 를 묻는 쪽은 IPHLPAPI** (그리고 dnsapi 일부).
 - **`WinHttpSendRequest` 의 NSI 장치 길 (F2, 프록시 이름)** `[정적]`: `WinHttpSendRequest +0x2fa` → `HTTP_USER_REQUEST::SendRequest +0x294` → `_CreateProxyResolver` → `SafeGetProxyResolver +0xbe` → `CheckProxySettings +0x37c` → `GetActiveConnectionName +0x77` → `GetActiveConnectionNameRAS +0x123` → `iphlpapi!GetAdaptersAddresses(0, 0x80f)` → `AllocateAndGetAdaptersAddresses +0xc1` → `nsi!NsiGetAllParameters` → `NtDeviceIoControlFile(0x12000f)`.
   - 인자: `NsiGetAllParameters(1, NDIS 모듈, 객체 8, 키 없음, RW 8 B)` = 스레드의 `{compartment 번호, 범위}`. 이어서 `NsiAllocateAndGetTable` 셋 (NDIS 객체 1 = 어댑터 표, IPv4 · IPv6 객체 7 = IP 인터페이스 표).
   - **오류를 삼킨다**: NSI 가 무엇을 돌려줘도 `GetActiveConnectionName` 이 NULL (이름 없음) 을 돌려줄 뿐, `WinHttpSendRequest` 는 이어 간다. → **이 길엔 "꼭 받아야 하는 최소 대답" 이 없다.**
@@ -341,7 +343,7 @@ iphlpapi!GetAdaptersInfo
 
 ## 확인된 것
 
-- `[정적]` winhttp · webio · IPHLPAPI · dnsapi · ws2_32 는 nsi 를 지연 가져오기로만 쓴다. winhttp 는 `NsiAllocateAndGetTable` · `NsiFreeTable` 둘만, webio 는 안 가져옴.
+- `[정적]` nsi 를 가져오는 넷 (winhttp · IPHLPAPI · dnsapi · ws2_32) 은 모두 지연 가져오기로만 쓰고, webio 는 안 가져옴. winhttp 는 `NsiAllocateAndGetTable` · `NsiFreeTable` 둘만.
 - `[정적]` `WinHttpSendRequest +0x2fa` → … → `GetActiveConnectionNameRAS +0x123 GetAdaptersAddresses(0, 0x80f)` → `AllocateAndGetAdaptersAddresses +0xc1 NsiGetAllParameters` → `+0x105 NtDeviceIoControlFile(0x12000f)`. 이 길의 NSI 오류는 `GetActiveConnectionName` 이 NULL 로 삼킨다.
 - `[정적]` `CheckProxySettings +0x37c` 는 `g_ullNetworkGeneration` 과 세션 `+0x228` 이 다를 때만.
 - `[정적]` `WinHttpSendRequest +0x25a` → … → `webio!WebInitialize` → … → `Startup +0xad NotifyIpInterfaceChange` · `+0xea NotifyUnicastIpAddressChange` → `InternalRegisterChangeNotification +0x5e NsiNotificationConnectToServer +0x26 winnsi!NsiConnectToServer`. 연결 핸들 NULL → 6 → `WebInitialize` 실패 → `WinHttpSendRequest` 0.
