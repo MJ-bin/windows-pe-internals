@@ -1,5 +1,7 @@
 # 2026-11-22 (작성일, 정적 분석 2026-11-16) run124 — 소켓 장치 AFD (Q217, 정적만): `socket()` 은 `\Device\Afd\Endpoint` 를 EA `AfdOpenPacketXX` (0x39 바이트) 로 열고 `0x1207b` ×2 · `0x12047` 을 낸다. `connect()` 는 `0x120bf` → `0x12003` → `0x12047` → `0x12007`. "길 없음" status 는 afd 가 아니라 아래 계층 (tcpip) 이 정하고, mswsock `NtStatusToSocketError` 가 WSA 번호로 바꾼다
 
+> **일부 닫힘 · 고쳐 읽기 (run126, sast/123 · 124 — Q219)**: 아래 "아직 확인 필요" 정적 ② 중 `AfdBind` (TL 출력 — 성공은 `0x103`, `AfdTLBindGetAddrComplete` 가 출력 `+0` 에 로컬 sockaddr · Information = 길이, 임시 포트는 TL) · `AfdTliIoControl` (afd 는 출력에 안 씀, 값은 TL 몫) 과 정적 ⑥ `IopXxxControlFile` 이벤트 규칙은 **닫혔다**. "PE_emulator 쪽" 의 "끝나면 세운다 (`+0xbe4/+0xbe9 KeSetEvent`) `[추측]`" 은 **빠른 길 (afd 즉시 처리) 줄**이다 — IRP 길은 `IopCompleteRequest +0x3d5` 가 세우고, **오류 (`0xC…`) + PENDING 없음이면 IOSB 도 이벤트도 안 건드린다.** 5절 `SOCKADDR_SIZE(family)` 는 2 → 16 · `0x17` → 28. `runs/03_sprint/run126-afd-addrlist.md` 7 ~ 11절 · "정정".
+
 (글의 오프셋은 함수 안 줄 · call 자리. ret 는 아래 "정적 — 호출 지점" 표. 콜스택으로 본 적은 없다 — 정적만.)
 
 > **지도 범위**: 이번 바퀴는 **PE_emulator 요청** 이고 test.exe 초기화 (프로세스 생성 → `NtContinue` 은퇴) **밖**이다. test.exe 는 mswsock · ws2_32 를 안 올린다 — 초기화 끝 (P2) 모듈 6개에 없음 `[관찰]` (`ms/logs/04_baggage-read_P2.txt:3398 ~ 3923`, run91 · run92 와 같은 줄), `sample/*.c` 에 소켓 API 없음 `[소스]` (`grep -i socket` 0건). 그래서 **그림은 안 바꿨다.** flow.md 는 기준 (PDB 넷 · 근거 줄) · 3장 끝 새 절 하나 · 4장 · 5장만 고쳤고, 짐 지도 (`baggage.md`) 는 건드리지 않았다.
