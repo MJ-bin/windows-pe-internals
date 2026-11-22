@@ -54,6 +54,8 @@ runbook을 만들 때 이번 계획에 해당하는 것만 골라 넣는다. 번
 | P48 | `ln` 결과를 요약해서 적음 | 나중에 "근처" 인지 정확한지 다시 못 따짐 (run8) | `ln` 은 출력 그대로 (`Exact matches:` 줄 포함) 남기고 `? @rcx - <모듈>` 로 rva 도 찍는다 | run25 |
 | P49 | 디버거 VM 심볼 경로에 sample PDB 없음 | `test+0x1c0f` 처럼 rva 로만 보임 `[추측]` | 심볼 경로에 `sample/bin` (test.pdb·dll pdb) 를 더한다 | run30 |
 | P50 | `LdrpInitializeNtdllDataTableEntry +0xf7` (ret) 에서 새 항목을 RAX 로 읽음 | RAX 가 아님 | 새 항목은 RBX. `+0x154` 전엔 `LdrpNtDllDataTableEntry` = 0 이라 그 칸으로 못 찾음 | run35 (정적, 관찰 전) |
+| P51 | 일꾼 공장 객체를 `dt nt!_…` 로 읽음 | PDB 에 타입이 없어 안 풀림 | `dq`/`dd` 로 공장 `+0x178 ~ +0x1a0`, `poi(공장+0x10)` 덩어리를 직접 본다 | run125 (정적, 관찰 전) |
+| P52 | 일꾼 공장 길 (`ExpWorkerFactoryCheckCreate`·`ExpWorkerFactoryCreateThread`) 커널 멈춤점에 오래 서 있음 | 일꾼 만들기가 "바로" 에서 "미룸" (30/120 ms 타이머) 으로 바뀔 수 있음 `[추측]` | 조건부 멈춤점으로 필요한 값만 찍고 바로 `g` | run125 (정적, 관찰 전) |
 
 ## 값 읽는 법 (자주 씀)
 
