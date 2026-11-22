@@ -2,6 +2,8 @@
 
 > **일부 닫힘 · 고쳐 읽기 (run126, sast/123 · 124 — Q219)**: 아래 "아직 확인 필요" 정적 ② 중 `AfdBind` (TL 출력 — 성공은 `0x103`, `AfdTLBindGetAddrComplete` 가 출력 `+0` 에 로컬 sockaddr · Information = 길이, 임시 포트는 TL) · `AfdTliIoControl` (afd 는 출력에 안 씀, 값은 TL 몫) 과 정적 ⑥ `IopXxxControlFile` 이벤트 규칙은 **닫혔다**. "PE_emulator 쪽" 의 "끝나면 세운다 (`+0xbe4/+0xbe9 KeSetEvent`) `[추측]`" 은 **빠른 길 (afd 즉시 처리) 줄**이다 — IRP 길은 `IopCompleteRequest +0x3d5` 가 세우고, **오류 (`0xC…`) + PENDING 없음이면 IOSB 도 이벤트도 안 건드린다.** 5절 `SOCKADDR_SIZE(family)` 는 2 → 16 · `0x17` → 28. `runs/03_sprint/run126-afd-addrlist.md` 7 ~ 11절 · "정정".
 
+> **일부 닫힘 (run128, sast/126 — Q221)**: 9절 `0x70` 구조체의 칸 순서는 이제 `[정적]` — `+0x10` 모듈 ID 포인터 · `+0x18` 객체 번호 · `+0x20` 첫 인자 · `+0x24` 둘째 인자 (`NsiAllocateAndGetTable` 은 늘 1) · `+0x28 ~ +0x60` (버퍼 포인터, 1개당 크기) 네 쌍 · `+0x68` 개수 (`NsiAllocateAndGetTable` 에선 둘째 인자 = 모듈 ID, 셋째 = 객체라 9절 글과 어긋나지 않음). 네 쌍의 이름 (키 · RW · ROD · ROS) 만 `[추측]`. "PE_emulator 쪽" nsi 줄의 "개수 0 이어도 최소 10칸 잡고 둘째 호출" 도 `[정적]` (`NsiAllocateAndGetTable +0x16c ~ +0x185` `max(개수/8, 10)`). "아직 확인 필요" 정적 5 는 칸 뜻 · 부르는 쪽 닫힘, 커널 `nsi.sys` 개수 0 대답은 남음. `runs/03_sprint/run128-nsi-callers.md` 6절 · "정정".
+
 (글의 오프셋은 함수 안 줄 · call 자리. ret 는 아래 "정적 — 호출 지점" 표. 콜스택으로 본 적은 없다 — 정적만.)
 
 > **지도 범위**: 이번 바퀴는 **PE_emulator 요청** 이고 test.exe 초기화 (프로세스 생성 → `NtContinue` 은퇴) **밖**이다. test.exe 는 mswsock · ws2_32 를 안 올린다 — 초기화 끝 (P2) 모듈 6개에 없음 `[관찰]` (`ms/logs/04_baggage-read_P2.txt:3398 ~ 3923`, run91 · run92 와 같은 줄), `sample/*.c` 에 소켓 API 없음 `[소스]` (`grep -i socket` 0건). 그래서 **그림은 안 바꿨다.** flow.md 는 기준 (PDB 넷 · 근거 줄) · 3장 끝 새 절 하나 · 4장 · 5장만 고쳤고, 짐 지도 (`baggage.md`) 는 건드리지 않았다.
