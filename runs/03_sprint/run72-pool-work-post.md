@@ -2,6 +2,8 @@
 
 > **정정 (run73, sast/68)**: 아래 "`MiCreateNewSection` 줄은 안 읽음 `[공백]`" (한 줄 결론 2 · "dll1·dll2 맵 결과" 절 · 정적 후보 첫 줄) 은 **닫혔다**: `MiCreateNewSection +0x361 MOV ESI,[RBX]` · `+0x38b SHR ESI,0x1b` · `+0x391 AND ESI,2` → `+0x3cc`/`+0x68c` 여섯째 인자라 **비트 0 은 늘 0**. 그래서 dll1·dll2 는 파일마다 다른 비트맵 칸을 받고, "헤더 그대로면 둘째 DLL 은 반드시 `0x40000003`" 갈래는 이 두 DLL 에 해당 없다 (비트 0 을 켜는 곳은 `MmLoadSystemImageEx → MiGetSystemAddressForImage` 뿐). 동적 1 의 기대 `0` 은 `[정적]` 근거가 생겼다 (실제 값은 여전히 Q104). → `run73-image-base-select.md`
 
+> **닫힘 (run125, sast/122 — Q139 (d))**: 아래 "커널 `NtReleaseWorkerFactoryWorker` 본문 — 첫 넣기가 일꾼을 새로 만드는 계기인지 `[추측]`" 은 **맞다 `[정적]`**: 커널은 넣은 일감 수 (`P+0x18`) 를 올리고 0 패킷을 완료 포트에 넣은 뒤 같은 syscall 안 `+0x201 ExpWorkerFactoryCheckCreate` → `+0x19b ExpWorkerFactoryCreateThread` 로, 일꾼이 0 이고 조건이 맞으면 그 자리에서 일꾼 하나를 만들어 푼다 (새 공장 첫 넣기는 조건이 다 맞음). `runs/03_sprint/run125-worker-factory.md` 1 · 2 · 7절.
+
 ## PE_emulator 쪽에서 쓸 것
 
 ### 한 줄 결론 (셋)

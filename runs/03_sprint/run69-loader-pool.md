@@ -1,5 +1,7 @@
 # 2026-11-07 run69 — 로더 전용 스레드 풀 (Q132, PE_emulator 요청 12): **풀 핸들 0 은 진짜 길에선 못 나온다** (만들기가 실패하면 풀째 버려서 여기 안 옴), `TpSetPoolWorkerThreadIdleTimeout` 은 asm 순서로 덫 안 **13번째** syscall, 은퇴 앞 `_LdrpInitialize +0x27d RtlpHpGCTimerEnable` 은 **힙 GC 타이머를 만들기만** 하고 syscall 1번 (클래스 3)
 
+> 닫힘 (run125, sast/122 — Q134 (b)): 아래 "커널 `NtSetInformationWorkerFactory` 클래스 2·3·5·`0xd` 갈래 (Ghidra 가 점프표를 못 풂) 와 일꾼 공장 `+0x198` bit 11 의 뜻" 은 **닫혔다** — 점프 표 셋을 바이트로 풀어 클래스마다 몸 자리 · 칸을 정함 (2 = `f+0x70` 놀기 제한 · 3 = `f+0x194` 묶음 수 · 5 = `f+0x17c` 최대 · `0xd` = bit 11 ← 값 bit 0). **bit 11 = 일꾼을 `LoaderWorker` 로 만들라** (`ExpWorkerFactoryCreateThread` 만들기 플래그 `0x11`) → 로더 풀 일꾼은 `LoaderWorker`. 클래스 이름은 PDB 에 열거가 없어 그대로 `[추측]`. 동적 5 "읽을 타입 이름이 PDB 에 있는지" → **없다**, `dq` 로 오프셋 (run125 6절 칸 표). `runs/03_sprint/run125-worker-factory.md`.
+
 ## PE_emulator 쪽에서 쓸 것
 
 ### 한 줄 결론 (넷)

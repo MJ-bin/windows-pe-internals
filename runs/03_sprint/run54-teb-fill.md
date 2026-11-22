@@ -4,6 +4,8 @@
 
 > **정정 (run121, sast/117)**: 아래 "범위 밖 길에서 씀 59" 표의 **다른 DLL (39)** 짐작 중 `ws2_32 1` (`WinSockData`) 은 **mswsock.dll**, `WOW64 1` (`WOW32Reserved`) 은 **KERNELBASE** (`Wow64SetThreadDefaultGuestMachine +0x33`) 이고, `GDI 6` 중 쓰는 줄이 있는 건 `GdiTebBatch` · `GdiBatchCount` 둘 (주로 gdi32full) 뿐이다. 39칸 중 16칸은 System32 어디에서도 쓰는 줄을 못 찾았다. 칸마다는 `runs/03_sprint/run121-teb-other-dlls.md` · 짐 지도 3.3.1.
 
+> **정정 (run125, sast/122)**: 아래 "`SkipThreadAttach` · `LoaderWorker` · `SkipLoaderInit` … 로더 일꾼 (`NtCreateThreadEx` 길, Q79) 에서만 켜짐" 중 **일꾼 공장 길에서 켜질 수 있는 건 `LoaderWorker` 하나**다 — 커널 `ExpWorkerFactoryCreateThread` 가 만들기 플래그를 `0x1` 또는 `0x11` 로만 준다 (`+0x1f ~ +0x62`, 공장 `+0x198` bit 11). `SkipThreadAttach` (`0x2`) · `SkipLoaderInit` (`0x20`) 은 그 플래그를 직접 넘기는 `NtCreateThreadEx` 호출자에서만. 자세히는 `runs/03_sprint/run125-worker-factory.md` 3절.
+
 ## 요약 표 (모르는 칸 133 → ?)
 
 - 결과서 맨 앞 표 그대로. 분류 뜻은 run50·run52·run53 과 같다.

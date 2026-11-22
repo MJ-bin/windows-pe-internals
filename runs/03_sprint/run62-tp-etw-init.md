@@ -2,6 +2,8 @@
 
 > 정정 (run69, sast/64): 아래 "결과서와 다르게" 의 `[공백]` — `TpAllocPoolInternal +0x316` 의 `[RSP+0xb8]` 출처 (test.exe 가 `+0x443/+0x448` 클래스 `0xd` 갈래를 타나, 타면 구간 31) — 는 **닫혔다: 기본 풀 길은 안 탄다.** `[RSP+0xb8]` = 둘째 인자 `& 1` (`+0x2f AND EDX,R12D` · `+0x32`) 이고, 기본 풀은 `TppPoolpReferenceGlobalPool +0xbb XOR EDX,EDX` 로 0 을 넘긴다. 이 갈래는 로더 풀 (`LdrpEnableParallelLoading +0x38 MOV EDX,1`) 만 탄다. 그래서 `+0xb83 ~ +0xc2d` syscall 은 **30 그대로**. D9 의 `ntdll+0xe5e43` 덧붙임은 필요 없다. 자세히는 `runs/03_sprint/run69-loader-pool.md`.
 
+> 보탬 (run125, sast/122): 아래 동적 **D10** ("WNF 두 syscall 직후 일꾼 스레드가 생기나") 의 정적 기대 = **안 생김** `[추측: 그때 포트가 비었다면]` — 커널 `NtCreateWorkerFactory` 는 일꾼을 안 만들고, 뒤 클래스 5 (옛 최대 `0x200` ≠ 0) · 클래스 3 (`ExpTryEnterWorkerFactoryAwayMode` 는 포트가 비면 거짓) 은 일이 없으면 만들기로 안 간다. 아래 `ActiveThreads` P1a 1 `[관찰]` 과 맞는다. `runs/03_sprint/run125-worker-factory.md` 8절.
+
 ## PE_emulator 쪽에서 쓸 것
 
 **결론 셋.**
