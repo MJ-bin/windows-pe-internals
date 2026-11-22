@@ -1,4 +1,4 @@
-# 2026-11-22 (작성일, 정적 분석 2026-11-22) run133 — LRPC 선 위 형식 (Q230, 정적만): rpcrt4 LRPC 클라이언트가 보내는 **bind 메시지 (0x70 B, 종류 1)** · **요청 머리 (종류 0, 호출 ID `+0x34` · 슬롯 `+0x38` · 프로시저 `+0x3c`, 스텁 `+0x68`)** 와, 받을 때 검사하는 칸 (bind 답은 **종류 · 수락 마스크 · PID 셋뿐**, 응답은 **종류 3 + 호출 ID 맞추기 + 길이**). winnsi · epmapper 대화는 **전부 비동기** 라 답은 `NtAlpcSendWaitReceivePort` 의 둘째 부름 (받기만) 으로 온다. `ept_map` 질문 탑 4층 · 응답 검사 · 최소 응답 탑 바이트, nsisvc 는 **동적 끝점** (`LRPC-` + 18자) + `RpcEpRegisterW`, 프로시저 5 는 입력 값을 안 본다
+# 2026-11-22 (작성일, 정적 분석 2026-11-22) run133 — LRPC 선 위 형식 (Q230, 정적만): rpcrt4 LRPC 클라이언트가 보내는 **bind 메시지 (0x70 B, 종류 1)** · **요청 머리 (종류 0, 호출 ID `+0x34` · 슬롯 `+0x38` · 프로시저 `+0x3c`, 스텁 `+0x68`)** 와, 받을 때 검사하는 칸 (bind 답은 **종류 · 수락 마스크 · PID 셋뿐**, 응답은 **종류 3 + 호출 ID 맞추기 + 길이**). winnsi · epmapper 대화는 **비동기** 라 (요청 둘은 `Ndr64AsyncClientCall` 로 `[정적]`, bind 둘은 `[추측]`) 답은 `NtAlpcSendWaitReceivePort` 의 둘째 부름 (받기만) 으로 온다. `ept_map` 질문 탑 4층 · 응답 검사 · 최소 응답 탑 바이트, nsisvc 는 **동적 끝점** (`LRPC-` + 18자) + `RpcEpRegisterW`, 프로시저 5 는 입력 값을 안 본다
 
 (글의 오프셋은 함수 안 줄 · call 자리. ret 는 아래 "정적 — 호출 지점" 표. 콜스택으로 본 적은 없다 — 정적만.)
 
@@ -11,7 +11,11 @@
 
 ## 요약
 
-- **구조 한 줄** `[정적]`: winnsi → epmapper → nsisvc 의 대화 넷 (epmapper bind · `ept_map`, nsi bind · 프로시저 5) 은 **비동기** 다. 보내는 `NtAlpcSendWaitReceivePort` 는 받기 칸 없이 (Flags 0, 받을 메시지 NULL) 곧바로 0 으로 돌아오고, 답은 **스레드풀 ALPC 완료 통지 → `IoCompleted` → 두 번째 `NtAlpcSendWaitReceivePort` (받기만)** 로 온다. 동기 길 (`Flags 0x20000`, 같은 버퍼로 답을 받음) 은 코드에 있고 LSA 같은 다른 클라이언트가 쓴다 `[추측: 결과서 짐작, 동적 1 로 확인]`.
+- **구조 한 줄**: winnsi → epmapper → nsisvc 의 대화는 넷 (epmapper bind · `ept_map`, nsi bind · 프로시저 5) 이다. 태그는 셋으로 나뉜다.
+  - **비동기 길 자체** `[정적]`: 보내는 `NtAlpcSendWaitReceivePort` 는 받기 칸 없이 (Flags 0, 받을 메시지 NULL) 곧바로 0 으로 돌아오고, 답은 **스레드풀 ALPC 완료 통지 → `IoCompleted` → 두 번째 `NtAlpcSendWaitReceivePort` (받기만)** 로 온다 (bind `+0x626` · 요청 `AlpcSend +0x128` · 받기 `IoCompleted +0xc8`).
+  - **`ept_map` · 프로시저 5 가 비동기로 불림** `[정적]`: 둘 다 `Ndr64AsyncClientCall` 로 부른다 (`ept_map` = `LookupNextChunk +0x11d`, 프로시저 8 · 프로시저 5 = winnsi `NsiRpcRegisterChangeNotificationEx +0x1e8`, run129).
+  - **bind 둘 (epmapper · nsi) 이 비동기로 불림** `[추측]`: 동기냐 비동기냐는 `LRPC_BIND_CCALL::Bind` 의 첫 정수 인자에서 오는데, `DriveStateForward` 의 인자 전달을 안 읽었다 (1-1, 결과서 판정 `[공백]` ③) — **동적 1**.
+  - 동기 길 (`Flags 0x20000`, 같은 버퍼로 답을 받음) 은 코드에 있고 LSA 같은 다른 클라이언트가 쓴다 `[추측: 결과서 짐작, 동적 1 로 확인]`.
 - **bind 보내기** `[정적]`: `LRPC_CASSOCIATION::Bind` (rva `0x4e330`) 가 `PORT_MESSAGE` (0x28) + `+0x28` 종류 **1** + `+0x34` 인터페이스 UUID · 버전 + `+0x48` **제안 전송 문법 비트마스크** (1 = NDR 2.0 · 2 = NDR64 · 4 = 셋째 문법) + `+0x4c` / `+0x4e` / `+0x50` 문법별 슬롯 번호 + `+0x54` 깃발 을 쓴다. `DataLength 0x48` · `TotalLength 0x70` · `Type 0x4000`. winnsi · EPM 둘 다 마스크 **3**.
 - **bind 답 검사** `[정적]`: `CompleteBind` (rva `0x3ad68`) 는 `+0x28` (2 면 fault, 오류는 `+0x30`), `+0x48` 수락 마스크 (0 → `0x6c2`, 제안의 부분집합이 아니거나 비트가 정확히 하나가 아니면 `0x6c0`), `+0x08` 서버 PID (검사 없이 보관) **셋만** 본다. **길이 검사 없음.**
 - **요청 머리** `[정적]`: `InitializeRequestAndAttributes` (rva `0x40a60`) — 동기 · 비동기 둘 다 이 함수. 종류 0, `+0x30` 깃발, `+0x34` 호출 ID, `+0x38` 슬롯 (bind 때 그 값), `+0x3c` 프로시저 번호 (EPM `ept_map` 8 · nsi 등록 5 · 알림 기다림 7), 스텁은 `+0x68` 부터. `DataLength = 스텁 + 0x40`.

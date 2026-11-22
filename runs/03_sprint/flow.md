@@ -6681,7 +6681,7 @@ iphlpapi!InternalRegisterChangeNotification                                     
 - `[정적]` **`AlpcConnect` 상태 → RPC 오류**: `0xc0000034` · 표에 없는 상태 → `0x6ba`, `0xc0000041` · `0xc0000017` · `0xc0000044` → `0xe`, 재시도는 서버 SID 를 줬을 때의 `0xc00002a0` 만. 들어오는 속성 인자는 **늘 8 B 빈 버퍼**, Flags 비동기 0 · 동기 `0x20000`. `gDefaultSecurityDescriptor` (run99 초기화가 채움) 가 있으면 `NtAlpcConnectPortEx` — 요청 로그가 plain 인 까닭 `[공백]`.
 - `[정적]` **"성공인데 핸들 0" 뒤 끝없는 기다림** — 상태 0 이면 핸들 값을 안 본다. 바인딩 `+0x114` 가 3 인 채 첫 부름이 `CompleteOnePart +0xc7` 에 못 닿으면 둘째 부름은 `ResolveEndpoint +0x30e` 보류 → winnsi `+0x239` 무한 대기. 첫 부름이 정말 그렇게 나갔는지는 `[추측]`.
 - `[정적]` **seq 2205 ~ 2224 = WER 길** — ntdll `RtlReportExceptionEx` 줄 순서 (`WerpIsProcessNative` `0x25` → `WerpSetProcessFaultInformation` `0x3f` → `WerpCreateCrashDataSection` → `NtDuplicateObject ×2`) + kernelbase `WaitForWerSvc` (`SystemErrorPortReady`). rpcrt4 `I_RpcExceptionFilter` 가 치명 14종을 바깥으로 넘길 때 열린다 — 예외 자리 `[공백]`. (처리 안 된 예외 `UnhandledExceptionFilter` 길 자체는 위 "CPU 예외를 유저 예외로" 절의 유저 쪽, run82.)
-- `[정적]` **서버 최소 (틀)**: epmapper 연결 (핸들 쓰고 성공) → `ept_map` (탑 1 개 이상 + 0) → nsi 끝점 연결 → 프로시저 5 = 컨텍스트 핸들 + 0 → 프로시저 7 은 답하지 않음. ~~bind · 요청 · 응답 머리 칸은 `[공백]` (Q230).~~ → (해결됨 → run133) bind · 요청 · 응답 머리 · `ept_map` 탑 · nsisvc 서버는 바로 아래 "LRPC 선 위 형식" 절. **(run133 고쳐 읽기)** EPM 도 전송 문법 둘 (NDR 2.0 · NDR64) 이라 bind 제안 마스크는 **3** (sast/127 결과서 2-3 단계 8 의 "NDR 2.0 하나" 를 sast/130 이 바로잡음), 그리고 대화 넷이 다 비동기라 답은 "보내기 + 완료 통지 + 받기 한 번 더" 로 온다.
+- `[정적]` **서버 최소 (틀)**: epmapper 연결 (핸들 쓰고 성공) → `ept_map` (탑 1 개 이상 + 0) → nsi 끝점 연결 → 프로시저 5 = 컨텍스트 핸들 + 0 → 프로시저 7 은 답하지 않음. ~~bind · 요청 · 응답 머리 칸은 `[공백]` (Q230).~~ → (해결됨 → run133) bind · 요청 · 응답 머리 · `ept_map` 탑 · nsisvc 서버는 바로 아래 "LRPC 선 위 형식" 절. **(run133 고쳐 읽기)** EPM 도 전송 문법 둘 (NDR 2.0 · NDR64) 이라 bind 제안 마스크는 **3** (sast/127 결과서 2-3 단계 8 의 "NDR 2.0 하나" 를 sast/130 이 바로잡음), 그리고 비동기 대화의 답은 "보내기 + 완료 통지 + 받기 한 번 더" 로 온다 (`ept_map` · 프로시저 5 가 비동기인 건 `[정적]` `Ndr64AsyncClientCall`, bind 둘이 비동기인 건 `[추측]` — 아래 절).
 - 남은 것 → 4장 run129 줄 (동적 Q231 · 정적 ~~Q230~~ (해결됨 → run133) · Q232 · PE_emulator).
 
 ### LRPC 선 위 형식 — `rpcrt4!LRPC_CASSOCIATION::Bind` → `NtAlpcSendWaitReceivePort` (bind 0x70 B) · `CompleteBind` · `DoSendReceive` / `DoAsyncSend` → `InitializeRequestAndAttributes` → `AlpcSend` · `IoCompleted` (받기만) → `HandleReply` → `UnpackResponse` · `TowerConstruct` · `ProcessNextChunk` · nsisvc `NsiStartRpcServer` → `RpcServerUseProtseqW` · `RpcEpRegisterW` · `RpcNsiRegisterChangeNotification` (run133 `[정적]`, sast/130, Q230 — PE_emulator 요청 "winnsi 알림 등록 RPC" 3 번)
@@ -6708,7 +6708,11 @@ nsisvc!RpcNsiRegisterChangeNotification (프로시저 5) +0x14e nsi!NsiRegisterC
 ```
 
 - (나무 오프셋은 ret 자리. `⇢` 는 간접 · 가상 호출 — `LrpcIoComplete +0xc3` `[R14]` 의 대상이 `IoCompleted` 인 건 `[추측]`. 콜스택으로 본 적 없음. winnsi → `DriveStateForward` 위쪽 사슬은 run129 절.)
-- `[정적]` **대화 넷이 다 비동기** (epmapper bind · `ept_map` · nsi bind · 프로시저 5) — 보내기는 곧바로 0, 답은 스레드풀 ALPC 완료 통지 → `IoCompleted +0xc8` 의 둘째 부름 (받기만). 동기 길 (`0x20000`, 같은 버퍼) 은 코드에 있고 다른 클라이언트 (LSA 등) 몫으로 짐작 `[추측]`.
+- **대화 넷 (epmapper bind · `ept_map` · nsi bind · 프로시저 5) 의 비동기** — 태그를 셋으로 나눈다 (run133):
+  - `[정적]` 비동기 길 자체 — 보내기는 곧바로 0, 답은 스레드풀 ALPC 완료 통지 → `IoCompleted +0xc8` 의 둘째 부름 (받기만).
+  - `[정적]` `ept_map` · 프로시저 5 는 비동기로 불린다 — 둘 다 `Ndr64AsyncClientCall` (`LookupNextChunk +0x11d` 프로시저 8 · winnsi `NsiRpcRegisterChangeNotificationEx +0x1e8` 프로시저 5).
+  - `[추측]` bind 둘 (epmapper · nsi) 도 비동기로 불린다 — 동기 / 비동기는 `LRPC_BIND_CCALL::Bind` 첫 정수 인자에서 오는데 `DriveStateForward` 의 인자 전달을 안 읽음 (sast/130 판정 `[공백]` ③, 동적 1 → Q231).
+- 동기 길 (`0x20000`, 같은 버퍼) 은 코드에 있고 다른 클라이언트 (LSA 등) 몫으로 짐작 `[추측]`.
 - `[정적]` **bind** — `Type 0x4000`, 마스크 1 = NDR 2.0 · 2 = NDR64 · 4 = 셋째 문법. winnsi · EPM 둘 다 **3**. 답은 **길이 검사 없음**, 마스크 0 → `0x6c2`, 부분집합 아님 · 비트 둘 이상 → `0x6c0`, `+0x28` 2 면 fault (`+0x30`, 0 · 치명 14종이면 `0x6c0`). 동기 bind 오류는 연결을 닫는다 (`AbortAssociation`).
 - `[정적]` **응답** — `TotalLength ≥ 0x38`, `+0x28 == 3`, **호출 ID `+0x34` 가 요청과 같아야**, 스텁 `+0x40` 부터. Context 속성 `MessageContext` (클라이언트 호출 객체 포인터) 가 그대로 돌아와야 하고 0 이면 버린다 — 에뮬레이터가 지어내면 안 됨.
 - `[정적]` **ALPC 상태 → RPC 오류** — 보내기 세 자리가 표를 따로 든다. `0xc0000008` (핸들 무효) = 셋 다 **`0x6bf`** (RPCSS "핸들 0 보내기" 22 샘플의 rpcrt4 값 — `RpcpStrictAlpcToRpcStatus` 의 `6` 은 서버 쪽 표). `0x6ba` · `0x6bf` 는 재시도 종류, 첫 시도 + 최대 3번.
