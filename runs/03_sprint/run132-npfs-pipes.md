@@ -1,9 +1,12 @@
 # 2026-11-22 (작성일, 정적 분석 2026-11-22) run132 — 파이프 (Q241, 정적만): kernelbase `CreateNamedPipeW` · `CreatePipe` · `ConnectNamedPipe` 가 syscall 에 넘기는 값과, npfs 가 만들기 · 열기 · 읽기 · 쓰기 · 듣기 · 닫기에 돌려주는 status. 방향은 **share 하나로** 정하고, 새 인스턴스는 **처음부터 듣는 중** 이라 서버가 `ConnectNamedPipe` 를 안 불러도 클라이언트가 붙는다. 쓰는 끝이 닫힌 뒤 빈 읽기는 **`0xC000014B` (`END_OF_FILE` 아님)**, 이미 붙은 파이프의 듣기는 `0xC00000B2` 라 `ConnectNamedPipe` 는 **FALSE + 535**
+
+> **고쳐 읽기 (run133)**: 이어 쓰는 앞 run 줄 · 2(a) 끝 · "아직 확인 필요" 끝의 smss 오프셋은 **`SmpCreateProtectedPrefixes +0xa44`** (`\Device\NamedPipe\` 에 `NtSetSecurityObject`) 다 — 처음 적은 `+0xab3` 은 `\Device\mailslot\` 쪽이다 (run98 호출 지점 표 · 나무: `+0xa44` · `+0xab3` = 파이프 · 메일슬롯). 본문 세 곳은 `+0xa44` 로 고쳤다. "루트 SD 가 이 줄 것인지" 는 그대로 `[추측]`.
+
 (글의 오프셋은 함수 안 줄 · call 자리. ret 는 아래 "정적 — 호출 지점" 표. 콜스택으로 본 적은 없다 — 정적만.)
 
 > **지도 범위**: 이번 바퀴는 **PE_emulator 요청** ("파이프 (이름 있는·없는) — kernelbase 가 커널에 무엇을 넘기고, npfs 가 만들기·열기·읽기·쓰기에 무엇을 돌려주나", 원 요청 `../PE_emulator/_workspace/05_tuning_planner/298_internals-npfs-pipes.md`, 튜닝 `298_tune10.md` T7′, 병목 25 · 파이프 만들기 샘플 77) 이고 test.exe 초기화 (프로세스 생성 → `NtContinue` 은퇴) **밖**이다. `sample/*.c` · `log.h` 에 파이프 API 가 없고 `[소스]` (`grep -i pipe` 0줄), 지도 (flow.md) 에 `NtCreateNamedPipeFile` · 파이프 FSCTL 이 없다. test.exe 의 표준 핸들은 콘솔 (`DeviceType 0x50`, run83 · run84) 이다. 그래서 **그림은 안 바꿨다.** flow.md 는 기준 (npfs PDB 새 줄 · ntkrnlmp · kernelbase · kernel32 · ntdll 줄) · 3장 콘솔 절 한 줄 · run126 절 한 줄 · 3장 끝 새 절 하나 · 4장 (Q241 닫힘 줄 · run132 줄 셋) · 5장 (run132 두 줄, run131 sast 줄의 대기열 번호를 Q242 · Q243 으로 채움) 만 고쳤고, 짐 지도 (`baggage.md`) 는 건드리지 않았다.
 > **대기열**: **Q241** (사용자 결정 2026-11-22 "이 세 요청 먼저 가장 우선"). 결과서 판정 **분석성공** — 요청서 ★ 전부 (1(a)(b)(c) · 2(a)(b)(c) · 3(a)(b)(c)) 와 1(d) · 3(d) 를 `.asm` 줄로 답함. 못 닫은 셋 (CLEANUP 이 오는 핸들 수 조건 · `WaitNamedPipeW` 타임아웃 status · 장치 `Characteristics` 최종값) 은 아래 "아직 확인 필요" (동적 **Q244** · 정적 **Q245**).
-> - 이어 쓰는 앞 run: **run126** (sast/124 — IRP 완료: 오류 + PENDING 없음이면 IOSB 안 씀, 동기 핸들 PENDING 은 I/O 관리자가 기다림), **run127** (sast/125 — 파일을 완료 포트에 묶기, 묶인 파일의 패킷 조건), **run84** (`GetFileType` 의 `DeviceType 0x11` → 파이프), **run98** (smss 가 파이프 이름 앞 `SmpCreateProtectedPrefixes +0xab3` 에서 보안을 다는 줄).
+> - 이어 쓰는 앞 run: **run126** (sast/124 — IRP 완료: 오류 + PENDING 없음이면 IOSB 안 씀, 동기 핸들 PENDING 은 I/O 관리자가 기다림), **run127** (sast/125 — 파일을 완료 포트에 묶기, 묶인 파일의 패킷 조건), **run84** (`GetFileType` 의 `DeviceType 0x11` → 파이프), **run98** (smss 가 파이프 이름 앞 `SmpCreateProtectedPrefixes +0xa44` 에서 보안을 다는 줄).
 
 ## 요약
 
@@ -226,7 +229,7 @@
 - **access 가 정하는 것**: 처음 상태. `DesiredAccess & 0xf2000003 ≠ 0` 이면 **LISTENING (2)**, 0 이면 DISCONNECTED (1) (`NpCreateNewNamedPipe +0x1c5 ~ +0x20a`, 같은 식 `NpCreateExistingNamedPipe +0x18b ~ +0x1ab`). 요청 쪽 로그의 서버 access 는 전부 `GENERIC_*` 비트가 있어 **처음부터 LISTENING**.
 - 상태 번호 (CCB `+0x8` 바이트): 1 DISCONNECTED · 2 LISTENING · 3 CONNECTED · 4 CLOSING (이름은 공개 헤더 값과 같다고 봄 `[추측: 이름]`).
 - 파일 객체 표식: `Flags |= 0x80` (`FO_NAMED_PIPE`), `FsContext = FCB`, `FsContext2 = CCB | 3` (서버) · `CCB | 1` (클라이언트) · `루트 | 1`. 아랫 비트 0 = 쓸 수 있음, 비트 1 = 서버 (`NpListen +0x39 ~ +0x4f`).
-- CCB · FCB 안쪽 칸은 요청대로 이름 · 쓰임만 (결과서 2(a) 끝). 루트 SD 는 부팅 때 smss 가 파이프 이름 앞에 다는 것 (run98, `SmpCreateProtectedPrefixes +0xab3`) 으로 보인다 `[추측: 두 결과서를 이은 것]`.
+- CCB · FCB 안쪽 칸은 요청대로 이름 · 쓰임만 (결과서 2(a) 끝). 루트 SD 는 부팅 때 smss 가 파이프 이름 앞에 다는 것 (run98, `SmpCreateProtectedPrefixes +0xa44`) 으로 보인다 `[추측: 두 결과서를 이은 것]`.
 
 #### 2(b). 클라이언트 쪽 열기 (`NpFsdCreate` → `NpCreateClientEnd`)
 
@@ -416,7 +419,7 @@ kernelbase!GetFileType +0x79  NtQueryVolumeInformationFile(4)
 4. `NpFindPrefix` · `NpTranslateAlias` (`LOCAL\` 별칭 — AppContainer · 사일로에서 이름이 바뀜), `NpReadParameters` · `NpReadAlias` (레지스트리 별칭 표 — 이름 없는 파이프엔 영향 없음).
 5. 메시지 꼴 파이프의 `NpReadDataQueue` · `NpWriteDataQueue` 정밀 읽기 (이번엔 바이트 꼴 중심) · NOWAIT 쓰기 조합 · 길이 0 쓰기.
 6. kernelbase `GetNamedPipeInfo` · `GetNamedPipeHandleStateW` 의 사용자 이름 얻기 간접 호출 (`[0x1803c61d8]`) — 클라이언트 가장 쪽이라 범위 밖, 이름만.
-- 그 밖 `[공백]`: npfs 루트 SD 가 smss `SmpCreateProtectedPrefixes +0xab3` 것인지 (run98 과 이은 `[추측]`), `NpTranslateAlias` 가 `LOCAL\` 밖 이름을 그대로 넘기는지 (`.c` 첫머리만 봄).
+- 그 밖 `[공백]`: npfs 루트 SD 가 smss `SmpCreateProtectedPrefixes +0xa44` 것인지 (run98 과 이은 `[추측]`), `NpTranslateAlias` 가 `LOCAL\` 밖 이름을 그대로 넘기는지 (`.c` 첫머리만 봄).
 
 ## 디버거 메모 / 도구 메모
 
