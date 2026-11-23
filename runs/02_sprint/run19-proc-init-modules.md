@@ -1,5 +1,7 @@
 # 2026-10-23 run19 — `LdrpInitializeProcess` 뒤쪽(`+0x12de ~ 끝`): exe 모듈 항목 → TLS 준비 → kernel32 → 병렬 로딩 켜기 → exe import 올리고 연결 → import DLL 초기화 → exe TLS → 마무리 (정적)
 
+> **고쳐 읽기 (run138, sast/136 — Q253b)**: 간접 호출 표 `+0x17fc / +0x17fe` 의 대상 `[추측: wow64 쪽 시작 함수]` 는 **`wow64!Wow64LdrpInitialize`** 다 `[정적]`. 그리고 "탄 뒤엔 `+0x1801 JMP +0x1d1b`" 는 **돌아올 때만** — 이 함수는 보통 `BTCpuSimulate` 로 32비트 코드를 돌리며 돌아오지 않고, 돌아오는 길은 시작 주소가 64비트 모듈 안일 때 (`Run64IfContextIs64` 참) 하나뿐이다. → `runs/03_sprint/run138-wow64-dlls.md`
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 작성일 (sast/14 요청은 2026-10-22).

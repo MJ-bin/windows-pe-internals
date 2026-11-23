@@ -1,5 +1,7 @@
 # 2026-10-22 run17 — 로더 입구 이름 사슬 정리: `LdrpInitialize`(0xe1448) 는 꼬리 점프로 비켜서고, 콜스택의 `LdrpInitialize+0x16c` 는 `_LdrpInitialize`(0x8bf8c) 다. 첫 스레드 판정 = 전역 `LdrpProcessInitialized` (정적)
 
+> **고쳐 읽기 (run138, sast/136 — Q253b)**: 아래 "이번에 안 정한 것" 의 `g_LdrpWow64LdrpInitialize` 가 가리키는 함수는 **`wow64!Wow64LdrpInitialize`** (rva `0x11ed0`) 다 `[정적]` — `LdrpLoadWow64 +0xf1` 이 wow64.dll 에서 이름 `Wow64LdrpInitialize` 로 찾아 이 칸에 쓴다. 이 함수는 보통 32비트 코드로 넘어가 **돌아오지 않는다** — `+0x9a` 뒤 `+0xa2 LdrpInitializeThread` 는 시작 주소가 64비트 모듈 안일 때 (`Run64IfContextIs64` 참) 만 탄다. → `runs/03_sprint/run138-wow64-dlls.md`
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음).
