@@ -16,7 +16,7 @@
     - **처음 analyze 둘**: wow64cpu.dll (51,128 B, 함수 29) · wow64.dll (356,936 B, 함수 1142).
     - wow64win · wow64base · wow64con 은 PDB 만 받았다 (import 표 · 이름표로 닫힘).
     - Ghidra 가 함수로 못 읽은 wow64cpu 구간은 objdump · ndisasm 파일로 읽었다.
-  - flow.md 변경: `git diff --cached -- runs/03_sprint/flow.md` (이번 바퀴, 아직 커밋 전). **그림은 안 바뀜.** 짐 지도 `baggage.md` 도 안 건드렸다.
+  - flow.md 변경: `git show 66066b8 -- runs/03_sprint/flow.md`. **그림은 안 바뀜.** 짐 지도 `baggage.md` 도 안 건드렸다.
 - 이번 바퀴는 **정적만** 이다. VM 실행도, 동적 요청서도 없다.
 
 ### 이번 바퀴에서 조심할 곳 다섯
