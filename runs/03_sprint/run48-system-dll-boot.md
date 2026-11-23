@@ -1,5 +1,7 @@
 # 2026-10-29 run48 — 부팅 준비 갈래 (Q93): ntdll 섹션·기본 주소·`PsNtdllExports` 는 **부팅 때 한 번** 만들어진다. `IoInitSystemPreDrivers +0x10f5` → `PsLocateSystemDlls` → (칸마다) `PspLocateSystemDll` → `PspMapSystemDll` (인자4 = 1) 이 `PspSystemDlls` 칸을 채우고, 뒤에 `PspInitPhase2 → PspInitializeSystemDlls +0x6b` 가 `PsNtdllExports` 를 채운다 (정적)
 
+> **고쳐 읽기 (run139, sast/135 — Q253a)**: 아래 표 `PsWowX86SharedInformation` 줄의 "`PspPrepareSystemDllInitBlock +0xc3 ~ +0xef` 가 복사하는 것으로 읽힘 `[추측]`" 은 맞다 `[정적]` — `+0xb7 ~ +0xc3` 이 종류 (0 이면 1) 로 표를 얻고 `+0xde ~ +0xf7` 이 16칸을 시작 블록 `+0x18` 부터 통째 복사한다 (64비트 블록에서도). 8칸 이름 (`NtdllWowX86Exports`, PE 바이트) = 32비트 ntdll `LdrInitializeThunk` · `KiUserExceptionDispatcher` · `KiUserApcDispatcher` · `KiUserCallbackDispatcher` · `RtlUserThreadStart` · `RtlpQueryProcessDebugInformationRemote` · (`+0x30` 기본 주소) · `LdrSystemDllInitBlock` · `RtlpFreezeTimeBias`. → `runs/03_sprint/run139-wow64-kernel.md` 표 B-0
+
 > **정정 (run81, sast/78)**: 아래 "① 에서 읽는 자리" 표 `PsNtdllExports` 줄의 "`PspInitializeThunkContext +0x1a1 · +0x37f` (`+0x8` → 새 스레드 `Rip`)" 중 **`+0x37f` 는 새 스레드 `Rip` 가 아니다.** 실패 갈래 (`+0x2fc JS +0x37b`) 에서 같은 `+0x8` (`LdrInitializeThunk`) 을 예외 레코드 `ExceptionAddress` (`+0x386 [RBP+0x40]`) 로 읽는 줄이다 (그 뒤 `+0x3c3 KiDispatchException`, 첫 기회 0 → 프로세스 종료). 새 스레드 `Rip` 는 `+0x1a1` 하나 (`runs/03_sprint/run81-exception-kernel.md` "정정").
 
 ## 부팅 준비 호출 사슬 (함수 / call / ret / 하는 일 / 실패하면)

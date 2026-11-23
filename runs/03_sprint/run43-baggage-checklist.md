@@ -1,5 +1,7 @@
 # 2026-10-24 run43 — 짐 지도 체크리스트: 구조체 21개 직접 칸 1,456 (아는 쓴 자리 정확 138 · 짐작 43 · 모름 1,275), ntdll 쓰기 가능 전역 493 (아는 것 54), 초기화 함수 15개 callee 637줄 (어디에도 없음 57). `MmCreateTeb` 첫 export — callee 4개, TEB 대입 약 47줄
 
+> **고쳐 읽기 (run139, sast/135 — Q253a)**: 아래 나무의 `MmCreateTeb +0xac MiAllocateFromSubAllocatedRegion` "TEB 자리 `[추측: 이름]`" 은 맞다 `[정적]` — 본문을 읽었다: 프로세스 `[+0x410]` 구조의 목록에서 `RtlFindClearBitsAndSetEx` 로 빈 쪽을 찾고, 없으면 `MiAllocateNewSubAllocatedRegion` 이 2MB `'VadS'` 영역을 새로 잡는다 (상한 `HighestUserAddress`). PEB64 · PEB32 · TEB 가 모두 이 함수로 같은 영역에서 잘린다. → `runs/03_sprint/run139-wow64-kernel.md`
+
 ## 환경
 
 - 정적만 한 바퀴다. 디버거는 안 붙였다 (dast 없음). 날짜는 결과서 날짜.
