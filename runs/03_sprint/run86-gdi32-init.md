@@ -4,6 +4,8 @@
 
 > **고쳐 읽기 (run142, sast/139 — Q268)**: 표 A13 의 답 "아무 값 (0 이면 `GetAppCompatFlags2` 가 0)" — 정상 답은 **상수 1** 이다 (win32kfull `NtUserGetThreadState +0x11 CMP ECX,0xe` · `+0x14 JZ → +0x16c MOV EAX,1`, 칸을 안 읽음). 0 이면 user32 창 API 넷 (`MessageBox*` · `DialogBoxParam*` · `LoadIcon*` · `GetSystemMetrics`) 이 같은 꼴 가드로 실패한다. 데이터 칸 표의 TEB `+0x78` "포인터 — `NtGdiInit2` 가 GUI 로 바꾼 뒤 0 아님 `[추측]`" → 쓰는 곳은 `[정적]` win32kbase `xxxCreateThreadInfo +0x756` (값 = `PsGetThreadId` 반환, 포인터가 아닌 스레드 ID 로 보임 `[추측]`). 자세히는 `runs/03_sprint/run142-user32-connect.md`.
 
+> **고쳐 읽기 (run144, sast/141 — Q270)**: 표 B "그 메모리 `+0x1800b0 + 8*i` (스톡 객체 핸들 표 `[뜻 추측]`)" — 뜻은 `[정적]` 이다: `GetStockObject` 가 그 값을 **그대로 핸들로** 돌려준다 (표 칸은 안 봄). **공유 핸들 표 자체**는 같은 메모리 `+0x0 ~ +0x180000` — 칸 0x18 B, 칸 번호 = 핸들 `& 0xffff`, 칸 `+0x8` 주인 · `+0xc` 핸들 윗 16비트 · `+0xe` 종류 · `+0x10` 가려진 사용자 쪽 포인터 (gdi32 `CreateRectRgn +0x80 ~ +0x1f3` · gdi32full `GdiValidateHandle +0x4a ~ +0x69`). 그래서 "최소 `0x180150` B" 는 **`DllMain` 까지만** 맞는 말이다 — 표 칸이 0 이면 `CreateRectRgn` NULL (`GdiplusStartup` = 1) · `GdiValidateHandle` FALSE (`RegisterClassEx` `0x57`) · DC 길 `0x57` / 0. 스톡 핸들 꼴 = `번호 | (종류 | 0x80) << 16 | 고유 << 24` (스톡 비트 `0x800000`, win32kbase `bSetStockObject +0x33`). 다음 요청 후보 ⑤ 의 "핸들 표 항목 모양" 은 여기서 닫힘. 자세히는 `runs/03_sprint/run144-gdi-startup.md`.
+
 ## PE_emulator 쪽에서 쓸 것
 
 ### 요청 28 전체 결론 (run85 + run86)
