@@ -1,5 +1,7 @@
 # run85 user32-init — 해설
 
+> **고쳐 읽기 (run142)**: 2.12 의 "TEB `+0x78` 은 user32 코드가 안 쓴다 — 쓰는 쪽은 win32k `[추측]`" 은 맞다 `[정적]` — 쓰는 자리는 win32kbase **`xxxCreateThreadInfo +0x756`** (값 = `PsGetThreadId` 반환, 포인터가 아닌 스레드 ID 로 보임 `[추측]`), 되부름 자리는 `+0x137b` ⇢ win32kfull `xxxClientThreadSetup +0x4c KeUserModeCallback(0x54)` `[정적]`. 2.5 의 "`psi` 0 채운 `0x1b68` B" 는 `DllMain` 까지는 그대로 맞고, 창 API 길엔 0 이면 안 되는 칸이 생긴다. → [run142 해설](run142-user32-connect-해설.md) 2.6 · 2.10
+
 > 이 글은 [run85 문서](run85-user32-init.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 >

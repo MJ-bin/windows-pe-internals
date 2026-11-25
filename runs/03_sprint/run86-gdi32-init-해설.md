@@ -1,5 +1,7 @@
 # run86 gdi32-init — 해설
 
+> **고쳐 읽기 (run142)**: 2.11 · 표 A13 의 `NtUserGetThreadState(0xe)` 답 "아무 값" — 정상 답은 **상수 1** 이다 `[정적]` (win32kfull `+0x14 JZ → +0x16c MOV EAX,1`, 칸을 안 읽음). `GetAppCompatFlags2` 는 0 이어도 넘어가지만, 0 이면 user32 창 API 넷이 같은 꼴 가드로 실패한다. TEB `+0x78` 을 쓰는 곳은 win32kbase `xxxCreateThreadInfo +0x756` `[정적]` (값은 스레드 ID 로 보임 `[추측]`). → [run142 해설](run142-user32-connect-해설.md) 2.5 · 2.7
+
 > 이 글은 [run86 문서](run86-gdi32-init.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
