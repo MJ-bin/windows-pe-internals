@@ -2,6 +2,8 @@
 
 > **정정 (run121, sast/117)**: 아래 ⑧ 의 "짐 지도 3.3 의 `gdi32 6 (Gdi*)` 짐작은 그대로" — 그 짐작은 둘만 맞다. `GdiTebBatch` · `GdiBatchCount` 는 **gdi32full** 이 주로 쓰고 (gdi32 는 `InternalDeleteObject` · `DeleteRegion` 둘만), `GdiCachedProcessHandle` · `GdiClientPID` · `GdiClientTID` · `GdiThreadLocalInfo` 넷은 System32 어디에서도 쓰는 줄을 못 찾았다. "`DllMain` 줄기엔 `Gdi*` 쓰기가 없다" 는 그대로 맞다. 자세히는 `runs/03_sprint/run121-teb-other-dlls.md`.
 
+> **고쳐 읽기 (run142, sast/139 — Q268)**: 표 A13 의 답 "아무 값 (0 이면 `GetAppCompatFlags2` 가 0)" — 정상 답은 **상수 1** 이다 (win32kfull `NtUserGetThreadState +0x11 CMP ECX,0xe` · `+0x14 JZ → +0x16c MOV EAX,1`, 칸을 안 읽음). 0 이면 user32 창 API 넷 (`MessageBox*` · `DialogBoxParam*` · `LoadIcon*` · `GetSystemMetrics`) 이 같은 꼴 가드로 실패한다. 데이터 칸 표의 TEB `+0x78` "포인터 — `NtGdiInit2` 가 GUI 로 바꾼 뒤 0 아님 `[추측]`" → 쓰는 곳은 `[정적]` win32kbase `xxxCreateThreadInfo +0x756` (값 = `PsGetThreadId` 반환, 포인터가 아닌 스레드 ID 로 보임 `[추측]`). 자세히는 `runs/03_sprint/run142-user32-connect.md`.
+
 ## PE_emulator 쪽에서 쓸 것
 
 ### 요청 28 전체 결론 (run85 + run86)

@@ -1,5 +1,7 @@
 # 2026-11-16 (작성일) run121 — `_TEB` "범위 밖 길 — 다른 DLL" 39칸 확인 (Q102, 정적만): **쓰는 줄 있음 23 · 못 찾음 16**, 짐작 틀림 둘 (`WinSockData` → **mswsock.dll**, `WOW32Reserved` → **KERNELBASE**), test.exe 초기화에서 타는 칸 **0** — KERNELBASE 5칸 중 `NlsCache` 는 DllMain 사슬로 `GetCurrentNlsCache` 까지 닿지만 쓰는 줄이 **`IsImpersonating ≠ 0` 갈래**에만 있어 안 탐 (사진 P2 0 과 맞음)
 
+> **고쳐 읽기 (run142, sast/139 — Q268)**: "다음 요청 후보" ① "`Win32ThreadInfo` 를 유저 TEB 에 놓는 줄 — 후보 win32kbase `xxxCreateThreadInfo` (안 풂) `[공백]`" → **닫힘** `[정적]`: `xxxCreateThreadInfo +0x745 PsGetThreadId([pti+0])` → `+0x756 MOV [TEB+0x78],RAX` (지역 TEB 값이 0 아닐 때, `+0x73d / +0x740`). TEB 를 지역 변수로 들고 쓰는 꼴이라 `objdump` 훑기가 못 잡았다. 같은 함수가 `+0x772` 로 `pti+0x208` ← TEB `+0x800`, `+0x787 / +0x794` 로 TEB `+0x8e8` · `+0x8ec` 도 쓴다. 짐 지도 3.3 `+0x78` 줄은 이번에 안 고침 (짐 지도 바퀴 아님). 자세히는 `runs/03_sprint/run142-user32-connect.md`.
+
 (글의 오프셋은 쓰는 줄 · 읽는 줄 · call 자리. ret 는 아래 "정적 — 호출 지점" 표. 콜스택으로 본 적은 없다 — 정적만.)
 
 > **지도 범위**: 이번 바퀴는 test.exe 가 **안 올리는 DLL** (gdi32full · user32 · opengl32 · mswsock · combase …) 과 KERNELBASE 의 초기화 밖 함수가 대부분이다. 초기화 길에 걸리는 것은 이미 그림에 있는 상자 (`KERNELBASE!_KernelBaseBaseDllInitialize` → `BaseNlsDllInitialize`) 안쪽 한 갈래뿐이다. 대표 지점 규칙으로 노드를 늘리지 않았다 — **그림은 안 바꿨다.** 글 (flow.md 2.5 · 4장 · 5장) 과 짐 지도 (3.3 · 새 3.3.1 · 7장 · 8장) 에만 넣었다.
