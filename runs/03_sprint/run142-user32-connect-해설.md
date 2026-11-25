@@ -1,5 +1,7 @@
 # run142 user32-connect — 해설
 
+> **고쳐 읽기 (run144)**: 2.8 의 "GDI 답 — DC · 글꼴 · 글자 폭이 0 이면 조용히 0 (Q270)" — `GdiGetCharDimensions` · `GetTextExtentPointW` · `GetTextMetricsW` · `SelectObject` · `GetDeviceCaps` 는 syscall 앞에서 공유 핸들 표의 **DC 칸** (`+0xe == 1` · `+0xc == H>>16` · `+0x8 & ~1 ==` 이 프로세스 PID 정확히 · `+0x10` 풀면 0 아닌 `DC_ATTR` 포인터) 을 본다 `[정적]`. 칸이 없으면 `GdiGetCharDimensions` 가 아무것도 안 쓰고 돌아가 `SoftModalMessageBox +0x153` 이 폭 0 으로 0. HFONT 는 종류 `0xa0000` + 글꼴 칸이 있어야 한다. DC 칸 만들기 · `DC_ATTR` 전체 · 글꼴 사본은 Q278. 본문은 그대로 두었다 → [run144 해설](run144-gdi-startup-해설.md) 2.13
+
 > 이 글은 [run142 문서](run142-user32-connect.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 

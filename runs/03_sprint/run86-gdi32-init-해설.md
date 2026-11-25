@@ -1,5 +1,7 @@
 # run86 gdi32-init — 해설
 
+> **고쳐 읽기 (run144)**: 2.10 표 B 의 "`+0x1800b0 + 8*i` 스톡 객체 핸들 표 `[추측]`" — 뜻은 `[정적]` 이다: `GetStockObject` 가 그 값을 **그대로 핸들로** 돌려준다 (표 칸은 안 봄). 진열장 앞쪽 `+0x0 ~ +0x180000` 이 **공유 핸들 표** (칸 0x18 B, 칸 번호 = 핸들 `& 0xffff`, `+0x8` 주인 · `+0xc` 핸들 윗 16비트 · `+0xe` 종류 · `+0x10` 가려진 사용자 쪽 포인터) 라서, "최소 `0x180150` B" 는 **`DllMain` 까지만** 맞는 말이다 — 표 칸이 0 이면 `CreateRectRgn` NULL (`GdiplusStartup` 1) · `GdiValidateHandle` FALSE (`RegisterClassEx` `0x57`) · DC 길 `0x57` / 0. 본문은 그대로 두었다 → [run144 해설](run144-gdi-startup-해설.md) 2.6 · 2.11 · 2.12
+
 > **고쳐 읽기 (run142)**: 2.11 · 표 A13 의 `NtUserGetThreadState(0xe)` 답 "아무 값" — 정상 답은 **상수 1** 이다 `[정적]` (win32kfull `+0x14 JZ → +0x16c MOV EAX,1`, 칸을 안 읽음). `GetAppCompatFlags2` 는 0 이어도 넘어가지만, 0 이면 user32 창 API 넷이 같은 꼴 가드로 실패한다. TEB `+0x78` 을 쓰는 곳은 win32kbase `xxxCreateThreadInfo +0x756` `[정적]` (값은 스레드 ID 로 보임 `[추측]`). → [run142 해설](run142-user32-connect-해설.md) 2.5 · 2.7
 
 > 이 글은 [run86 문서](run86-gdi32-init.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
