@@ -1,5 +1,7 @@
 # run137 alpc-completion — 해설
 
+> **고쳐 읽기 (run145)**: 2.12 응답 스텁 아래 "탑 0개면: 끝점 핸들 0 · `num_towers` 0 · 배열 `4 · 0 · 0` · 상태 → **40 B** `[규칙]`" 의 **서버가 값을 정하는 칸은 `[정적]` 으로 닫혔다** — RpcEpMap `GetEntriesNoLock +0x4c3` (핸들 0, `max_towers ≥ 2` 일 때) · `+0x8e` (탑 수 0) · `+0x867` `0x16c9a0d6` (상태). 단 `max_towers ≤ 1` 이면 핸들 −1, 서비스 트리거 키가 있으면 답을 보류. 배열 머리는 그대로 `[규칙]`. 이 40 B 는 PE_emulator `epm.cpp` 지금 답과 바이트까지 같다. 128 B 표는 `LRPC-emu` 예이고, 진짜 nsi 이름 (23자) 이면 **140 B** (탑 octets 88, 패딩 0). 본문은 그대로 두었다 → [run145 해설](run145-epm-endpoint-해설.md) 2.6 · 2.7 · 2.8 · 2.13
+
 > 이 글은 [run137 문서](run137-alpc-completion.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
