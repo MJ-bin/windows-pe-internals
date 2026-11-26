@@ -1,5 +1,7 @@
 # run146 dialog-window — 해설
 
+> **고쳐 읽기 (run148)**: 2.7 · 2.12 는 `NtUserDestroyWindow` 를 만들기 길 (컨트롤 실패, `+0xc01`) 에서만 적었다 → **모달 끝 `DialogBox2 +0x3c4` 에서도 늘 불린다** `[정적]` (결과 `pdlg+0x20` 은 그 앞 `+0x3bd` 에서 먼저 읽음). 반환 안 봄 · 기본 대답 0 이면 됨은 그대로. 2.12 최소 목록 7 "(sast/146 에서 보탬)" 과 4절 "정적으로 남은 것 → sast/146 (진행 중)" 은 run148 로 닫혔다 — `NtUserSetDialogPointer` 의 fnid `0x2a4` 는 **"필수"** 로 강화 (`DefDlgProcWorker +0x32 ~ +0x45` 가 0 · `0x2a4` 아니면 앱 프로시저를 안 부름), 장부 `+0x20` 의 "기본 단추 ID 겸 결과값" 은 `DM_GETDEFID` 가 같은 칸을 읽는 줄로 `[정적]`. 본문은 그대로 두었다 → [run148 해설](run148-dialog-end-해설.md) 2.5 · 2.6 · 2.8 · 2.12 · 2.13
+
 > 이 글은 [run146 문서](run146-dialog-window.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
