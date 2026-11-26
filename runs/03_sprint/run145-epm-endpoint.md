@@ -7,7 +7,7 @@
 > **대기열**: **Q279** (PE_emulator 요청 365 epm-endpoint 물음 1, 사용자 결정 2026-11-26 "물음 1 만, 다른 것보다 가장 먼저", 정적만). 결과서 판정 **분석성공** — 다섯 줄 (고르기 · 돌려주는 탑 · 없을 때 · 부른 쪽 검사 · 등록 쪽) 모두 `[정적]` 근거로 답함.
 > - 이어 쓰는 앞 run: **run129** (nsi 인터페이스 `7ea70bcf-48af-4f6a-8968-6a440754d5fa` v1.0, `FatalLookupErrorEncountered` 가 `0x16c9a0d6` → `0x6d9`), **run133** (질문 탑 70 B · `LookupNextChunk +0x11d` 프로시저 8 · `max_towers` 4 · `ProcessNextChunk` 응답 검사 · nsisvc `NsiStartRpcServer` → `RpcEpRegisterW` · `ServerSetupAddress` 의 `LRPC-` 이름 · 3-3 "등록 때 받은 탑을 그대로 돌려준다" `[추측]`), **run137** (EPM 프로시저 8 NDR 2.0 응답 칸 차례 · 탑 0개 40 B `[규칙]`), **run141** (비동기 epmapper 연결 → bind).
 > - 앞 run 고쳐 읽기 둘: run133 · run137 맨 위 한 줄 (아래 "앞 run 고쳐 읽기").
-> - 남은 동적 → **Q280** (원문 물음 2 · 3 의 VM 묶음 — 결과서 D1 ~ D7 을 얹음), 남은 정적 → 결과서 "다음 요청 후보" 1 ~ 6 (대기열 번호는 오케스트레이터가 붙임).
+> - 남은 동적 → **Q280** (원문 물음 2 · 3 의 VM 묶음 — 결과서 D1 ~ D7 을 얹음), 남은 정적 → 결과서 "다음 요청 후보" 1 ~ 6 → **Q281**.
 
 ## 요약
 
@@ -331,7 +331,7 @@ flow-writer 는 `../PE_emulator/ext/syscall/syscall_layer_cpp/src/rpc/epm.cpp` (
 6. **D6** 레지스트리 `HKLM\Software\Microsoft\Windows\CurrentVersion\NetworkServiceTriggers\Triggers\bc90d167-9470-4139-a9ba-be0bbbf5b74d\` 아래 `7ea70bcf-48af-4f6a-8968-6a440754d5fa` 키 있음 / 없음.
 7. **D7** `RpcEpMap!gFwManagerExtensionState` (rva `0x1cf60`) · `g_TriggersDisabled` (`0x1ccc8`) · `EPMAllowAnonymous` (`0x1c5e8`) 값.
 
-정적 (결과서 "다음 요청 후보" — 대기열 번호는 오케스트레이터가 붙임):
+정적 (결과서 "다음 요청 후보" — 대기열 **Q281**):
 
 1. `ept_insert_ex` (로컬 `0b0a6584` 프로시저 2) NDR 요청 · 응답 바이트 — 샘플이 `RpcEpRegister*` 를 직접 부르거나 에뮬레이터가 nsisvc 등록을 흉내 낼 때. 같은 인터페이스 0 (`OpenEndpointMapper`) · 3 (`ept_delete_ex`) 은 이름만.
 2. `I_RpcServerCheckClientRestriction` · `IsSecureClient` 의 ncalrpc 갈래 (5절 `[공백]`).
