@@ -7,7 +7,7 @@
 > **대기열**: **Q274a** (Q274 의 N1 · N2 를 앞으로 당긴 것, 사용자 결정 2026-11-26 "다른 것보다 가장 먼저", 정적만). 원문 물음 3 (기본 단추 한 번으로 `EndDialog` 까지) 은 **sast/146 dialog-end** 로 따로 간다 (지금 도는 중) — 그래서 Q274a 는 **물음 1 · 2 몫만 닫힘**. 결과서 판정 **분석성공** — 1 (0)(a)(b)(c)(d)(e)(f) · 2 모두 `[정적]` 줄 근거로 답함.
 > - 이어 쓰는 앞 run: **run142** (대화상자 틀 · `InternalCreateDialog` 가드 · 핸들 항목 `+0x0 ~ +0x1a` · TEB `+0x820` / `+0x828` / `+0x840` · "최소 조건" 목록 7 · 8), **run131** (`VerNtUserCreateWindowEx` → `ClassNameToVersion +0x226 NtUserGetAtomName` · 반환 = 글자 수 · 끝 NUL 제외 `[추측]`), **run144** (GDI 공유 핸들 표 — 이번 길의 GDI 부름이 0 을 받아도 되는지만 이어 봄).
 > - 앞 run 고쳐 읽기 둘: run142 · run131 맨 위 한 줄 (아래 "앞 run 고쳐 읽기").
-> - 남은 동적 → 결과서 "동적으로 확인할 것" 1 ~ 10 (대기열 번호는 오케스트레이터가 붙임 — Q273 VM GUI 세션에 얹을 꼴), 남은 정적 → sast/146 dialog-end (물음 3) + 결과서 `[공백]` ① ~ ⑥.
+> - 남은 동적 → 결과서 "동적으로 확인할 것" 1 ~ 10 (~~대기열 번호는 오케스트레이터가 붙임 — Q273 VM GUI 세션에 얹을 꼴~~ → 대기열 **Q273** — 동적 1 ~ 10 을 출처로 보탬, run147 때 적음), 남은 정적 → sast/146 dialog-end (물음 3) + 결과서 `[공백]` ① ~ ⑥.
 
 ## 요약
 
@@ -449,7 +449,7 @@ flow-writer 는 `../PE_emulator/ext/syscall/syscall_layer_cpp/src/gui/nt_user_ge
 
 ## flow-writer 대조
 
-결과서 오프셋을 `.asm` 과 맞춰 봤다. **어긋난 곳 일곱 (1 ~ 7)** (고친 값을 이 문서에 씀) + 보탬 넷 (8 ~ 11):
+결과서 오프셋을 `.asm` 과 맞춰 봤다. **어긋난 곳 일곱 (1 ~ 7)** (고친 값을 이 문서에 씀) + 보탬 넷 (8 ~ 11) + 뒤에 보탠 어긋남 하나 (12 — run147 때, explainer 가 찾음):
 
 1. **`ClassNameToVersion +0x6f RtlAllocateHeap`** (결과서 2절) → `+0x6f` 는 `MOV R8D,EDI` (크기 `0x200`). **call 은 `+0x74` (ret `+0x7b`)**.
 2. **`GetStockObject(0x10)` "조각 `+0x1a6/+0x1ab`"** (결과서 1절 표 차례 10) → 조각 `FUN_18001fbc1` 의 **`+0x175 MOV ECX,0x10` · `+0x17a` call (ret `+0x181`) = `InternalCreateDialog +0x11ab`**. 조각 `+0x1a3` 은 `DeleteObject` 다 (`SelectObject` 실패 갈래). 결과서 8절 "조각 `+0x175`" 와는 맞음.
@@ -462,6 +462,7 @@ flow-writer 는 `../PE_emulator/ext/syscall/syscall_layer_cpp/src/gui/nt_user_ge
 9. **보탬 — `AllocLookasideEntry`**: `RtlAllocateHeap` call 은 `+0x72` (ret `+0x79`, 결과서 "`+0x20 ~ +0x56`" 범위 밖). 자유 목록 길 (`+0x20 ~ +0x2c`) 과 힙 길 (`+0x84 JNZ → +0x48`) 둘 다 `+0x51 memset(…, 0, [목록+0x28])` 를 지난다 — "0 으로 시작" 은 두 길 모두 맞음.
 10. **보탬 — `SendMessageWorker` 클래스 `+4`**: 클래스 fnid 가 `0x29a` · `0x2a1 ~ 0x2aa` 가 아니면 (`+0x3db CMP AX,9` · `+0x3e1 CMP R9W,0x29a` · `+0x3e5 JNZ → +0x40f`) `psi` 표를 안 보고 곧장 길 B — stub 은 클래스 블록 `+4` 를 0 으로 둬도 된다 (최소 목록 4 에 반영). 사본 `+0x80` 이 0 이면 `+0x2ad JMP → +0x3b0` 뒤 `+0x3c5` 에서 `[0+4]` (결과서와 같음).
 11. **이름**: Ghidra `Ordinal_2635` 는 PDB 이름 `IsWindowGdiScaledX` (rva `0x20910`, `pdb_aliases.py --where`) — 별칭 무리 아님. 문서는 PDB 이름을 씀. `RtlQueryAtomInAtomTable +0x2bd` 의 바이트 복사 대상은 같은 주소 이름 4개 (`.asm` `ALIASES(3)`: `RtlCopyMemory` · `RtlMoveMemory` · `memcpy` · `memmove`) — 하는 일로 적음.
+12. **길 A 메시지 비트표 칸** (결과서 6-1 의 6 "길 A": "`gSharedInfo+0x28+0x10k` 의 비트표 포인터") → **결과서 6-1 식 틀림, 이 문서 4절 · 6절 표가 맞다.** `SendMessageWorker +0x731 ADD RAX,RAX` (k 를 둘로) · `+0x734 LEA RCX,[gSharedInfo+0x28]` · **`+0x73b MOV R10,[RCX+RAX*8+0x8]`** (= `gSharedInfo+0x30+0x10k`, 비트표 포인터) → `+0x740 TEST R10 · +0x743 JZ` · **`+0x749 CMP EDI,[RCX+RAX*8]`** (= `gSharedInfo+0x28+0x10k`, 최대 메시지 번호 dword) · `+0x74c JA` · `+0x74e ~ +0x761` 비트 검사. 결과서 4-3 표 (`+0x28+0x10×…` 최대 번호 · `+0x30+0x10×…` 비트표) 와 이 문서는 같다 — 6-1 한 줄만 `+0x28` 로 적었다. PE_emulator 쪽 결론 (0 으로 두면 길 A 가 "모든 메시지를 일꾼으로") 은 그대로.
 - 그 밖 결과서 오프셋 · 점프 목적지 (`+0x140 → +0xd37` · `+0x219 → +0x10cd` · `+0x345 → +0xc90` · `+0x688 → +0x12c0` · `+0x694 → +0x12d4` · `+0x83e / +0x980 → +0xbf4` · `+0xa77 → +0xb9b` · `+0xb3d → +0x1358` · `+0xbf8 → +0x9c7` · `+0xc0d → +0xd4e` · `+0xd48 → +0x146` · `+0xd50 → +0xbb9` · `+0x10cf → +0xd4e` 등) 과 syscall 번호 20개는 `.asm` · `_syscalls.tsv` 와 **일치**.
 
 ## 앞 run 고쳐 읽기
@@ -477,7 +478,7 @@ flow-writer 는 `../PE_emulator/ext/syscall/syscall_layer_cpp/src/gui/nt_user_ge
 
 ## 아직 확인 필요
 
-동적 (결과서 "동적으로 확인할 것" 1 ~ 10 — 대기열 번호는 오케스트레이터가 붙임, **Q273 VM GUI 세션에 얹을 꼴**. test.exe 가 아니라 `DialogBoxParamW` 를 부르는 GUI 프로세스, 그 프로세스 조건, 유저 멈춤점):
+동적 (결과서 "동적으로 확인할 것" 1 ~ 10 — ~~대기열 번호는 오케스트레이터가 붙임, Q273 VM GUI 세션에 얹을 꼴~~ → 대기열 **Q273** (1 ~ 10 을 출처로 보탬, run147 때 적음). test.exe 가 아니라 `DialogBoxParamW` 를 부르는 GUI 프로세스, 그 프로세스 조건, 유저 멈춤점):
 
 1. `user32!ClassNameToVersion+0x22d` — `ax` (= 6?) · `du poi(@rbp-0x59) L7` (= `#32770`?) · `+0x235` 앞에서 `UNICODE_STRING.Length` 가 아직 0 인지.
 2. `user32!InternalCreateDialog+0x63f` 직전 — `rdx` (= `0x8002`?) · `r8` 의 `LARGE_STRING` · 스택 17 인자 (스타일 · 부모 · `hInstance` · 끝 인자 `| 0x40000000`).
