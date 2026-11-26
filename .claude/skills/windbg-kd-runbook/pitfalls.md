@@ -49,13 +49,14 @@ runbook을 만들 때 이번 계획에 해당하는 것만 골라 넣는다. 번
 | P43 | 같은 부팅에서 두 번째 실행에 이미지 섹션 함수 멈춤 (`MiCreateNewSection`·`MiCreateImageFileMap`·`MiBuildImageControlArea`) | 안 섬 — 섹션은 파일마다 한 번 만들고 공유 `[정적]` | 재부팅 직후 첫 실행, 또는 exe 를 다른 이름으로 복사 | run31 (정적, 관찰 전) |
 | P44 | 부모 cmd 스레드가 도는 함수 (`PspCopyAndFixupParameters`·`PspPrepareSystemDllInitBlock`) 에서 새 PEB·`LdrSystemDllInitBlock` 을 읽음 | 엉뚱한 프로세스 주소 공간 `[추측]` | `.process /r /p <새 EPROCESS>` 뒤에 읽는다 | run32 (정적, 관찰 전) |
 | P45 | csrss 안 `basesrv!`/`csrsrv!` 에 멈춤점 | 보호 프로세스라 안 섬 `[추측]` | csrss 문맥 (`.process /i` 등) 먼저 | run34 (정적, 관찰 전) |
-| P46 | Ghidra 조각 `FUN_…` 이름·주소로 멈춤 | `.pdata` 상 본래 함수라 WinDbg 에선 다른 이름 (`NtContinueEx` 뒤쪽 `FUN_1406ae17a` → `nt!NtContinueEx+0x426`) `[추측]` | bp 는 rva (`nt+0x6ae216`) 로 | sast/24·run29 (정적) |
+| P46 | Ghidra 조각 `FUN_…` 이름·주소로 멈춤 | `.pdata` 상 본래 함수라 WinDbg 에선 다른 이름 (`NtContinueEx` 뒤쪽 `FUN_1406ae17a` → `nt!NtContinueEx+0x426`) `[추측]` | bp 는 rva (`nt+0x6ae216`) 로 | sast/24·run29·run146 (정적) |
 | P47 | CFG 중개 (`_guard_dispatch_icall`) 를 콜스택에서 찾음 | JMP 뿐이라 `k` 에 안 보임 | 콜백 바로 위 프레임 = `ImageTlsCallbackCaller+0x1b`, 진입점 바로 위 = `LdrpCallInitRoutineInternal+0x22` `[정적]` | sast/23·run28 (정적, 관찰 전) |
 | P48 | `ln` 결과를 요약해서 적음 | 나중에 "근처" 인지 정확한지 다시 못 따짐 (run8) | `ln` 은 출력 그대로 (`Exact matches:` 줄 포함) 남기고 `? @rcx - <모듈>` 로 rva 도 찍는다 | run25 |
 | P49 | 디버거 VM 심볼 경로에 sample PDB 없음 | `test+0x1c0f` 처럼 rva 로만 보임 `[추측]` | 심볼 경로에 `sample/bin` (test.pdb·dll pdb) 를 더한다 | run30 |
 | P50 | `LdrpInitializeNtdllDataTableEntry +0xf7` (ret) 에서 새 항목을 RAX 로 읽음 | RAX 가 아님 | 새 항목은 RBX. `+0x154` 전엔 `LdrpNtDllDataTableEntry` = 0 이라 그 칸으로 못 찾음 | run35 (정적, 관찰 전) |
 | P51 | 일꾼 공장 객체를 `dt nt!_…` 로 읽음 | PDB 에 타입이 없어 안 풀림 | `dq`/`dd` 로 공장 `+0x178 ~ +0x1a0`, `poi(공장+0x10)` 덩어리를 직접 본다 | run125 (정적, 관찰 전) |
 | P52 | 일꾼 공장 길 (`ExpWorkerFactoryCheckCreate`·`ExpWorkerFactoryCreateThread`) 커널 멈춤점에 오래 서 있음 | 일꾼 만들기가 "바로" 에서 "미룸" (30/120 ms 타이머) 으로 바뀔 수 있음 `[추측]` | 조건부 멈춤점으로 필요한 값만 찍고 바로 `g` | run125 (정적, 관찰 전) |
+| P53 | 서비스 쪽 DLL (`RpcEpMap!`·`rpcss!`·`nsisvc!`) 멈춤점에 test.exe 프로세스 조건 | 안 섬 — 그 코드는 test.exe 가 아니라 svchost 안에서 돈다 (`RpcEptMapper`·`RpcSs` = `svchost.exe -k RPCSS -p`, `nsi` = `-k LocalService -p`) `[정적]` | `!process 0 0 svchost.exe` 로 그 서비스의 svchost 를 찾아 그 EPROCESS 로 조건을 건다 (`/p`) | run145·run149 (정적, 관찰 전) |
 
 ## 값 읽는 법 (자주 씀)
 
