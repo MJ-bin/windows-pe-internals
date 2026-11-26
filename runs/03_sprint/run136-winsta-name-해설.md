@@ -1,5 +1,7 @@
 # run136 winsta-name — 해설
 
+> **고쳐 읽기 (run149)**: 2.8 "아직 확인 아님 — `Connect` → epmapper 로 이어진다는 것은 `[추측]`" 과 "한 줄로 먼저" · 1절 그림의 "다음 벽 `Connect` (RPCSS)" 는 **`[정적]` 으로 닫혔다** — 같은 람다의 `+0x33c CreateFromBindingString` 이 바인딩 글 `ncalrpc:[epmapper,Security=Impersonation Dynamic False]` (combase rva `0x2cc510`) 로 끝점을 박아 **`ept_map` 없이** `\RPC Control\epmapper` 로 곧장 가고, bind 넷 (`ILocalObjectExporter` `e60c73e6-88f9-11cf-9af1-0020af6e72f4` v2.0 — PDB 이름 · `IMachineActivatorControl` · `IROT` · `ISCM`) 뒤 `+0x82e Connect` = ILocalObjectExporter **프로시저 0** (`NdrClientCall2`). 2.8 의 "핸들 단계 0 → 0 + 글 NULL → `Connect(NULL)`" 길의 **진짜 끝**: rpcss `_Connect +0x186` 이 winsta 글 NULL 이면 상태 `0x57` → `CheckStatus` → `CoInitializeSecurity` = `0x80070057`. 이 글의 combase 쪽 줄은 그대로 맞다. 본문은 그대로 두었다 → [run149 해설](run149-com-rpcss-해설.md) 2.3 · 2.5 · 2.7 · 2.10
+
 > 이 글은 [run136 문서](run136-winsta-name.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 

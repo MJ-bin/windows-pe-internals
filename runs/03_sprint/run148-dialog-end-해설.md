@@ -567,7 +567,7 @@ flow-writer 는 `../PE_emulator-BD/ext/syscall/syscall_layer_cpp/src/gui/` 파�
 
 | 앞 run | 그때 | 이번에 |
 |---|---|---|
-| **run142 (정정)** | 4절 "`WM_QUIT` 이면 `EndDialog` 없이 → 장부 `+0x20` 이 처음 값 **0** 이라 `MessageBoxW` 0" | **틀렸다** `[정적]` — 처음 값은 **1** (`InternalCreateDialog +0x6fa MOV qword [pdlg+0x20],1`, 기본 단추 컨트롤 ID 로 바뀔 수 있음). `DialogBox2` 는 `WM_QUIT` 에서도 `+0x3bd` 로 그 값을 돌려주고, `SoftModalMessageBox` 는 −1 만 0 으로 바꾼다 (`+0x5b8 ~ +0x5be`). → `DialogBox2` · `SoftModalMessageBox` 반환은 **0 이 아니다**. `MessageBoxWorker` · `MessageBoxTimeoutW` 가 그 뒤에 값을 바꾸는지는 `[공백]` |
+| **run142 (정정)** | 4절 "`WM_QUIT` 이면 `EndDialog` 없이 → 장부 `+0x20` 이 처음 값 **0** 이라 `MessageBoxW` 0" | **틀렸다** `[정적]` — 처음 값은 **1** (`InternalCreateDialog +0x6fa MOV qword [pdlg+0x20],1`, 기본 단추 컨트롤 ID 로 바뀔 수 있음). `DialogBox2` 는 `WM_QUIT` 에서도 `+0x3bd` 로 그 값을 돌려주고, `SoftModalMessageBox` 는 −1 만 0 으로 바꾼다 (`+0x5b6 ~ +0x5be`). → `DialogBox2` · `SoftModalMessageBox` 반환은 **0 이 아니다**. `MessageBoxWorker` · `MessageBoxTimeoutW` 가 그 뒤에 값을 바꾸는지는 `[공백]` |
 | run142 (닫힘) | 4절 모달 고리 · 최소 길 26 ~ 28 · PE_emulator 8 ("`WM_COMMAND(IDOK)` / `WM_QUIT` 중 무엇을") | 줄 근거로 닫힘. 둘 다 반환은 장부 `+0x20`, `WM_COMMAND(LOWORD(pdlg+0x20))` 한 번이 가장 짧음, `WM_QUIT` 은 앱 메인 고리까지 끝냄 (`NtUserPostQuitMessage` 로 다시 걸어 둠). **정책은 그대로 사용자 몫** |
 | **run146 (고쳐 읽기)** | PE_emulator 표 · 최소 목록 6 — `NtUserDestroyWindow` 는 만들기 길 (컨트롤 실패, `+0xc01`) 만 | **모달 끝 `DialogBox2 +0x3c4` 에서도 늘 불린다.** 반환 안 봄 · 기본 대답 0 이면 됨은 그대로 |
 | run146 (닫힘) | 최소 목록 7 "(sast/146 에서 보탬)" 자리 · "아직 확인 필요" 정적 1 ~ 4 | 이번 7 ~ 15 로 채움. `NtUserSetDialogPointer` 의 fnid `0x2a4` 는 **"필수"** 로 강화 |

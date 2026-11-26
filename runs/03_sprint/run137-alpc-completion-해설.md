@@ -2,6 +2,8 @@
 
 > **고쳐 읽기 (run145)**: 2.12 응답 스텁 아래 "탑 0개면: 끝점 핸들 0 · `num_towers` 0 · 배열 `4 · 0 · 0` · 상태 → **40 B** `[규칙]`" 의 **서버가 값을 정하는 칸은 `[정적]` 으로 닫혔다** — RpcEpMap `GetEntriesNoLock +0x4c3` (핸들 0, `max_towers ≥ 2` 일 때) · `+0x8e` (탑 수 0) · `+0x867` `0x16c9a0d6` (상태). 단 `max_towers ≤ 1` 이면 핸들 −1, 서비스 트리거 키가 있으면 답을 보류. 배열 머리는 그대로 `[규칙]`. 이 40 B 는 PE_emulator `epm.cpp` 지금 답과 바이트까지 같다. 128 B 표는 `LRPC-emu` 예이고, 진짜 nsi 이름 (23자) 이면 **140 B** (탑 octets 88, 패딩 0). 본문은 그대로 두었다 → [run145 해설](run145-epm-endpoint-해설.md) 2.6 · 2.7 · 2.8 · 2.13
 
+> **고쳐 읽기 (run149)**: 1절 "왜 이 질문이 지금 왔나" · 2.17 "그 밖" · 3절 "큰 그림에서 어떻게 이어지나" 의 "같은 비동기 틀을 RPCSS (`CoInitializeSecurity`) 도 쓴다 (원 요청 말) `[추측: RPCSS 쪽 연결 객체가 같은 썽크를 쓰는지는 안 읽음]`" → combase 의 RPCSS 길 (bind 넷 + `Connect`) 은 **동기** 다 `[정적]`: `CFastBH::BindWithTimeout +0xc RpcBindingBind(NULL, 핸들, 인터페이스)` (비동기 상태 NULL), `Connect +0x17b NdrClientCall2`. 이 길에선 비동기 완료 포트 틀을 안 쓴다 (연결 깃발 자체는 rpcrt4 안이라 안 읽음). 본문은 그대로 두었다 → [run149 해설](run149-com-rpcss-해설.md) 2.3 · 2.14
+
 > 이 글은 [run137 문서](run137-alpc-completion.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
