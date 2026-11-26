@@ -1,6 +1,6 @@
 # 분석 진행표
 
-- 마지막 갱신: 2026-11-26 (PE_emulator 요청 넷 — 365 둘 Q274a sast/142 · Q279 sast/143, 367 둘 Q257a sast/144 · Q278a sast/145 진행. 사용자 결정 "가장 먼저" · "이것도 부탁해")
+- 마지막 갱신: 2026-11-26 (PE_emulator 요청 넷 365·367 끝 — Q279 run145 · Q274a run146·run148 · Q278a run147 · Q257a run149, handoff `_workspace/handoff_pe-emulator_365-367.md`. 다음은 사용자 결정 — 새 요청 / VM 묶음 / Q264 짐 지도 / 하네스 제안)
 - 다음 항목: **[2026-11-26 사용자 결정 — 다른 것보다 가장 먼저]** Q274a (365 dialog-window 물음 1·2, sast/142) · Q279 (365 epm-endpoint 물음 1 만, sast/143) 를 나란히 → 이어서 sast/146 dialog-end (365 dialog-window 물음 3). 그 뒤로 367 둘: Q257a (com-rpcss, sast/144) · Q278a (gdi-display-dc, sast/145 — win32k 몫은 sast/142 뒤) — 모듈이 안 겹치는 것은 나란히. 정적만. 답은 run 문서 "PE_emulator 쪽" 절 + handoff 요약. (이전: 2026-11-25 D154 넷 Q267~Q270 — 끝)
 - 근거: `runs/01_sprint/flow.md` 그림 1·2, 2장, 4장·4.1 표
 
@@ -791,3 +791,4 @@
 - 2026-11-26: Q278a 끝 (run147, sast/145). `CreateICA("DISPLAY")` 화면 길은 `NtGdiOpenDCW(0,0,0,2,1,0,0,0,&p)` ≠ 0 하나면 지나감 (9째 출력 안 읽음, 프린터 길 건너뜀) · HDC 종류 비트 `0x10000` · `DC_ATTR` 은 `HmgAllocateDcAttr` 0x170 B · `GetDeviceCaps(0x58/0x5a)` 는 늘 syscall. PE_emulator `0x21000` 은 종류 비트 2 라 틀림. 동적 1~7 → Q277, win32k 몫·다음 후보 → Q278b. run146 대조 12 (결과서 6-1 비트표 식 틀림, run 문서가 맞음) 보탬.
 - 2026-11-26: Q274a 끝 (run148, sast/146 — 원문 365 dialog-window 물음 3). 고리는 `NtUserPeekMessage` 반환만 보고, 끝 syscall (`SetWindowPos`·`PostMessage`·`DestroyWindow`) 반환은 안 봄. 기본 대답 0 = 끝없는 바쁜 고리 (금지 꼴). 가장 짧은 "기본 단추 누름" = `NtUserPeekMessage` 첫 출력에 `WM_COMMAND(LOWORD(pdlg+0x20))`. run142 4절 "WM_QUIT → 0" 은 틀림 (처음 값 1) — 정정 줄. 동적 1~12 → Q273, 정적 → Q282.
 - 2026-11-26: Q257a 끝 (run149, sast/144 — 원문 367 com-rpcss). combase 는 `ncalrpc:[epmapper,…]` 로 `ept_map` 없이 곧장 연결, `GetConnection` 한 번에 bind 넷 (ILocalObjectExporter v2.0 · IMachineActivatorControl · IROT · ISCM, NDR 2.0). 첫 프로시저 = ILocalObjectExporter 0 `Connect` (입력 6 · 출력 25). 지금 bind fault `0x6b5` 는 안전한 정직한 실패. 금지 꼴 `0x6bb` (100 ms 마다 끝없이 다시 걺). 새 Q283 (동적) · Q284 (정적 다음 벽). 결과서 "스크립트 문제" 둘 (`ExportFunctions` rva 고르기 없음 · `CallGraphMap` edges 에 rva 열 없음) 은 하네스 제안 묶음에 보탬 (사용자 검토 전).
+- 2026-11-26: 365·367 요청 넷 모두 끝 (run145 ~ run149). PE_emulator 넘김 길잡이 `_workspace/handoff_pe-emulator_365-367.md`. 하네스 제안 묶음에 오늘 보탠 것: ExportFunctions 같은 이름 함수 파일 덮음 · `rva:` 선택자 (기존 ② 와 합침) · CallGraphMap edges rva 열 · RpcEpMap 멈춤점 svchost 프로세스 조건 (windbg pitfall) · `pdb_aliases.py` 모듈 이름 대소문자 (기존 ④ 와 같음) — 모두 사용자 검토 전.
