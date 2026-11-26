@@ -1,5 +1,7 @@
 # run131 user32-regclass — 해설
 
+> **고쳐 읽기 (run146)**: 2.10 · 4절 동적 3 의 `NtUserGetAtomName` "반환 = 글자 수, 끝 NUL 은 `[추측]`" — **정수 원자 (`0xc000` 아래) 는 `[정적]`** 으로 닫혔다. ntoskrnl `RtlQueryAtomInAtomTable` 이 원자 표를 안 찾고 `L"#%u"` 로 지어 (`+0x75` · `+0x298`) 끝 NUL 을 쓰되 세지 않고 (`+0x29f` · `+0x2c5`), win32kbase `UserGetAtomName +0x60` 이 바이트 ÷ 2 를 돌려준다. 커널은 `Length` 를 안 쓴다 (user32 `+0x232 / +0x235` 가 씀). `0x8002` → 6 · `#32770`. 표 원자 (`OleMainThreadWndClass` 같은 `0xc000` 이상) 의 진짜 글은 그대로 동적 3 (Q242). 본문은 그대로 두었다 → [run146 해설](run146-dialog-window-해설.md) 2.3
+
 > 이 글은 [run131 문서](run131-user32-regclass.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 

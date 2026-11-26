@@ -2,6 +2,8 @@
 
 > **고쳐 읽기 (run144)**: 2.8 의 "GDI 답 — DC · 글꼴 · 글자 폭이 0 이면 조용히 0 (Q270)" — `GdiGetCharDimensions` · `GetTextExtentPointW` · `GetTextMetricsW` · `SelectObject` · `GetDeviceCaps` 는 syscall 앞에서 공유 핸들 표의 **DC 칸** (`+0xe == 1` · `+0xc == H>>16` · `+0x8 & ~1 ==` 이 프로세스 PID 정확히 · `+0x10` 풀면 0 아닌 `DC_ATTR` 포인터) 을 본다 `[정적]`. 칸이 없으면 `GdiGetCharDimensions` 가 아무것도 안 쓰고 돌아가 `SoftModalMessageBox +0x153` 이 폭 0 으로 0. HFONT 는 종류 `0xa0000` + 글꼴 칸이 있어야 한다. DC 칸 만들기 · `DC_ATTR` 전체 · 글꼴 사본은 Q278. 본문은 그대로 두었다 → [run144 해설](run144-gdi-startup-해설.md) 2.13
 
+> **고쳐 읽기 (run146)**: 4절 "정적으로 남은 것" 의 N1 · N2 와 최소 길 표 19 ~ 27 의 `[공백]` (어느 호출이 syscall 없이 풀리나 · 표시 조건) 이 `[정적]` 으로 닫혔다 — `WM_SETFONT` · `WM_INITDIALOG` 는 핸들 항목 `+0x8` == TEB `+0x78` · 사본 `+0x12` 비트 2 = 0 · `[[TEB+0x820]+0x10] | [TEB+0x838]` 의 `0x2020` = 0 · 사본 `+0x80` ≠ 0 이면 `SendMessageWorker` 가 syscall 없이 창 프로시저를 부르고, 표시 · 초점 · 앞으로 내기 반환은 안 본다. 4절 "대화상자 자료가 어느 힙 `[추측]`" → **`pUserHeap`** (`pdlg` 0x58 B 는 `AllocLookasideEntry`, 그걸 담는 사본 `+0x128` 여분 블록은 커널 되부름 `0x7b`). 2.11 목록 7 "`ValidateHwnd` 를 통과하는 hwnd" 는 run146 "stub 이 채워야 하는 최소 목록" 으로 채움. 메시지 상자 템플릿의 컨트롤 수는 그대로 `[공백]`. 본문은 그대로 두었다 → [run146 해설](run146-dialog-window-해설.md) 2.5 · 2.6 · 2.8 · 2.9 · 2.12
+
 > 이 글은 [run142 문서](run142-user32-connect.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
