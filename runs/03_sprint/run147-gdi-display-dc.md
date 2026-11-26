@@ -327,7 +327,7 @@ gdiplus!InternalGdiplusStartup (0xe1380)                                        
 
 ## flow-writer 대조
 
-결과서 오프셋을 `.asm` 과 맞춰 봤다. **어긋난 곳 셋 (1 ~ 3)** (고친 값을 이 문서에 씀) + 보탬 넷 (4 ~ 7):
+결과서 오프셋을 `.asm` 과 맞춰 봤다. **어긋난 곳 셋 (1 ~ 3)** (고친 값을 이 문서에 씀) + 보탬 넷 (4 ~ 7) + 뒤에 보탠 어긋남 하나 (8 — run148 때, explainer 가 찾음):
 
 1. **`ExtractPixelFormatFromHDC +0x61 JZ → +0x18f`** (결과서 (4) 표) → 목적지는 **`+0x12f MOV EAX,EBX`** (`0x180017e8f`). `EBX` 는 `+0x3f XOR EBX,EBX` 로 0 이라 "포맷 0 을 조용히 돌려줌" 은 맞다. `+0x18f` 는 다른 조각 (`MOV ECX,EAX`).
 2. **`GreCreateDisplayDC +0x2f8 → HmgFreeDcAttr`** (결과서 (1c)) → `+0x2f8` 은 `MOV RCX,R14` (인자), **call 은 `+0x2fb` (ret `+0x300`)**. 같은 자리.
@@ -336,6 +336,7 @@ gdiplus!InternalGdiplusStartup (0xe1380)                                        
 5. **보탬 — `hdcCreateDCW` 성공 끝**: `+0xf1 CMP [RSP+0x78],0 · +0xf7 JNZ` · `+0xfd TEST RBX · +0x100 JNZ` 는 화면 길에서 둘 다 0 (`+0x4a AND [RSP+0x78],RSI(0)` · `+0x56 XOR EBX`) 이라 `+0x106 MOV RAX,RSI` 로 간다. NULL 길 `+0x13a ~ +0x16b` 도 `+0x140 [RSP+0x58]` (0, `+0x51`) · `+0x160 TEST R14` (0, `+0x47`) 를 지나 `+0x169` — 결과서 (1c) 와 같은 뜻.
 6. **보탬 — `UserGetDesktopDC` 의 종류 0 길**: 종류 `2` (IC) 는 `+0x59 JNZ → +0x110 · +0x117 JZ → +0x5f` → `+0x68 TEST ESI` (≠ 0) → **`+0x7b GreCreateDisplayDC(R15 = [[W32GetUserSessionState()+0xe338]+0x30], 2, …)`** — 곧 주 화면 장치로 만들어 비트 1 이 켜진다 `[정적: 줄 이음]`. 종류 `0` (DC) 는 UI 한도 검사 뒤 `+0x6a JZ → +0xaa` 로 가서, 시스템 스레드가 아니고 (`+0xad PsIsSystemThread`) 세션 쪽 프로세스 (`+0xcc [W32GetUserGdiSessionState()+0x28]`) 와 다르면 (`+0xdc CMP · +0xdf JZ`) **`+0x106 _GetDCEx([[[pti+0x1f0]+0x8]+0x18], 0, 0x80800003)`** — DC 캐시 길로 받는다. 그러니 일반 프로세스의 `CreateDCA("DISPLAY")` 는 `_GetDCEx` 를 탄다 `[정적: 줄 · 칸 뜻은 추측]`. `+0x51 JZ` (기능 깃발 꺼짐) 갈래는 안 읽음. → Q278b 5 에 보탬.
 7. **보탬 — 이름**: `RestoreAttributes` 의 PDB 꾸민 이름 `?RestoreAttributes@DC@@QEAAXPEAU_DC_ATTR@@@Z` (`.asm` ALIASES) — 형 이름 `_DC_ATTR` 은 PDB 에 있다 (칸 정의는 안 봄). `SelectObjectImpl +0x26a` 는 `[+0xf0] & 3`, `+0x55f` · `+0x610` 은 `& 0x11` (결과서 칸 표의 "`& 0x11`" 은 뒤 둘).
+8. **`GetDeviceCaps +0x59 AND 0x7f0000`** (결과서 "먼저 읽는 한 줄 답" 4) → `gdi32!GetDeviceCaps.asm` 의 **`+0x59` 는 `MOV EAX,R9D`**, **`AND EAX,0x7f0000` 은 `+0x5c`** (이어서 `+0x61 CMP EAX,0x10000` · `+0x66 JNZ → +0x25d`). 이 문서 본문 · 맨 위 고쳐 읽기 줄 (run144) 은 이미 `+0x5c` 로 썼다 — 결과서 한 줄만 어긋남. 뜻 (종류 비트가 `0x10000` 이 아니면 표를 보기 전에 갈라짐) 은 같음.
 - 그 밖 결과서 오프셋 (요약 1 ~ 14 · 표 (1a)(1b)(1c)(2a)(2b)(3)(4) 의 `+0x…` 거의 전부 — 위 "다시 본 줄") 과 syscall 번호 10개 · PDB GUID 다섯은 **일치**.
 
 ## 앞 run 고쳐 읽기
