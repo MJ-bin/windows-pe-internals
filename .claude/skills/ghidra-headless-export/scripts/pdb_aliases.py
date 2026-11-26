@@ -19,6 +19,8 @@
     ms/decomp/<모듈>/_index.tsv 의 그 주소 이름을 보여 준다. 정확히 같은 이름이 없으면 대소문자 무시 부분 일치를 20개까지.
 
 - 입력: ms/sym/<바이너리이름>.pdb (fetch_pdb.py 가 받은 것)
+- 바이너리 이름 자리에 <이름>=<경로> (예: ntdll32.dll=SysWOW64/ntdll.dll) 를 줘도 된다: 이 도구는 ms/sym/<이름>.pdb 만 쓰므로
+  =<경로> 는 버린다 (run_ghidra.sh · fetch_pdb.py 와 같은 입력을 그대로 붙여 쓰라고). 이름 자리 (--lookup/--where 의 둘째 인자) 는 그대로.
 - 필요: llvm-pdbutil (서버엔 llvm-pdbutil-14). PATH 에서 llvm-pdbutil, llvm-pdbutil-NN 순으로 찾는다.
 - 출력 표 (탭 구분, RVA 순):
     # rva	count	names
@@ -33,6 +35,11 @@ import shutil
 import subprocess
 import sys
 from collections import defaultdict
+
+
+def bin_name(arg):
+    """<이름>=<경로> 꼴이면 이름만 (PDB 는 ms/sym/<이름>.pdb)."""
+    return arg.split("=", 1)[0]
 
 
 def repo_root():
@@ -165,7 +172,7 @@ def main(argv):
     outdir = outdir or symdir
 
     if wherex:
-        binname, key = args
+        binname, key = bin_name(args[0]), args[1]
         pdb = os.path.join(symdir, binname + ".pdb")
         if not os.path.isfile(pdb):
             print("[!] PDB 없음: %s (먼저 fetch_pdb.py %s)" % (pdb, binname))
@@ -173,7 +180,7 @@ def main(argv):
         return where(tool, pdb, binname, key, root)
 
     if lookup:
-        binname, key = args
+        binname, key = bin_name(args[0]), args[1]
         table = os.path.join(outdir, binname + ".aliases.tsv")
         if not os.path.isfile(table):
             print("[!] 표가 없음: %s  (먼저 pdb_aliases.py %s)" % (table, binname))
@@ -194,7 +201,7 @@ def main(argv):
 
     rc = 0
     os.makedirs(outdir, exist_ok=True)
-    for binname in args:
+    for binname in map(bin_name, args):
         pdb = os.path.join(symdir, binname + ".pdb")
         if not os.path.isfile(pdb):
             print("[!] %s: PDB 없음 %s (먼저 fetch_pdb.py %s)" % (binname, pdb, binname))

@@ -18,6 +18,8 @@ MS 바이너리를 **PDB와 함께** Ghidra로 분석해서, 요청서가 묻는
 | PDB | `ms/sym/<바이너리이름>.pdb` (예: `ms/sym/ntoskrnl.exe.pdb`) |
 | Ghidra 프로젝트 | `ms/ghidra/<모듈>` (모듈 = 소문자 이름, 예 `ntoskrnl`, `ntdll`) |
 | 출력 | `ms/decomp/<모듈>/<함수>.c`, `ms/disassemble/<모듈>/<함수>.asm`, `ms/disassemble/<모듈>/_calls.tsv`, `ms/decomp/<모듈>/_index.tsv` |
+| 파일 이름 | 보통 `<함수>.c`·`.asm`. **프로그램 안에 같은 이름(글자 바꾼 뒤)이 둘 이상이거나 이름에 `(` `<` 가 있으면 늘 `<함수>__<rva>`** (람다 `operator()`, 겹친 `Connect` 등). 200자 넘는 이름은 앞 120자 + `__` + 해시 8자리. 첫 줄 `rva=` 로 어느 함수인지 확인한다 |
+| 이름이 같은 파일 둘 (System32 / SysWOW64) | 바이너리 자리에 `<이름>=<경로>` (예: `ntdll32.dll=SysWOW64/ntdll.dll`). `<이름>` 이 모듈 이름·PDB 이름 (`ms/sym/ntdll32.dll.pdb`, `ms/ghidra/ntdll32`). `=` 없으면 예전과 같다 |
 | 기준 빌드 | 26100.9457. 커널 pdb GUID+Age = `C29EBFB06B78B3C020DCA66D99713F9E1` |
 
 스크립트는 전부 `.claude/skills/ghidra-headless-export/scripts/` 에 있다.
@@ -29,6 +31,7 @@ MS 바이너리를 **PDB와 함께** Ghidra로 분석해서, 요청서가 묻는
    ```bash
    python3 .claude/skills/ghidra-headless-export/scripts/fetch_pdb.py ntoskrnl.exe ntdll.dll
    ```
+   - 32비트 `SysWOW64` 처럼 이름이 같은 파일은 `fetch_pdb.py ntdll32.dll=SysWOW64/ntdll.dll` (이후 `analyze`·`export`·`map`·`refs` 도 같은 `<이름>=<경로>` 로, `pdb_aliases.py`·`pdb_struct.py` 는 `ntdll32.dll` 이름만).
    - 커널은 출력된 `guid` 가 위 기준 GUID와 같은지 확인한다. 다르면 **멈추고** 빌드가 다르다고 보고한다.
    - 이어서 **별칭 표**를 만든다 (몇 초):
      ```bash
@@ -56,12 +59,13 @@ MS 바이너리를 **PDB와 함께** Ghidra로 분석해서, 요청서가 묻는
    - **누가 읽고 쓰나**: 전역 변수·함수 주소를 누가 읽고 쓰는지(호출로 안 닿는 쓰기·포인터 표 포함)는 `run_ghidra.sh refs <바이너리> <이름|0xRVA> [바이트수]` → `ms/disassemble/<모듈>/_refs/` (형식은 reference.md "누가 읽고 쓰나").
    - **구조체 칸 표**: `python3 .claude/skills/ghidra-headless-export/scripts/pdb_struct.py <바이너리> <구조체> [...]` → 오프셋·이름·타입·비트 TSV (PDB `ms/sym/<바이너리>.pdb`, llvm-pdbutil-14). 이름 찾기는 `--list <바이너리> <정규식>`. 결과서에 임시 스크립트를 따로 짜지 않는다.
    - **전역 주석 주의**: `.asm` 의 전역 주석은 "가장 가까운 앞쪽 PDB 이름 + 칸" 이라, `이름+0x8` 같은 자리는 그 이름의 일부가 아니라 이름 없는 별개 변수일 수 있다 (sast/40: `RtlpDisableHeapLookaside+0x8` = 사용자 공간 최대 주소 캐시). 짐 지도 전역 칸 크기를 짐작할 때 `refs` 로 따로 본다.
-4. **이름 찾기·주변 보기**: 요청서 함수 이름이 정확하지 않으면 `_index.tsv` 를 grep 해서 실제 이름을 고른다. **`_index.tsv` 에 없으면** `python3 .claude/skills/ghidra-headless-export/scripts/pdb_aliases.py --where <바이너리> <이름>` 으로 PDB 이름을 찾는다 — Ghidra 가 같은 함수를 다른 이름(내보내기 이름 등)으로 잡았으면 그 이름이 나온다 (예: `KeWaitForSingleObject` → Ghidra `KeWaitForMutexObject`). 문서에는 PDB 이름을 쓰고 Ghidra 이름을 한 번 밝힌다. DLL 진입점은 Ghidra 가 PDB 이름 대신 `entry` 로 잡는다 (예: kernel32 `BaseDllInitialize` — `^BaseDllInitialize$` 는 0개) → `entry` 로 찾거나 `--where`. 대상 함수의 위치는 지도에서 본다: `_nodes.tsv` 의 깊이·caller 수·상태, `_edges.tsv` 에서 caller 열이 대상인 줄(= 직접 부르는 함수)과 callee 열이 대상인 줄(= 누가 부르나). 요청서 범위를 넓혀야 할 것 같으면(예: 일이 한두 단계 아래에서 일어남) 지도로 길을 먼저 찾고, 넓힌 이유를 결과서에 쓴다.
+4. **이름 찾기·주변 보기**: 요청서 함수 이름이 정확하지 않으면 `_index.tsv` 를 grep 해서 실제 이름을 고른다. **`_index.tsv` 에 없으면** `python3 .claude/skills/ghidra-headless-export/scripts/pdb_aliases.py --where <바이너리> <이름>` 으로 PDB 이름을 찾는다 — Ghidra 가 같은 함수를 다른 이름(내보내기 이름 등)으로 잡았으면 그 이름이 나온다 (예: `KeWaitForSingleObject` → Ghidra `KeWaitForMutexObject`). 문서에는 PDB 이름을 쓰고 Ghidra 이름을 한 번 밝힌다. DLL 진입점은 Ghidra 가 PDB 이름 대신 `entry` 로 잡는다 (예: kernel32 `BaseDllInitialize` — `^BaseDllInitialize$` 는 0개) → `entry` 로 찾거나 `--where`. 대상 함수의 위치는 지도에서 본다: `_nodes.tsv` 의 깊이·caller 수·상태, `_edges.tsv` 에서 caller 열이 대상인 줄(= 직접 부르는 함수)과 callee 열이 대상인 줄(= 누가 부르나). **이름이 겹치는 함수** (람다 `operator()` 등) 는 맨 뒤 `caller_rva`·`callee_rva` 열로 가린다 (이름만 보면 서로 다른 함수가 한 칸으로 읽힌다). 요청서 범위를 넓혀야 할 것 같으면(예: 일이 한두 단계 아래에서 일어남) 지도로 길을 먼저 찾고, 넓힌 이유를 결과서에 쓴다.
 5. **뽑기**:
    ```bash
    bash .claude/skills/ghidra-headless-export/scripts/run_ghidra.sh export ntdll.dll '^(LdrpLoadDllInternal|LdrpPrepareModuleForExecution)$' 1
    ```
    - 정규식은 함수 이름 기준. depth=1 이면 그 함수가 부르는 함수까지 같이 뽑는다. 넓게 잡지 말고 요청서 범위만.
+   - **이름이 겹치는 함수 (람다 `operator()`, 여러 곳의 `Connect` 등) 하나만** 뽑으려면 정규식 자리에 `rva:0x18b9c0,0x12f318` (함수 시작 rva, 16진). rva 는 `_index.tsv` · `_nodes.tsv` · `_edges.tsv` 의 rva 열에서 찾는다.
 6. **호출 지점 읽기**: `_calls.tsv` 의 `ret_off` 는 WinDbg 콜스택의 `caller+0x...` 와 같은 값이다. 동적 로그의 오프셋과 맞춰 본다.
 7. **결과서 쓰기**: `_workspace/sast/NN_키워드_result.md` (형식은 [reference.md](reference.md)).
 8. **자체 검증**: 아래 "버전 확인용 알려진 사실"과 최소 1개를 대조한다.

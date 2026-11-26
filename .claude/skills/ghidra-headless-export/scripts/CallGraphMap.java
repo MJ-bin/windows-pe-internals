@@ -5,7 +5,9 @@
 // 인자: <출력 폴더> <뿌리 함수 이름> <최대 깊이> [공용 도구 기준 caller 수=20]
 // 출력 (<출력 폴더>/<뿌리>_ 로 시작):
 //   _edges.tsv   : 펼친 지도(공용 도구에서 멈춤)의 호출 줄
-//                  depth  caller  call_off  ret_off  kind  callee  note
+//                  depth  caller  call_off  ret_off  kind  callee  note  caller_rva  callee_rva
+//                  (caller_rva · callee_rva 는 맨 뒤에 붙인 열: 함수 시작 rva 0x.. . 이름이 겹치는 함수 (람다 operator() 등) 를 가려 읽는 열쇠.
+//                   callee_rva = 끊긴 끝 (간접·외부 등 함수 객체가 없는 줄) 이면 "-". 앞 7열의 차례·뜻은 그대로.)
 //   _nodes.tsv   : 펼친 지도의 함수(또는 끊긴 끝)마다 한 줄
 //                  name  rva  size  depth  callers_total  status  reason
 //   _summary.txt : 깊이별 개수 — (A) 거르지 않은 전체, (B) 공용 도구에서 멈춘 지도 (기준 10/20/50)
@@ -415,7 +417,7 @@ public class CallGraphMap extends GhidraScript {
 		List<Function> frontier = new ArrayList<>();
 		frontier.add(root);
 		try (PrintWriter ew = new PrintWriter(new File(outDir, rootName + "_edges.tsv"), "UTF-8")) {
-			ew.println("# depth\tcaller\tcall_off\tret_off\tkind\tcallee\tnote");
+			ew.println("# depth\tcaller\tcall_off\tret_off\tkind\tcallee\tnote\tcaller_rva\tcallee_rva");
 			for (int d = 0; d < maxDepth && !frontier.isEmpty(); d++) {
 				List<Function> next = new ArrayList<>();
 				for (Function f : frontier) {
@@ -446,8 +448,9 @@ public class CallGraphMap extends GhidraScript {
 							leaves.putIfAbsent(e.kind + ":" + e.label, new String[] { String.valueOf(d + 1), e.kind, e.note });
 							leafSites.merge(e.kind, 1, Integer::sum);
 						}
-						ew.printf("%d\t%s\t%s\t%s\t%s\t%s\t%s%n", d + 1, f.getName(), e.callOff, e.retOff, e.kind,
-							e.label, note);
+						ew.printf("%d\t%s\t%s\t%s\t%s\t%s\t%s\t0x%x\t%s%n", d + 1, f.getName(), e.callOff, e.retOff, e.kind,
+							e.label, note, f.getEntryPoint().getOffset() - base,
+							e.target != null ? String.format("0x%x", e.target.getEntryPoint().getOffset() - base) : "-");
 					}
 				}
 				frontier = next;

@@ -4,8 +4,11 @@
 사용법 (레포 루트에서):
     python3 .claude/skills/ghidra-headless-export/scripts/fetch_pdb.py ntoskrnl.exe ntdll.dll
     python3 .../fetch_pdb.py --info ntdll.dll          # 받지 않고 GUID만 출력
+    python3 .../fetch_pdb.py ntdll32.dll=SysWOW64/ntdll.dll   # 이름이 같은 파일이 둘일 때: <이름>=<경로>
 
 - 바이너리 위치: ms/bin/<이름> 이 있으면 그것, 없으면 ms/bin 아래에서 */System32/<이름> 을 찾는다.
+  <이름>=<경로> 꼴이면 <경로> 의 파일 (절대경로, ms/bin 기준 상대경로, 또는 ms/bin 아래 경로 끝부분 — 짧은 경로 먼저).
+  이때 <이름> 이 저장 이름이 된다 (run_ghidra.sh 의 <이름>=<경로> 와 같은 뜻). '=' 가 없으면 예전과 같다.
 - 저장 위치: ms/sym/<바이너리이름>.pdb  (예: ms/sym/ntoskrnl.exe.pdb)
            ms/sym/<바이너리이름>.pdb.info.txt  (원래 pdb 이름, GUID+Age, 받은 URL)
 - 외부 패키지 없이 표준 라이브러리만 쓴다.
@@ -27,7 +30,24 @@ def repo_root():
         return os.getcwd()
 
 
-def find_binary(root, name):
+def find_binary(root, name, loc=None):
+    if loc:
+        # <이름>=<경로>: 절대경로 -> ms/bin 기준 상대경로 -> ms/bin 아래 경로 끝부분 (대소문자 무시, 짧은 경로 먼저)
+        if os.path.isfile(loc):
+            return loc
+        rel = os.path.join(root, "ms", "bin", loc)
+        if os.path.isfile(rel):
+            return rel
+        tail = (os.sep + loc.replace("\\", os.sep).replace("/", os.sep)).lower()
+        hits = []
+        for dirpath, _dirs, files in os.walk(os.path.join(root, "ms", "bin")):
+            for f in files:
+                p = os.path.join(dirpath, f)
+                if p.lower().endswith(tail):
+                    hits.append(p)
+        if len(hits) > 1:        # 여럿이면 고르지 않는다 (System32 / SysWOW64 를 짐작으로 고르면 안 됨)
+            raise ValueError("경로 끝부분 '%s' 이 파일 %d개에 맞음 — 더 길게: %s" % (loc, len(hits), ", ".join(sorted(hits)[:5])))
+        return hits[0] if hits else None
     direct = os.path.join(root, "ms", "bin", name)
     if os.path.isfile(direct):
         return direct
@@ -94,10 +114,20 @@ def main(argv):
     symdir = os.path.join(root, "ms", "sym")
     os.makedirs(symdir, exist_ok=True)
     rc = 0
-    for name in names:
-        path = find_binary(root, name)
+    for arg in names:
+        name, _, loc = arg.partition("=")      # <이름>=<경로> (경로 없으면 예전과 같음)
+        if not name or ("=" in arg and not loc):
+            print("[!] %s: <이름>=<경로> 꼴이 이상함" % arg)
+            rc = 2
+            continue
+        try:
+            path = find_binary(root, name, loc or None)
+        except ValueError as ex:
+            print("[!] %s: %s" % (arg, ex))
+            rc = 2
+            continue
         if not path:
-            print("[!] %s: ms/bin 아래에서 못 찾음" % name)
+            print("[!] %s: ms/bin 아래에서 못 찾음" % (loc or name))
             rc = 2
             continue
         try:

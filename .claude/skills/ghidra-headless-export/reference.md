@@ -15,7 +15,8 @@ LdrpInitializeProcess	18008c404	0x8c404	7750
 // callees: LdrpInitializeKernel32Functions LdrpInitializeGraphRecurse ...
 <Ghidra 디컴파일 C>
 ```
-같은 이름 함수가 둘이면 두 번째부터 `<함수>__<rva>.c`.
+파일 이름: 프로그램 안에 같은 이름(`[A-Za-z0-9_.@$-]` 밖의 글자를 `_` 로 바꾼 뒤)이 둘 이상이거나 이름에 `(` `<` 가 있으면 **늘** `<함수>__<rva>.c` (rva 는 16진, `0x` 없이). 그 밖의 보통 함수는 `<함수>.c`. 바꾼 이름이 200자를 넘으면 앞 120자 + `__` + 원래 이름 해시 8자리(16진) (뒤에 `__<rva>` 가 더 붙을 수 있음).
+예전엔 한 번의 실행 안에서 둘째부터 `__<rva>` 였다 — 그때 만든 겹친 이름의 평이름 파일 (예: `Connect.asm`) 은 어느 함수인지 첫 줄 `rva=` 로 확인한다.
 
 ### `ms/disassemble/<모듈>/<함수>.asm`
 ```
@@ -96,9 +97,10 @@ LdrpCallInitRoutine	+0x41	+0x47	indirect:__guard_dispatch_icall_fptr
 
 ### `_edges.tsv`
 ```
-# depth	caller	call_off	ret_off	kind	callee	note
-1	NtCreateUserProcess	+0xc31	+0xc36	call	PspAllocateProcess
+# depth	caller	call_off	ret_off	kind	callee	note	caller_rva	callee_rva
+1	NtCreateUserProcess	+0xc31	+0xc36	call	PspAllocateProcess		0xa01340	0xa02568
 ```
+- `caller_rva`·`callee_rva` (맨 뒤 두 열) = 호출하는 함수·불리는 함수의 시작 rva (`_nodes.tsv` 의 rva 와 같은 값). 이름이 겹치는 함수를 가린다. 끊긴 끝 (간접·외부 등) 줄의 `callee_rva` 는 `-`. 예전 지도 파일에는 이 두 열이 없다 — 지도를 다시 만들어야 생긴다.
 - `kind`: `call` / `tail` (꼬리호출) / `indirect` / `indirect-cfg` / `cfg-check` / `external`. 오프셋 표기(`frag:`, `tail`)와 별칭 경고는 `_calls.tsv` 와 같은 규칙.
 - `note` 의 `(seen)` = 이미 지도에 있는 함수라 다시 펼치지 않음.
 

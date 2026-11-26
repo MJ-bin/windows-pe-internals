@@ -5,6 +5,7 @@
   python3 .claude/skills/ghidra-headless-export/scripts/pdb_struct.py <바이너리> <구조체이름> [...]   예) pdb_struct.py ntdll.dll _HEAP _PEB
   python3 .claude/skills/ghidra-headless-export/scripts/pdb_struct.py --list <바이너리> <정규식>        구조체 이름 찾기
 PDB 는 ms/sym/<바이너리>.pdb (fetch_pdb.py 가 받은 것). 출력은 TSV: offset  name  type  bits
+<바이너리> 자리에 <이름>=<경로> (예: ntdll32.dll=SysWOW64/ntdll.dll) 를 줘도 된다 — =<경로> 는 버리고 ms/sym/<이름>.pdb 를 쓴다.
 """
 import re, subprocess, sys, os
 
@@ -12,6 +13,7 @@ HDR = re.compile(r'^\s+0x([0-9A-F]+) \| (LF_\w+) \[size = \d+\](?: `(.*)`)?$')
 MEM = re.compile(r'- LF_MEMBER \[name = `(.*?)`, Type = 0x([0-9A-F]+)(?: \((.*?)\))?, offset = (\d+)')
 
 def load(binary):
+    binary = binary.split('=', 1)[0]   # <이름>=<경로> 꼴이면 이름만
     pdb = os.path.join('ms/sym', binary + '.pdb')
     if not os.path.exists(pdb):
         sys.exit(f'없음: {pdb} (fetch_pdb.py {binary} 먼저)')

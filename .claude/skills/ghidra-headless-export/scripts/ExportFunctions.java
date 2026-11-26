@@ -1,10 +1,17 @@
 // 이름이 정규식에 맞는 함수들(+ 그 함수가 부르는 함수를 depth 단계까지)을
 // 디컴파일 C, 디스어셈블, 호출 지점 표로 뽑는다.
 //
-// 인자: <ms 디렉토리 절대경로> <모듈 이름> <함수이름 정규식> [depth=0]
+// 인자: <ms 디렉토리 절대경로> <모듈 이름> <함수이름 정규식 | rva:0x..,0x..> [depth=0]
+//   rva:0x18b9c0,0x12f318 = 정규식 대신 함수 시작 rva (16진, 0x 는 있어도 없어도) 로 고른다. 이름이 겹치는 함수 (람다 operator() 등) 를 하나만 뽑을 때.
+//   rva 에 함수가 없으면 "경고" 를 찍고 넘어간다 (다른 rva 는 그대로 뽑는다).
 // 출력:
 //   <ms>/decomp/<모듈>/<함수>.c
 //   <ms>/disassemble/<모듈>/<함수>.asm
+//      파일 이름 <함수> = 함수 이름에서 [A-Za-z0-9_.@$-] 밖의 글자를 _ 로 바꾼 것 (sast 하네스 제안 ③⑤):
+//        - 프로그램 안 함수 중 그렇게 바꾼 이름이 둘 이상이거나, 이름에 ( 나 < 가 있으면 늘 <함수>__<rva 16진>.
+//          (예전: 한 번의 실행 안에서 둘째부터 __<rva> → 주소가 앞선 쪽이 평이름을 가져가 기존 파일을 덮을 수 있었다, sast/145)
+//        - 겹치지 않고 ( < 도 없는 보통 함수는 예전처럼 평이름 <함수>.
+//        - 바꾼 이름이 200자를 넘으면 앞 120자 + __ + 원래 이름 해시 8자리(16진) (파일 이름 255 바이트 제한, sast/141). 그 뒤에 위 규칙의 __<rva> 가 붙을 수 있다.
 //   <ms>/disassemble/<모듈>/_calls.tsv   (누적. 래퍼 스크립트가 sort -u 로 중복 제거)
 //      열: caller  call_off  ret_off  callee
 //      ret_off = call 다음 명령의 오프셋 = WinDbg 콜스택의 "caller+0x..." 와 같은 값
@@ -66,6 +73,14 @@ import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolIterator;
 
 public class ExportFunctions extends GhidraScript {
+
+	// 파일 이름 규칙 상수 (맨 위 머리말 참고)
+	private static final int LONG_NAME = 200; // 이보다 길면 줄인다
+	private static final int KEEP_NAME = 120; // 줄일 때 앞에서 남기는 글자 수
+
+	private static String fileSafe(String name) {
+		return name.replaceAll("[^A-Za-z0-9_.@$-]", "_");
+	}
 
 	private String aliasNote() {
 		if (lastAliases.isEmpty()) {
@@ -493,7 +508,27 @@ public class ExportFunctions extends GhidraScript {
 		}
 		File msDir = new File(args[0]);
 		String module = args[1];
-		Pattern pat = Pattern.compile(args[2]);
+		// 고르는 방법: 이름 정규식, 또는 "rva:0x18b9c0,0x12f318" (함수 시작 rva, 16진)
+		final boolean byRva = args[2].startsWith("rva:");
+		final Set<Long> rvaSet = new LinkedHashSet<>();
+		Pattern pat = null;
+		if (byRva) {
+			for (String t : args[2].substring(4).split(",")) {
+				t = t.trim();
+				if (t.isEmpty()) {
+					continue;
+				}
+				try {
+					rvaSet.add(Long.parseLong(t.startsWith("0x") || t.startsWith("0X") ? t.substring(2) : t, 16));
+				}
+				catch (NumberFormatException e) {
+					throw new IllegalArgumentException("ExportFunctions: rva 목록을 못 읽음 (16진수 쉼표 목록이어야 함): '" + t + "' in " + args[2]);
+				}
+			}
+		}
+		else {
+			pat = Pattern.compile(args[2]);
+		}
 		int depth = args.length > 3 ? Integer.parseInt(args[3]) : 0;
 
 		File decDir = new File(new File(msDir, "decomp"), module);
@@ -504,15 +539,23 @@ public class ExportFunctions extends GhidraScript {
 		FunctionManager fm = currentProgram.getFunctionManager();
 		long base = currentProgram.getImageBase().getOffset();
 
-		// 1) 이름으로 고르기
+		// 1) 이름(정규식) 또는 rva 로 고르기
 		LinkedHashSet<Function> targets = new LinkedHashSet<>();
+		Set<Long> rvaFound = new HashSet<>();
 		FunctionIterator all = fm.getFunctions(true);
 		for (Function f : all) {
-			if (pat.matcher(f.getName()).find()) {
+			long rva = f.getEntryPoint().getOffset() - base;
+			if (byRva ? rvaSet.contains(rva) : pat.matcher(f.getName()).find()) {
 				targets.add(f);
+				rvaFound.add(rva);
 			}
 		}
-		println("ExportFunctions: 이름으로 고른 함수 " + targets.size() + "개");
+		for (Long want : rvaSet) {
+			if (!rvaFound.contains(want)) {
+				println("ExportFunctions: 경고 rva 0x" + Long.toHexString(want) + " 에서 시작하는 함수가 없음");
+			}
+		}
+		println("ExportFunctions: " + (byRva ? "rva 로" : "이름으로") + " 고른 함수 " + targets.size() + "개");
 
 		// 2) 부르는 함수 depth 단계까지 넓히기
 		Set<Function> frontier = new LinkedHashSet<>(targets);
@@ -545,6 +588,11 @@ public class ExportFunctions extends GhidraScript {
 		DecompInterface di = new DecompInterface();
 		di.openProgram(currentProgram);
 		Map<String, Integer> used = new HashMap<>();
+		// 파일 이름 겹침은 이번에 뽑는 함수끼리가 아니라 프로그램 전체로 센다 (실행마다 이름이 같아야 하고, 이미 있는 파일을 덮지 않으려고)
+		Map<String, Integer> sameName = new HashMap<>();
+		for (Function g : fm.getFunctions(true)) {
+			sameName.merge(fileSafe(g.getName()), 1, Integer::sum);
+		}
 
 		try (PrintWriter calls = new PrintWriter(new FileWriter(new File(disDir, "_calls.tsv"), true))) {
 			for (Function f : targets) {
@@ -555,10 +603,17 @@ public class ExportFunctions extends GhidraScript {
 					continue;
 				}
 				String name = f.getName();
-				String safe = name.replaceAll("[^A-Za-z0-9_.@$-]", "_");
-				int k = used.merge(safe, 1, Integer::sum);
-				if (k > 1) {
-					safe = safe + "__" + Long.toHexString(f.getEntryPoint().getOffset() - base);
+				String safe = fileSafe(name);
+				String rvaHex = Long.toHexString(f.getEntryPoint().getOffset() - base);
+				boolean withRva = sameName.getOrDefault(safe, 1) > 1 || name.indexOf('(') >= 0 || name.indexOf('<') >= 0;
+				if (safe.length() > LONG_NAME) {
+					safe = safe.substring(0, KEEP_NAME) + "__" + String.format("%08x", name.hashCode());
+				}
+				if (withRva) {
+					safe = safe + "__" + rvaHex;
+				}
+				if (used.merge(safe, 1, Integer::sum) > 1) { // 그래도 겹치면 (이론상 해시 충돌뿐) 예전처럼 rva
+					safe = safe + "__" + rvaHex;
 				}
 				long entry = f.getEntryPoint().getOffset();
 				String head = String.format("%s!%s  entry=%s  rva=0x%x", module, name, f.getEntryPoint(),
