@@ -409,7 +409,7 @@ flow-writer 는 `../PE_emulator-BD/ext/syscall/syscall_layer_cpp/src/gui/` 파�
 
 ## 정정
 
-- **run142 4절 "비정상 끝 = `WM_QUIT`" 의 반환값** — run142 는 "`EndDialog` 가 안 불려 자료 `+0x20` 이 처음 값 (0) 이라 `MessageBoxW` 0" 이라 적었다. `.asm` 으로는 **처음 값이 1** 이다 (`InternalCreateDialog +0x6fa MOV qword [pdlg+0x20],1`, 컨트롤 고리에서 `DLGC_DEFPUSHBUTTON` 컨트롤 ID 로 바뀔 수 있음 — run146), `DialogBox2` 는 `WM_QUIT` 에서도 `+0x3bd` 로 그 값을 돌려준다, `SoftModalMessageBox` 는 −1 만 0 으로 바꾼다 (`+0x5b8 ~ +0x5be`). 그래서 `DialogBox2` · `SoftModalMessageBox` 의 반환은 **0 이 아니다** `[정적]`. `MessageBoxWorker` · `MessageBoxTimeoutW` 가 그 뒤에 값을 바꾸는지는 이번에 안 봤다 `[공백]`. run142 맨 위 · flow.md 3장 run142 나무 한 줄에 정정을 남겼다.
+- **run142 4절 "비정상 끝 = `WM_QUIT`" 의 반환값** — run142 는 "`EndDialog` 가 안 불려 자료 `+0x20` 이 처음 값 (0) 이라 `MessageBoxW` 0" 이라 적었다. `.asm` 으로는 **처음 값이 1** 이다 (`InternalCreateDialog +0x6fa MOV qword [pdlg+0x20],1`, 컨트롤 고리에서 `DLGC_DEFPUSHBUTTON` 컨트롤 ID 로 바뀔 수 있음 — run146), `DialogBox2` 는 `WM_QUIT` 에서도 `+0x3bd` 로 그 값을 돌려준다, `SoftModalMessageBox` 는 −1 만 0 으로 바꾼다 (`+0x5b6 ~ +0x5be` — `+0x5b6 XOR ECX,ECX` · `+0x5b8 CMP EAX,-1` · `+0x5bb MOV R15D,ECX` · `+0x5be CMOVNZ R15D,EAX`). 그래서 `DialogBox2` · `SoftModalMessageBox` 의 반환은 **0 이 아니다** `[정적]`. `MessageBoxWorker` · `MessageBoxTimeoutW` 가 그 뒤에 값을 바꾸는지는 이번에 안 봤다 `[공백]`. run142 맨 위 · flow.md 3장 run142 나무 한 줄에 정정을 남겼다.
 
 ## 앞 run 고쳐 읽기
 
