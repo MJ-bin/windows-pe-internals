@@ -3,6 +3,8 @@
 > 이 글은 [run143 문서](run143-mountdev-name.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
+> **고쳐 읽기 (run156)**: 한눈 표 ⑧ · 2.15 의 "`ShellExecute*` → `CInvokeCreateProcessVerb::Execute` 는 가상 함수라 이어지지 않는다 `[공백]`" 은 **정적으로 닫혔다** `[정적]` — windows.storage `ShellExecuteExW` 부터 **14 걸음**, 가상 호출 둘 (`_ExecuteAssoc +0x175` · `InitAndCallExecute +0x214`, 칸 `[+0x48]` 의 대상은 PE 가상표 값) 을 지나 `CInvokeCreateProcessVerb::Execute` (rva `0xe1de0`) 에 닿고, 그 뒤는 이 글의 사슬 그대로다 (`_PrepareAndCallCreateProcess +0xdf _FixupWorkingDirectory`). **실제로 불리는지는 그대로 동적 Q275.** 본문은 그대로 두었다 → [run156 해설](run156-appinfo-runas-해설.md) 2.4 · [run156 문서](run156-appinfo-runas.md) 1-2
+
 - 대기열: **Q269** — PE_emulator 요청 "`\??\C:` 에 IOCTL `0x4d0008` 을 보내는 kernelbase 함수 · 출력 칸 · status 갈래 · 바로 뒤 `\??\MountPointManager` IOCTL 입력·출력 · (되면) shell 쪽 실패 처리" (`_workspace/plan.md`, 이번에 **끝 (run143)**)
   - 원 요청 `../PE_emulator/_workspace/05_tuning_planner/335_internals-mountdev-name.md`, 튜닝 `335_tune15.md` MD1, 병목 샘플 98 · 기본 대답 받은 샘플 124 (요청 쪽 에뮬레이터 숫자).
   - 사용자 결정 2026-11-25 (PE_emulator D154) 요청 넷의 **셋째**. 정적만.
