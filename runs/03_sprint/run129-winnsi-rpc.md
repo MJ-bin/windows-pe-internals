@@ -4,6 +4,8 @@
 
 > **고쳐 읽기 (run141, sast/138 — Q267)**: 호출 관계 각주의 "`RpcBindingBind +0x4b` 가상 `[RAX+0x128]` — 구현 이름은 `[추측]`" → **`LRPC_FAST_BINDING_HANDLE::Bind`** (`Bind__74b50`, rva `0x74b50` — PDB 가상표 `0xe4440` 슬롯 `+0x128`) `[정적: PE]`. epmapper 핸들이 빠른 핸들이라는 것만 `[추측]` 으로 남는다. 그 안 `+0x157` 이 `DriveStateForward(this, fAsync, …)` 를 부르고, 비동기 첫 연결이면 `DriveStateForward +0x51e` 가 보류로 끝나 `Bind__74b50` 가 0 으로 바꿔 돌려준다 (bind 는 연결 응답 뒤 풀 일꾼이 보냄) — `runs/03_sprint/run141-async-bind.md` 1절.
 
+> **고쳐 읽기 (run155, sast/154 — Q292)**: 3절 표 프로시저 7 줄 (`:154` — 이 안내를 넣은 뒤 기준) 의 나옴 "16 B 구조체 · 24 B 모듈 ID 꼴 · DWORD · 반환 DWORD" → **"16 B 구조체 A {바이트 배열 포인터, 길이} · 24 B 구조체 B {enum16, 바이트 배열 포인터, LONG, LONG} (모듈 ID 꼴 아님) · enum16 (선 위 2 B) · 반환"** `[정적]` (winnsi `.rdata` `0x7278` 파라미터 5, 타입 `0x6f34` · `0x6f54` · `0x707e`). 7 의 컨텍스트 핸들은 포인터 경유가 아닌 **값** (깃발 `0x41`) 이고 요청은 핸들 20 B 하나. 6 줄 (`:153`) 은 맞다. 모듈 ID 길이 (선 위 24 B, run137 3-2 고쳐 읽기) 는 run155 1-3. → `runs/03_sprint/run155-rpc-extras.md` 1-2 · 1-4.
+
 (글의 오프셋은 함수 안 줄 · call 자리. ret 는 아래 "정적 — 호출 지점" 표. 콜스택으로 본 적은 없다 — 정적만.)
 
 > **지도 범위**: 이번 바퀴는 **PE_emulator 요청** ("winnsi 알림 등록 RPC — 서버가 없으면 클라이언트가 어떻게 되고, 한 번 성공시키려면 무엇을 답해야 하나", 튜닝 `303_tune11.md` T1 · T2, 샘플 212) 이고 test.exe 초기화 (프로세스 생성 → `NtContinue` 은퇴) **밖**이다. test.exe 는 winnsi · rpcrt4 · IPHLPAPI · webio 를 안 올린다 — 초기화 끝 (P2) 모듈 6개에 없음 `[관찰]` (`ms/logs/04_baggage-read_P2.txt:3398 ~ 3923`, run99 · run124 · run128 과 같은 줄), `sample/*.c` 에 RPC · 네트워크 API 가 없다 `[소스]`. 그래서 **그림은 안 바꿨다.** flow.md 는 기준 (PDB 하나 · 근거 줄) · 3장 run128 절 winnsi 줄 화살표 · 3장 run99 절 한 줄 · 3장 끝 새 절 하나 · 4장 (run128 줄 닫힘 표시 · 대기열 번호, run129 줄) · 5장만 고쳤고, 짐 지도 (`baggage.md`) 는 건드리지 않았다.

@@ -4,6 +4,8 @@
 
 > **고쳐 읽기 (run149)**: 1절 "왜 이 질문이 지금 왔나" · 2.17 "그 밖" · 3절 "큰 그림에서 어떻게 이어지나" 의 "같은 비동기 틀을 RPCSS (`CoInitializeSecurity`) 도 쓴다 (원 요청 말) `[추측: RPCSS 쪽 연결 객체가 같은 썽크를 쓰는지는 안 읽음]`" → combase 의 RPCSS 길 (bind 넷 + `Connect`) 은 **동기** 다 `[정적]`: `CFastBH::BindWithTimeout +0xc RpcBindingBind(NULL, 핸들, 인터페이스)` (비동기 상태 NULL), `Connect +0x17b NdrClientCall2`. 이 길에선 비동기 완료 포트 틀을 안 쓴다 (연결 깃발 자체는 rpcrt4 안이라 안 읽음). 본문은 그대로 두었다 → [run149 해설](run149-com-rpcss-해설.md) 2.3 · 2.14
 
+> **고쳐 읽기 (run155 — VM 확인 전)**: 2.13 의 nsi 프로시저 5 "요청 40 B" (`:117` 표 · 2.13 제목 `:616` · `:625` · `:628` · `:677` · `:699` — 줄 번호는 이 안내를 넣은 뒤 기준) 는 **44 B 일 것이다** — 모듈 ID 가 20 B 가 아니라 **24 B** (`Length` 2 · 형 2 · **가름값 2 한 번 더** · 패딩 2 · GUID 16). 서식 기계 (`NdrNonEncapsulatedUnionMarshall`) 가 이름표 안 갈림 칸의 가름값을 버퍼에 한 번 더 쓰는 줄은 `[정적]` 이고, 이 길에서 그 기계가 불린다는 사슬은 `[추측]` 이라 VM 으로 확인한다. 응답 24 B 는 그대로. → [run155 문서](run155-rpc-extras.md) 1-3 · 1-4.
+
 > 이 글은 [run137 문서](run137-alpc-completion.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
