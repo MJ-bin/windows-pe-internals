@@ -1,5 +1,7 @@
 # 2026-11-16 (작성일) run113 — 유저 구조체 모르는 칸 (Q78e1, 정적만): PEB · `PebLdr` · 모듈 항목 · 노드 모르는 칸 92 → **여전히 모름 0** — 아는 칸 42 · 아무도 안 씀 28 · 범위 밖 길 22. `P1~P1a` · `P1a~P1b` 7칸은 모두 이미 아는 길 안 줄 (`_LdrpInitialize` · `LdrpAllocateModuleEntry` · `LdrpProcessMappedModule` · `LdrpInitializePatchData` · `SbUpdateSwitchContextBasedOnDll` · `LdrpCondenseGraphRecurse`), `끝까지 0` 은 커널 `MmCreatePeb +0x57a` 명시 0 · 항목 `Flags` DWORD 되쓰기 · 조건부 갈래 20칸 · 쓰는 줄 없음 28 · 다른 길 22. 모듈 항목 `Flags` 비트 10개는 `LdrpInitializeProcess +0x13be ~ +0x13c4` DWORD 되쓰기라 **"0 을 씀" 으로 셈** (오케스트레이터 결정, run112 `CrossThreadFlags` 와 같은 규칙).
 
+> **표기 정정 (run154, sast/153)**: 아래 `DbgkCopyProcessDebugPort` 줄의 "`DbgkpMarkProcessPeb` (ret `+0x2c8972`)" 는 **조각 `FUN_140845053` 시작 기준** 수다 — 함수 기준으로는 **call `+0x2c8a0c` · ret `+0x2c8a11`** (같은 줄의 `+0x3c` · `+0x43` 은 함수 기준). 또 "부모 `DebugPort`" 는 정확히는 `NtCreateUserProcess` 를 부른 **현재 프로세스** (`PspInsertProcess +0x40` R13) 의 것이고, 디버그 객체 핸들 속성이 없을 때만 본다 → [run154](run154-dbgk-events.md)
+
 (글의 오프셋은 call 자리 · 쓰는 줄 자리. "호출 관계" 나무의 callee 앞 오프셋은 ret 자리 (콜스택 표시) — 둘 다 아래 "정적 — 호출 지점" 표.)
 
 > **지도 범위**: 그림은 안 고쳤다 (run52 · run53 · run112 와 같은 까닭). 새 단계 · 새 caller 가 없고, 이미 있는 함수 **안쪽** 쓰는 줄만 늘었다. 글은 flow.md 기준 · 2.1 · 2.4 · 2.5 · 2.6 · 4장 · 5장, 짐 지도는 3.1 · 3.4 · 3.5 · 3.6 과 2장 · 7.1 · 7.2 를 고쳤다.
