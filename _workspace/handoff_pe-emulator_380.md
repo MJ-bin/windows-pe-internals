@@ -12,7 +12,7 @@
 | ② | `380_internals-r19-lanes.md` ② (+ Q284 ① ~ ③) | Q288 + Q284a | `runs/03_sprint/run151-rpcss-connect-sd.md` | `_workspace/sast/148_rpcss-connect-sd_result.md` | `runs/03_sprint/run151-rpcss-connect-sd-해설.md` |
 | ③ | `380_internals-r19-lanes.md` ③ | Q289 | `runs/03_sprint/run150-epm-ndr-procs.md` | `_workspace/sast/149_epm-ndr-procs_result.md` | `runs/03_sprint/run150-epm-ndr-procs-해설.md` |
 | ④ | `380_internals-r19-lanes.md` 머리 "차례" ④ — Q278b (367 gdi-display-dc 의 "다음" 몫) | Q278b | `runs/03_sprint/run153-gdi-font-dc.md` | `_workspace/sast/150_gdi-font-dc_result.md` | `runs/03_sprint/run153-gdi-font-dc-해설.md` |
-| ④ | 같은 ④ — Q282 (365 dialog-window 뒷몫, run148 남은 정적) | Q282 | `runs/03_sprint/run157-dialog-win32k.md` | `_workspace/sast/151_dialog-win32k_result.md` | `runs/03_sprint/run157-dialog-win32k-해설.md` (쓰는 중) |
+| ④ | 같은 ④ — Q282 (365 dialog-window 뒷몫, run148 남은 정적) | Q282 | `runs/03_sprint/run157-dialog-win32k.md` | `_workspace/sast/151_dialog-win32k_result.md` | `runs/03_sprint/run157-dialog-win32k-해설.md` |
 | ⑤ | `374_internals-appinfo-runas.md` (+ Q276 ①) | Q290 + Q276a | `runs/03_sprint/run156-appinfo-runas.md` | `_workspace/sast/152_appinfo-runas_result.md` | `runs/03_sprint/run156-appinfo-runas-해설.md` |
 | ⑥ | `380_internals-r19-lanes.md` ⑥ | Q291 | `runs/03_sprint/run154-dbgk-events.md` | `_workspace/sast/153_dbgk-events_result.md` | `runs/03_sprint/run154-dbgk-events-해설.md` |
 | 덤 | `380_internals-r19-lanes.md` 덤 1 ~ 3 | Q292 | `runs/03_sprint/run155-rpc-extras.md` | `_workspace/sast/154_rpc-extras_result.md` | `runs/03_sprint/run155-rpc-extras-해설.md` |
