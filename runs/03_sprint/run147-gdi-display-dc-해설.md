@@ -1,5 +1,7 @@
 # run147 gdi-display-dc — 해설
 
+> **고쳐 읽기 (run153)**: 2.8 표 `+0x98` "처음 값 `0x12001f`" 는 DC 를 만들 때 덮는 값이고 사무실 기본 양식 (세션 틀) 값은 `0x10` 이다 (유저가 보는 처음 값은 그대로 `0x12001f`). 2.7 "세션 기본 틀의 내용은 `[공백]`" · 2.8 "붓 · 펜 · 글꼴 = 스톡 핸들 (어느 것인지는 `[공백]`)" → 닫힘 `[정적]`: 붓 스톡 0 (WHITE_BRUSH) · 펜 스톡 7 (BLACK_PEN) · 글꼴 스톡 13 (SYSTEM_FONT, `[추측: 오프셋 일치]`), 채우는 곳은 `InitializeGre` → `InitializeDefaultDCAttributes`. 2.7 의 "남는 `+0x160` 은 0" 은 0 으로 시작해 gdi32full 이 글꼴 사본 목록 머리로 쓰는 칸이다. 4절 Q278b 의 `DC_ATTR+0x114` · 세션 틀 · `GrepCreateCompatibleDC` · 블록 채우는 곳 · DPI 칸 · 주 화면 판정 · 그 뒤 벽 (`InitImagingLibrary` — 벽 아님) 은 닫힘. 본문은 그대로 두었다 → [run153 문서](run153-gdi-font-dc.md)
+
 > 이 글은 [run147 문서](run147-gdi-display-dc.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 

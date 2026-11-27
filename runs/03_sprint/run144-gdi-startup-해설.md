@@ -2,6 +2,8 @@
 
 > **고쳐 읽기 (run147)**: 2.13 표 "`GetDeviceCaps(DC)` — 0, `TEB+0x68 = 0x57`" · 2.14 "DC 길 `0x57` / 0" 은 **핸들 종류 비트가 `0x10000` 일 때의 길**이다 `[정적]` — 에뮬레이터 `0x21000` · `0x20c00` 처럼 종류 비트가 `2` 면 `GetDeviceCaps +0x66 JNZ` 로 대장을 펴 보기도 전에 갈라져 `pldcGet` = 0 → **`TEB+0x68 = 6`** + 0. 2.6 칸 표 · 2.13 "새 말 — `DC_ATTR`" 의 "≥ 0x130 B" 는 유저 쪽이 읽는 끝 (`+0x128`) 으로 맞고, 그 블록을 잡는 쪽은 **`win32kbase!HmgAllocateDcAttr` (슬롯 `0x170` B)** 다 (2.3 의 `HmgAllocateObjectAttr` 0x18 B 는 영역 쪽). 4절 Q278 의 N1 은 닫힘 (Q278a → run147), N2 ~ N5 는 Q278b. 본문은 그대로 두었다 → [run147 해설](run147-gdi-display-dc-해설.md) 2.7 · 2.13 · 2.15
 
+> **고쳐 읽기 (run153)**: 2.13 표 "`GetTextMetricsW` · `GetTextExtentPointW` · `GdiGetCharDimensions` (DC) — 0 (`GetTextExtentPointW` 는 `0x57`) · syscall 없음" 에서 **`GetTextExtentPointW` 는 빠진다** `[정적]` — 대장을 펴 보기 전에 `GetDCDpiScaleValue(hdc) == 1` 을 먼저 보고 (`+0x69 · +0x70`), 대장이 비면 그 함수가 `NtGdiGetDCDpiScaleValue` syscall 을 낸 뒤 1 이 아니면 곧장 `NtGdiGetTextExtent` syscall 로 간다 (`LastError` 안 세움). `GetTextMetricsW` · `GdiGetCharDimensions` 는 그대로. 2.4 "로그의 나머지 syscall 은 어디서" 의 `0x25` 출처 (kernelbase `GetVersionExA` 쪽 `[추측]`) 는 확인 안 됨 — kernelbase 에서 0x25 를 부르는 건 `GetProcessVersion` 뿐이고 그걸 부르는 kernelbase 줄이 없다 (출처 `[공백]`). 4절 Q278 의 N2 ~ N4 는 닫힘 (Q278b → run153), N5 는 반만. 본문은 그대로 두었다 → [run153 문서](run153-gdi-font-dc.md)
+
 > 이 글은 [run144 문서](run144-gdi-startup.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
