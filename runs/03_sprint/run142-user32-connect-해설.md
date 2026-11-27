@@ -6,6 +6,8 @@
 
 > **정정 · 고쳐 읽기 (run148)**: 2.1 나무 · 2.9 "다른 끝 — `WM_QUIT`" · 정책 표의 "`WM_QUIT` → 결과 칸 처음 값 0 → `MessageBoxW` 0" 은 틀렸다 `[정적]` — 대화상자 자료 `+0x20` 의 처음 값은 **1** (`InternalCreateDialog +0x6fa`, 기본 단추 컨트롤 ID 로 바뀔 수 있음) 이고, `DialogBox2` 는 `WM_QUIT` 에서도 `+0x3bd` 로 그 값을 돌려주며, `SoftModalMessageBox` 는 −1 만 0 으로 바꾼다 (`+0x5b6 ~ +0x5be`). 그래서 `DialogBox2` · `SoftModalMessageBox` 반환은 0 이 아니다. `MessageBoxWorker` · `MessageBoxTimeoutW` 가 그 뒤 바꾸는지는 `[공백]`. 그리고 2.9 의 고리 · `EndDialog` 는 줄 근거로 닫혔다 — 고리는 `NtUserPeekMessage` 반환 0 / 0 아님만 보고 (늘 0 이면 끝없는 바쁜 고리), Enter 는 `WM_KEYDOWN` 으로 와서 `IsDialogMessageW` 가 `WM_COMMAND` 로 바꿔 보내고, `EndDialog` 뒤 `NtUserDestroyWindow` 까지 반환은 안 본다. "무엇을 넣을지" 는 그대로 정책 (사용자 몫). 본문은 그대로 두었다 → [run148 해설](run148-dialog-end-해설.md) 2.3 · 2.4 · 2.8 · 2.9 · 2.13
 
+> **고쳐 읽기 (run157)**: 2.10 표의 "`psi+0x3a4 + 40*k` (단추 글) — 빈 글 단추 (상자는 뜸)" 는 이름만의 얘기다. 바로 뒤 칸 `+0x3c4` (단추 번호 `uID`) 가 0 이면 **단추 번호가 전부 0** 이라 눌러도 상자가 안 끝난다 `[정적]` (이 칸은 커널 `xxxLoadSomeStrings` 가 `칸 + 1` 로 씀). 기본 단추 번호는 종류마다 다르다 — `MB_YESNO` = `IDYES (6)`. 자세히는 [run157 문서](run157-dialog-win32k.md).
+
 > 이 글은 [run142 문서](run142-user32-connect.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
