@@ -3,6 +3,8 @@
 > 이 글은 [run138 문서](run138-wow64-dlls.md)를 쉬운 말로 풀어 쓴 것이다. 새 사실은 없다.
 > 근거와 태그는 run 문서·결과서를 따른다.
 
+> **고쳐 읽기 (run152, 좁힘)**: "통역 담당 (`whNt*`) 이 64비트 `Nt*` 로 바꿔 낸다" (원래 `:75` · `:172` · 나무 `:198`, 지금 `:77` · `:174` · `:200`) 는 **대부분의 담당에만** 맞다 `[정적]` — csrss 전입 신고 담당 `whNtWow64CsrClientConnectToServer` (칸 `0x1e9`) 는 서류를 한 장씩 번역하지 않고 **64비트 ntdll 의 신고 절차 `CsrClientConnectToServer` 를 통째로 대신 밟는다** (그 안에서 syscall 여섯). 자세한 것은 `run152-wow64-csr.md`.
+
 - 대기열: **Q253b** — PE_emulator-AR 요청 `AR01_internals-wow64.md` 의 **A 절** "wow64 DLL 넷" (`_workspace/plan.md`, 이번에 **끝 (run138)**)
   - 원 요청: `../PE_emulator-AR/_workspace/00_planner/AR01_internals-wow64.md` (갈래 AR — "x86 exe 를 진짜 WoW64 로").
   - 요청 차례는 **C → A → B** 다. 이번이 둘째 A.

@@ -1,5 +1,7 @@
 # 2026-11-27 (작성일, 정적 분석 2026-11-27) run151 — rpcss `_Connect` 응답의 SD 다섯 조각과 combase 가 죽는 사슬 (Q288 + Q284a, 정적만): **넷 (`gpNoReg*SD`) 은 rpcss 가 서비스 시작 때 코드 상수 SDDL 로 짓는다 (레지스트리 안 봄)**, 크기 **124 · 124 · 232 · 228 B**. **다섯째 (`GetDefaultAccessRestrictions`) 만 레지스트리** (`HKLM\SOFTWARE\Microsoft\OLE\MachineAccessRestriction`, 정책 키가 있으면 그쪽) 이고 **없으면 빠진다 (크기 0 가능)**. 죽는 줄은 **`CoInitializeSecurity +0x385 GetDefaultAccessRestrictionsSD` → `GetSecurityDescriptorLength` → ntdll `RtlLengthSecurityDescriptor +0x2d`** — 다섯째가 없으면 넷째 (`_pNoRegAccessRestrictionsSD`) 를 읽는데, 우리 "SD 크기 0 ×5" 대답이면 그게 0 B 덩어리라 길이 함수가 덩어리 밖을 읽다 접근 위반. 검사는 없다. **lsapolicylookup 은 명시 호출 길에선 끼지만 실패를 삼키고 지나간다** (죽음과 무관). 암묵 길 (`EOAC_APPID`) 에선 치명. **run149 정정 둘**: "(라) SD 0 ×5 가능" 틀림 · "프로시저 7 → 6" 은 첫 부름이 **6 먼저**
 
+> **정정 · 대조 (run152 때 대조 — explainer 가 찾은 어긋남 둘, `.asm` 으로 가림)**: (a) combase `InitializeSystemSecurityDescriptors` 오프셋 세 벌은 **다 맞고 뜻이 다르다** `[정적]` — `+0x2a` · `+0x62` · `+0x9a` · `+0xd0` · `+0x107` = **`LocalAlloc` call** (ret `+0x31` · `+0x69` · `+0xa1` · `+0xd7` · `+0x10e`), `+0x36` · `+0x6e` · `+0xa6` · `+0xdc` · `+0x113` = **전역에 넣는 줄** (`_pNoRegLaunchPermissionsSD` `0x3380e8` · `_pNoRegAccessPermissionsSD` `0x3380f8` · `_pNoRegLaunchRestrictionsSD` `0x3380d0` · `_pNoRegAccessRestrictionsSD` `0x3380c8` · `_pDefaultAccessRestrictionsSD` `0x3380e0`), `+0x4f` · `+0x8c` · `+0xc2` · `+0xf4` · `+0x12b` = **`memcpy` call** (결과서 148 1-1 끝 "LocalAlloc 후 memcpy" 는 이 줄). 2절 표 0 줄에 셋을 나눠 적었다. (b) `+0xd8` 은 **두 구조체의 다른 칸** `[정적]` — `CallTheResolver` 의 `RDI` = `CComApartment` (`this`, `+0x78 EnsureLinkToPrimaryOxid@CComApartment` 에 그대로 넘김). ① **`[아파트+0xd8]` DWORD = 더할 OID 수 (`cOidsToAdd`)** — `+0x33 MOV R15D,[RCX+0xd8]` · 배열 `[아파트+0xe0]` 을 `+0x4f memcpy` 로 지역에 · `+0x54` 0 으로 · `+0xfc` 프로시저 7 인자. ② **`[OXIDEntry+0xd8]` BYTE = 등록 표시** — `+0x87 RCX = [아파트+0x10]` (`OXIDEntry`) · `+0x94 MOV AL,[RCX+0xd8]` · `+0x9d JZ`, 같은 `RCX` 로 `+0x1b7 OXIDEntry::RegisterOXIDAndOIDs` 가 `+0xb1 XCHG [OXIDEntry+0xd8],1` (그 앞 `+0x93` OXID → `+0xc8` · `+0xa7` MID → `+0xd0`). 그래서 "`RegisterOXIDAndOIDs` 의 `[아파트+0xd8] = 1`" 꼴로 읽으면 틀리고, `+0x94` 와 `+0xb1` 은 **같은 칸** (`OXIDEntry+0xd8`), `cOidsToAdd` 만 **다른 칸** (`CComApartment+0xd8`). 4-1 표 · 요약 · 확인된 것 · 나무의 `[..+0xd8]` 을 이 이름으로 고쳤다. 결론 (6 먼저) 은 그대로.
+
 (글의 오프셋은 함수 안 줄 · call 자리. ret 는 아래 "정적 — 호출 지점" 표. 콜스택으로 본 적은 없다 — 정적만.)
 
 > **태그 읽는 법 (이 문서)**: `[정적]` = `.asm` 줄 · `pefile` 로 읽은 `.rdata` 글. `[규칙]` = 공개 규칙 (SDDL 약어 → SID, `WELL_KNOWN_SID_TYPE` 번호, self-relative SD 모양). **`[추측: 계산]` = `[정적]` 글 + `[규칙]` 으로 계산한 값** (SD 16진 · 크기 · 덩어리 합) — 진짜 메모리에서 본 값이 아니다. 결과서도 "VM 대조 필요" 라고 한다. flow-writer 가 같은 규칙으로 따로 다시 계산해 같게 나왔지만, 같은 규칙이라 VM 대조를 대신하지 못한다.
@@ -25,7 +27,7 @@
 - **넷 중 실제로 읽는 것** `[정적]`: 명시 `CoInitializeSecurity(SD NULL, −1, …)` 길은 **넷째 (또는 다섯째) 만**. 첫째 · 셋째는 공개 API `CoGetSystemSecurityPermissions` 만 읽고, 둘째는 암묵 (`EOAC_APPID`) 길만 읽는다.
 - **lsapolicylookup** `[정적]`: 명시 길에선 `CoInitializeSecurity +0x2af LookupPrincName(0xa)` → sechost `LookupAccountSidLocalW` → `LsaLookupOpenLocalPolicy` 가 `ncalrpc:[lsapolicylookup]` 에 곧장 붙는다 (SID → 이름). 실패해도 `CoInitializeSecurity` 가 **삼키고** 기본 보안 배열로 계속 간다 → **죽음과 무관**. 암묵 길에선 `GenerateDefaultAccessPermissionsSecurityDescriptor` 가 같은 포트를 직접 열고, 실패면 `CoInitializeSecurity` 가 그 에러로 **끝난다**.
 - **Q284a** `[정적]`:
-  - 프로시저 **6 이 먼저**: `CallTheResolver +0x9d JZ` — 아파트 OXID 가 아직 안 등록 (`[..+0xd8] == 0`) 이면 `RegisterOXIDAndOIDs` (6), 등록된 뒤 OID 를 더 받을 때 7 (첫 부름 때 그 칸이 0 인 것은 `[추측]`).
+  - 프로시저 **6 이 먼저**: `CallTheResolver +0x9d JZ` — 아파트의 `OXIDEntry` 가 아직 안 등록 (`[OXIDEntry+0xd8]` BYTE `== 0` — run152 때 대조) 이면 `RegisterOXIDAndOIDs` (6), 등록된 뒤 OID 를 더 받을 때 7 (첫 부름 때 그 칸이 0 인 것은 `[추측]`).
   - `LocalInterfaceOnlySecCallback`: 0 = 통과 · 5 = 거절. 보는 것은 전송 (ncalrpc) · 클라이언트 토큰 · **같은 접근 제한 SD (다섯째 / 넷째)** 의 비트 `0x2`. 로컬 test.exe 꼴이면 통과.
   - "클래스 없음" HRESULT 는 combase 에 상수가 없다 — rpcss 활성화 서버가 정해 보낸 값을 그대로 올린다 `[공백: 서버 몸]`.
 - **run149 정정 둘**: (a) 칸 28 "가능 (라) · 0 ×5" 와 "최소 대답" 3 의 "SD 크기 0 ×5 · 총 크기 0 · 덩어리 NULL" 은 틀림. (b) "프로시저 7 → 6" 은 첫 부름 차례가 반대 (6 먼저).
@@ -172,7 +174,7 @@
 
 | # | 줄 (`combase!CoInitializeSecurity` 기준, 다른 함수는 이름) | 하는 일 | 이 길의 조건 · 값 |
 |---|---|---|---|
-| 0 | 람다 `operator()` (rva `0x18b9c0`) `+0x82e Connect` 이하 (run149) | 응답 검사 → combase `InitializeSystemSecurityDescriptors` → `gGotSecurityData = 1` | 다섯 조각을 `LocalAlloc(0x40, 크기)` + `memcpy` 로 여섯 전역에 복사 (`+0x2a` · `+0x62` · `+0x9a` · `+0xd0` · `+0x107` LocalAlloc). **넷째까지는 크기 0 이어도 할당**, 다섯째만 `+0xfc CMP [RDI+0x10],0; JZ` 로 건너뜀 |
+| 0 | 람다 `operator()` (rva `0x18b9c0`) `+0x82e Connect` 이하 (run149) | 응답 검사 → combase `InitializeSystemSecurityDescriptors` → `gGotSecurityData = 1` | 다섯 조각을 `LocalAlloc(0x40, 크기)` + `memcpy` 로 다섯 포인터 전역 (+ 크기 전역 `+0x5c`) 에 복사 — **`LocalAlloc` call `+0x2a` · `+0x62` · `+0x9a` · `+0xd0` · `+0x107`** (ret `+0x31` · `+0x69` · `+0xa1` · `+0xd7` · `+0x10e`) → **전역 넣기 `+0x36` · `+0x6e` · `+0xa6` · `+0xdc` · `+0x113`** → **`memcpy` call `+0x4f` · `+0x8c` · `+0xc2` · `+0xf4` · `+0x12b`** (run152 때 대조). 할당이 NULL 이면 `+0x40` 등 `JZ +0x14e` → `0x8007000e`. **넷째까지는 크기 0 이어도 할당**, 다섯째만 `+0xfc CMP [RDI+0x10],0; JZ` 로 건너뜀 |
 | 1 | `+0x47d GetConnection` (ret `+0x482`) · `+0x486 JS` · `+0x48e CMP [gGotSecurityData]` · `+0x494 JNZ → +0xb2` | 본 줄기로 | `Connect` 성공 |
 | 2 | `+0xb2 ~ +0xdc` | SD NULL 이면 인증 수준 → 2 (`+0xd7` · `+0xdc`) | 명시 길 |
 | 3 | `+0xe2 operator() rva 0x7f438` (ret `+0xe7`) | `OLE\AppCompat` 값 `RaiseActivationAuthenticationLevel` 읽기 (결과서) | 원문 seq `1306 · 1307` 과 같은 일 `[추측: 요청서 인용 대조]` |
@@ -232,11 +234,11 @@
 |---|---|---|
 | 서버 | rpcss `_ServerAllocateOIDs` (rva `0x213e0`) → `ServerAllocateOIDsInternal` (`0x26700`) | rpcss `_ServerAllocateOXIDAndOIDs` (rva `0x13990`) |
 | 부르는 줄 | combase `CallTheResolver +0x106 NdrClientCall2` (ret `+0x10d`, 서식 `0x2c2994` — 결과서) | `CallTheResolver +0x1b7 → RegisterOXIDAndOIDs +0x78 → ServerRegisterOXID +0xce NdrClientCall2` (ret `+0xd5`, 서식 `0x2c292e`). 그 앞 `+0x30 StartListen` (음수면 그 HRESULT) |
-| 언제 | `CallTheResolver +0x94 MOV AL,[RCX+0xd8]` (`RCX = [RDI+0x10]`) · `+0x9b TEST AL,AL` · `+0x9d JZ` **안 탐** = 아파트 OXID 가 이미 등록 | **`+0x9d JZ → +0x1ad`** = 미등록 → **첫 부름은 이쪽** (첫 때 그 칸이 0 인 것은 `[추측: OXIDEntry 생성자 안 읽음]`) |
-| 입력 | 핸들 · `ph` (Connect 컨텍스트 핸들) · `OXID*` · 더할 OID 수 · 배열 · **원하는 수 = `0x14 − [아파트+0x30]`** (OID 버퍼 20 칸 중 빈 칸) · 출력 둘 (결과서) | 핸들 · `ph` · 출력 `OXID*` · `OXID_INFO` (0x98 B) · 로컬 DSA (`gpsaCurrentProcess`) · 보안 DSA (`gpsaSecurity` — 표 2 의 7 에서 만든 것) · OID 입출력 (결과서) |
+| 언제 | `CallTheResolver +0x94 MOV AL,[RCX+0xd8]` (`RCX = [RDI+0x10]` = 아파트의 **`OXIDEntry`**, `RDI` = `CComApartment` — 칸은 **`OXIDEntry+0xd8` BYTE 등록 표시**, run152 때 대조) · `+0x9b TEST AL,AL` · `+0x9d JZ` **안 탐** = 아파트 OXID 가 이미 등록 | **`+0x9d JZ → +0x1ad`** = 미등록 → **첫 부름은 이쪽** (첫 때 그 칸이 0 인 것은 `[추측: OXIDEntry 생성자 안 읽음]`) |
+| 입력 | 핸들 · `ph` (Connect 컨텍스트 핸들) · `OXID*` (`+0xa3` `[OXIDEntry+0xc8]` 사본) · 더할 OID 수 (**`[아파트+0xd8]` DWORD** — `+0x33 MOV R15D,[RCX+0xd8]`, `RCX` = `CComApartment`; 위 `OXIDEntry+0xd8` 과 **다른 구조체의 칸**. 읽은 뒤 `+0x54` 0 으로, `+0xfc` 인자로) · 배열 (`[아파트+0xe0]` 을 `+0x4f memcpy` 로 지역 `[RBP]` 에) · **원하는 수 = `0x14 − [아파트+0x30]`** (OID 버퍼 20 칸 중 빈 칸) · 출력 둘 (결과서) | 핸들 · `ph` · 출력 `OXID*` · `OXID_INFO` (0x98 B) · 로컬 DSA (`gpsaCurrentProcess`) · 보안 DSA (`gpsaSecurity` — 표 2 의 7 에서 만든 것) · OID 입출력 (결과서) |
 | 서버 status | `ph` 모름 · PID 다름 → **5**; 널 인수 → **`0x57`**; OXID 없음 → **`0x776`** (`ServerAllocateOIDsInternal +0x143`); 메모리 → `0xe` (결과서) | 깃발 · 모양 틀림 → **`0x57`**; `CheckLocalSecurity` 실패 → **5**; 로컬 / 보안 DSA `DsaValid` 거짓 → **`0x57`**; 그 밖 `CServerOxid::Create` (`+0x20a`) 상태 |
 | 출력 | 새 OID (서버가 `ProcessPrng` 8 B 난수, `ServerAllocateOIDsInternal +0x198`) · 개수 · 상태 0 | OXID · (선택) 서버 DSA (NULL 가능) · OID · 상태 |
-| combase 검사 | `+0x117 RetryRPC` · `+0x122 CheckStatus` (run149 표 3: `0x6bb` 만 재시도 · 양수 N → `0x8007NNNN`). 성공이면 `+0x172 memcpy` 로 `min(돌려준 수, 빈 칸)` 개 넣고 `[아파트+0x30] += 돌려준 수` (**잘라 더하지 않음** — 많이 주면 20 을 넘음, 결과서) | `+0xf2 RetryRPC` · `+0x101 CheckStatus`; 돌려받은 DSA 가 비-NULL 인데 `+0x115 DsaValid` 거짓 → **`0x8000ffff`** (`+0x1e1`); 이어 `RegisterOXIDAndOIDs +0x87 ~ +0xae` 가 OXID · MID 저장 · 등록 표시 1 |
+| combase 검사 | `+0x117 RetryRPC` · `+0x122 CheckStatus` (run149 표 3: `0x6bb` 만 재시도 · 양수 N → `0x8007NNNN`). 성공이면 `+0x172 memcpy` 로 `min(돌려준 수, 빈 칸)` 개 넣고 `[아파트+0x30] += 돌려준 수` (**잘라 더하지 않음** — 많이 주면 20 을 넘음, 결과서) | `+0xf2 RetryRPC` · `+0x101 CheckStatus`; 돌려받은 DSA 가 비-NULL 인데 `+0x115 DsaValid` 거짓 → **`0x8000ffff`** (`+0x1e1`); 이어 `RegisterOXIDAndOIDs +0x87 ~ +0xb1` 가 OXID (`+0x93` → `[OXIDEntry+0xc8]`) · MID (`+0xa7` → `+0xd0`) 저장 · 등록 표시 (`+0xb1 XCHG [OXIDEntry+0xd8],1` — `CallTheResolver +0x94` 가 보는 바로 그 칸). primary `OXIDEntry` 의 그 칸이 0 이면 거기에도 같은 셋 (`+0x12d` · `+0x13b` · `+0x142`) (run152 때 대조) |
 | 안전한 최소 대답 | 상태 0 · 개수 ≤ 원하는 수 (결과서; 그 뒤는 `[추측]`). 솔직한 실패 `0x776` → `0x80070776` | 상태 0 · **OXID ≠ 0** · DSA NULL. 서버 흉내가 보안 DSA 를 `DsaValid` 로 보면 combase 가 보낸 것은 4 항목 기본 꼴 `{wNumEntries 4, wSecurityOffset 2, …}` (명시 길 lsapolicylookup 실패 때) |
 
 #### 4-2. `rpcss!LocalInterfaceOnlySecCallback` — 반환 0 = 통과 · 5 = 거절
@@ -290,7 +292,7 @@ CoInitializeSecurity (0x7e880)                                                  
              └─ LsaLookupOpenLocalPolicy · LsaLookupGetDomainInfo · CreateWellKnownSid · +0x127 AddAcesToSecurityDescriptorViaApi   실패 → 끝
 
 (첫 COM 사용) CallTheResolver
- ├─ +0x9d JZ (아파트 OXID 미등록) → +0x1bc RegisterOXIDAndOIDs +0x7d ServerRegisterOXID  +0x35 StartListen · +0xd5 NdrClientCall2 (프로시저 6)  ← 첫 부름
+ ├─ +0x9d JZ ([OXIDEntry+0xd8] 0 = 미등록) → +0x1bc RegisterOXIDAndOIDs +0x7d ServerRegisterOXID  +0x35 StartListen · +0xd5 NdrClientCall2 (프로시저 6)  ← 첫 부름
  └─ (등록 뒤)                      +0x10d NdrClientCall2 (프로시저 7)
 ```
 
@@ -350,7 +352,7 @@ flow-writer 는 원문 380 ② 절 · "받을 꼴" 만 읽었다 (읽기만). `r
 - `[정적]` combase `InitializeSystemSecurityDescriptors` 는 넷째까지 크기 0 이어도 `LocalAlloc` 하고 다섯째만 `+0xfc` 로 건너뛴다.
 - `[정적]` 명시 `CoInitializeSecurity` 의 `+0x385 GetDefaultAccessRestrictionsSD` → `+0x2c GetSecurityDescriptorLength` → (KernelBase `jmp [IAT]`) → `ntdll!RtlLengthSecurityDescriptor`, 길이 전 검사 없음. `+0x2d` = `0f b6 49 01`.
 - `[정적]` `LookupPrincName` → `LookupAccountSidLocalW` → `LsaLookupOpenLocalPolicy` → `ncalrpc:[lsapolicylookup]`, 실패면 `CoInitializeSecurity +0x2bb JS` 갈래가 기본 `gpsaSecurity {0x20004, 0}` 을 만들고 `+0x306` 으로 합류.
-- `[정적]` `CallTheResolver +0x9d JZ` — `[..+0xd8] == 0` 이면 `RegisterOXIDAndOIDs` (6), 아니면 `NdrClientCall2` (7).
+- `[정적]` `CallTheResolver +0x9d JZ` — `[OXIDEntry+0xd8]` (BYTE, `RCX = [아파트+0x10]`) `== 0` 이면 `RegisterOXIDAndOIDs` (6), 아니면 `NdrClientCall2` (7). 프로시저 7 의 더할 수 `[아파트+0xd8]` (DWORD) 은 다른 칸 (run152 때 대조).
 - `[관찰]` test.exe 초기화 끝 모듈 6개에 combase · sechost 가 없다 (`ms/logs/04_baggage-read_P2.txt:3398 ~ 3923`) — 이번 길은 test.exe 에선 안 생긴다.
 
 ## flow-writer 대조
